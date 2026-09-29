@@ -30,6 +30,18 @@ impl ContainerAction {
         }
     }
 
+    /// The label in a result, for example `Stopped`.
+    pub fn done_label(self) -> &'static str {
+        match self {
+            Self::Start => "Started",
+            Self::Stop => "Stopped",
+            Self::Restart => "Restarted",
+            Self::Pause => "Paused",
+            Self::Unpause => "Resumed",
+            Self::Remove | Self::ForceRemove => "Deleted",
+        }
+    }
+
     /// Stop for a container with live processes, Start for the rest.
     pub fn toggle_for(state: ContainerState) -> Self {
         if state.is_active() {

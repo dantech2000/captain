@@ -1,18 +1,28 @@
 //! Domain models and state for Captain. This crate has no UI or Docker dependencies.
 
+pub mod behavior;
+pub mod daemon;
+pub mod diagnostics;
 mod engine;
 mod error;
+pub mod extension;
 mod fake_engine;
 pub mod format;
+pub mod kubernetes;
 pub mod migration;
 pub mod model;
+pub mod process_lock;
+pub mod registry;
 pub mod search;
 pub mod settings;
+pub mod snapshot;
 pub mod store;
+pub mod tools;
 
 pub use engine::{
     ContainerApi, Engine, EngineFuture, EngineHost, EngineStream, GIB, HostError, HostFuture,
-    HostResources, HostStatus, HostStream, ImageApi, NetworkApi, ProjectRunner, VolumeApi,
+    HostResources, HostStatus, HostStream, ImageApi, ImageBuilder, NetworkApi, ProjectRunner,
+    VolumeApi,
 };
 pub use error::EngineError;
-pub use fake_engine::{FakeEngine, FakeImages, FakeNetworks, FakeVolumes};
+pub use fake_engine::{FakeEngine, FakeFiles, FakeImages, FakeNetworks, FakeVolumes};

@@ -1,7 +1,7 @@
 //! Runs `limactl`, always with Captain's own `LIMA_HOME`, so it never sees or
 //! changes the user's Lima VMs.
 
-use std::io::{BufRead, BufReader, Read};
+use std::io::{BufRead, BufReader, Read, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
 use std::sync::{Mutex, mpsc};
@@ -20,6 +20,17 @@ pub struct Limactl {
 impl Limactl {
     pub fn new(binary: PathBuf, lima_home: PathBuf) -> Self {
         Self { binary, lima_home }
+    }
+
+    pub fn binary(&self) -> &Path {
+        &self.binary
+    }
+
+    /// A command that shares the caller's standard input, output, and error.
+    pub fn interactive(&self, args: &[String]) -> Result<Command, HostError> {
+        let mut command = self.command(args)?;
+        command.stdin(Stdio::inherit());
+        Ok(command)
     }
 
     /// The only way this crate builds a `limactl` command: `LIMA_HOME` is always set.
@@ -45,13 +56,27 @@ impl Limactl {
             .command(args)?
             .output()
             .map_err(|error| spawn_error(&self.binary, error))?;
-        if output.status.success() {
-            return Ok(String::from_utf8_lossy(&output.stdout).into_owned());
+        finish(output)
+    }
+
+    /// Like [`Limactl::output`], with `input` on standard input.
+    pub fn output_with_input(&self, args: &[String], input: &str) -> Result<String, HostError> {
+        let mut child = self
+            .command(args)?
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .map_err(|error| spawn_error(&self.binary, error))?;
+        if let Some(mut stdin) = child.stdin.take() {
+            stdin
+                .write_all(input.as_bytes())
+                .map_err(|error| HostError(error.to_string()))?;
         }
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        Err(failure(
-            stderr.lines().filter_map(progress_line).next_back(),
-        ))
+        let output = child
+            .wait_with_output()
+            .map_err(|error| HostError(error.to_string()))?;
+        finish(output)
     }
 
     /// Runs `args`, passes each progress line to `sink`, and blocks until it exits.
@@ -121,6 +146,17 @@ fn lock<T>(mutex: &Mutex<T>) -> std::sync::MutexGuard<'_, T> {
     mutex
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
+}
+
+/// The standard output of a finished `limactl`, or its last error line.
+fn finish(output: std::process::Output) -> Result<String, HostError> {
+    if output.status.success() {
+        return Ok(String::from_utf8_lossy(&output.stdout).into_owned());
+    }
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    Err(failure(
+        stderr.lines().filter_map(progress_line).next_back(),
+    ))
 }
 
 fn failure(last_line: Option<String>) -> HostError {

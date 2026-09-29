@@ -1,0 +1,89 @@
+//! What every command needs: the settings file, this computer, and Captain Engine,
+//! built the same way the app builds them at launch.
+
+use std::path::PathBuf;
+use std::sync::Arc;
+
+use anyhow::{Context as _, Result};
+use captain_core::EngineHost;
+use captain_core::process_lock::{ProcessLock, app_lock_path};
+use captain_core::settings::Settings;
+use captain_host::{LimaHost, LimaPaths, machine};
+
+use crate::settings_keys::{Machine, engine_resources};
+
+pub struct Context {
+    /// `--settings`, `CAPTAIN_SETTINGS`, or the app's own file (ADR 0004).
+    pub settings_path: PathBuf,
+    pub machine: Machine,
+    /// `--lima-home` and `--instance`: another instance, for tests.
+    pub engine_paths: Option<LimaPaths>,
+}
+
+impl Context {
+    pub fn new(
+        settings: Option<PathBuf>,
+        lima_home: Option<PathBuf>,
+        instance: Option<String>,
+    ) -> Result<Self> {
+        let settings_path = match settings {
+            Some(path) => path,
+            None => dirs::config_dir()
+                .context("cannot find the config folder")?
+                .join("Captain")
+                .join("settings.json"),
+        };
+        Ok(Self {
+            settings_path,
+            machine: Machine {
+                cpus: machine::host_cpus(),
+                memory_bytes: machine::host_memory(),
+                captain_available: captain_host::captain_engine_available(),
+            },
+            engine_paths: lima_home.map(|lima_home| LimaPaths {
+                lima_home,
+                instance: instance.unwrap_or_else(|| captain_host::INSTANCE.into()),
+            }),
+        })
+    }
+
+    /// The saved settings. A file that is not valid JSON fails, so `set` never
+    /// replaces a file the user can still fix.
+    pub fn load(&self) -> Result<Settings> {
+        Ok(Settings::load(&self.settings_path)?)
+    }
+
+    /// The saved settings, or the defaults with a warning, like the app at launch.
+    pub fn load_or_default(&self) -> Settings {
+        self.load().unwrap_or_else(|error| {
+            eprintln!("captain: {error:#}; using the defaults");
+            Settings::default()
+        })
+    }
+
+    /// True while the Captain app runs with this settings file.
+    pub fn app_running(&self) -> bool {
+        ProcessLock::holder(&app_lock_path(&self.settings_path)).is_some()
+    }
+
+    /// Captain Engine with the saved resources and Docker daemon settings.
+    pub fn host(&self, settings: &Settings) -> Arc<dyn EngineHost> {
+        let host = match &self.engine_paths {
+            Some(_) => Arc::new(self.lima_host(settings)),
+            None => captain_host::default_host(engine_resources(settings, &self.machine)),
+        };
+        host.set_daemon(settings.engine_daemon.clone());
+        host.set_kubernetes(settings.kubernetes.clone());
+        host
+    }
+
+    /// Captain Engine's Lima VM, or the one `--lima-home` names, with the saved
+    /// resources.
+    pub fn lima_host(&self, settings: &Settings) -> LimaHost {
+        let resources = engine_resources(settings, &self.machine);
+        match &self.engine_paths {
+            Some(paths) => LimaHost::with_paths(paths.clone(), resources),
+            None => LimaHost::new(resources),
+        }
+    }
+}

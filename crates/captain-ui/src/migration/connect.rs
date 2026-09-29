@@ -90,6 +90,13 @@ impl MigrationAssistant {
         }
     }
 
+    pub(super) fn set_switch_over(&mut self, key: &str, on: bool, cx: &mut Context<Self>) {
+        if let Some(plan) = &mut self.plan {
+            plan.set_switch_over(key, on);
+            cx.notify();
+        }
+    }
+
     pub(super) fn set_image_choice(&mut self, choice: ImageChoice, cx: &mut Context<Self>) {
         if let Some(plan) = &mut self.plan {
             plan.set_image_choice(choice);

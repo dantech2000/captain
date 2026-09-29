@@ -3,9 +3,11 @@
 
 use std::sync::Arc;
 
-use captain_core::{Engine, EngineError, ProjectRunner};
+use captain_core::extension::{ExtensionManager, ExtensionPaths};
+use captain_core::{Engine, EngineError, ImageBuilder, ProjectRunner};
 use captain_docker::{
-    CandidateSource, ComposeCli, DiscoveryInput, DockerEngine, Endpoint, candidates, discover,
+    BuildCli, CandidateSource, ComposeCli, DiscoveryInput, DockerEngine, DockerExtensions,
+    Endpoint, candidates, discover,
 };
 use captain_ui::{Connector, DetectedEndpoint, EngineSource};
 
@@ -24,7 +26,12 @@ fn connector(endpoint: Option<String>) -> Connector {
         .map_err(EngineError::Unreachable)?;
         tracing::info!(%endpoint, "connecting");
         let engine: Arc<dyn Engine> = Arc::new(DockerEngine::connect(endpoint.clone())?);
-        Ok((engine, compose(&endpoint)))
+        Ok((
+            engine,
+            compose(&endpoint),
+            builder(&endpoint),
+            extensions(&endpoint),
+        ))
     })
 }
 
@@ -35,6 +42,31 @@ fn compose(endpoint: &Endpoint) -> Option<Arc<dyn ProjectRunner>> {
         Ok(cli) => Some(Arc::new(cli)),
         Err(reason) => {
             tracing::warn!(%reason, "docker compose is not available");
+            None
+        }
+    }
+}
+
+/// The `docker buildx` CLI for `endpoint`, or `None` when it is missing. See
+/// docs/features/0019-image-build-push-scan.md.
+fn builder(endpoint: &Endpoint) -> Option<Arc<dyn ImageBuilder>> {
+    match BuildCli::detect(endpoint) {
+        Ok(cli) => Some(Arc::new(cli)),
+        Err(reason) => {
+            tracing::warn!(%reason, "docker buildx is not available");
+            None
+        }
+    }
+}
+
+/// The extension manager for `endpoint`, with extensions in `~/.captain/extensions`.
+/// See docs/adr/0011-extensions.md.
+fn extensions(endpoint: &Endpoint) -> Option<Arc<dyn ExtensionManager>> {
+    let paths = ExtensionPaths::in_home(&dirs::home_dir()?);
+    match DockerExtensions::connect(endpoint, paths) {
+        Ok(manager) => Some(Arc::new(manager)),
+        Err(error) => {
+            tracing::warn!(%error, "extensions are not available");
             None
         }
     }

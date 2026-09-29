@@ -20,6 +20,7 @@ fn snapshot(containers: Vec<ContainerEntry>) -> TraySnapshot {
         engine: EngineStatus::Running,
         containers,
         host: None,
+        contexts: Default::default(),
     }
 }
 
@@ -29,6 +30,7 @@ fn labels(items: &[TrayItem]) -> Vec<String> {
         .map(|item| match item {
             TrayItem::Label(label)
             | TrayItem::Command { label, .. }
+            | TrayItem::Check { label, .. }
             | TrayItem::Submenu { label, .. } => label.clone(),
             TrayItem::Separator => "-".into(),
         })
@@ -51,6 +53,7 @@ fn a_stopped_engine_shows_status_open_settings_and_quit() {
         engine: EngineStatus::Stopped,
         containers: Vec::new(),
         host: None,
+        contexts: Default::default(),
     });
     assert_eq!(
         labels(&menu),
@@ -181,6 +184,7 @@ fn with_host(engine: EngineStatus, status: HostStatus) -> TraySnapshot {
             status,
             can_control: true,
         }),
+        contexts: Default::default(),
     }
 }
 

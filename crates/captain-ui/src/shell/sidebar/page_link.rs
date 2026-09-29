@@ -5,19 +5,21 @@ use gpui_kit::*;
 use crate::theme::Palette;
 use crate::workspace::{Page, Workspace};
 
-/// The Settings entry above the engine card.
+/// A page entry above the engine card: Diagnostics or Settings. `badge` is a count
+/// of problems, shown in red.
 pub fn render(
     handle: &Entity<Workspace>,
     workspace: &Workspace,
+    page: Page,
+    badge: Option<usize>,
     palette: &Palette,
-) -> impl IntoElement {
-    let selected = workspace.page() == Page::Settings;
+) -> Stateful<Div> {
+    let selected = workspace.page() == page;
     let handle = handle.clone();
     let hover = palette.nav_selected;
     div()
-        .id("settings-link")
+        .id(SharedString::from(format!("page-link-{}", page.label())))
         .h(px(32.))
-        .mb(px(8.))
         .px(px(10.))
         .flex()
         .items_center()
@@ -30,10 +32,10 @@ pub fn render(
         })
         .when(!selected, |this| this.hover(move |style| style.bg(hover)))
         .on_click(move |_, _, cx| {
-            handle.update(cx, |workspace, cx| workspace.set_page(Page::Settings, cx));
+            handle.update(cx, |workspace, cx| workspace.set_page(page, cx));
         })
         .child(
-            Icon::new(Page::Settings.icon())
+            Icon::new(page.icon())
                 .size(px(16.))
                 .text_color(if selected {
                     palette.accent
@@ -41,5 +43,20 @@ pub fn render(
                     palette.text2
                 }),
         )
-        .child(Page::Settings.label())
+        .child(div().flex_1().child(page.label()))
+        .children(badge.map(|count| {
+            div()
+                .min_w(px(18.))
+                .h(px(18.))
+                .px(px(5.))
+                .flex()
+                .items_center()
+                .justify_center()
+                .rounded_full()
+                .bg(palette.red)
+                .text_color(white())
+                .text_size(px(11.))
+                .font_weight(FontWeight::SEMIBOLD)
+                .child(count.to_string())
+        }))
 }

@@ -1,28 +1,42 @@
 use gpui_kit::component::input::{InputEvent, InputState};
 use gpui_kit::*;
 
+use super::admin_access_section::{self, AdminAccess};
+use super::daemon_form::DaemonForm;
 use super::engine_source::{self, DetectedEndpoint};
+use super::kube_form::KubeForm;
 use super::store::{self, SettingsStore};
 use super::{
-    about_section, appearance_section, captain_engine_section, endpoint_picker, engine_section,
+    about_section, appearance_section, behavior_section, captain_engine_section, daemon_section,
+    endpoint_picker, engine_section, kubernetes_section,
 };
 use crate::engine_host::{HostModel, host_model};
+use crate::kubernetes::{KubernetesModel, kubernetes_model};
 use crate::theme::Palette;
 use crate::widgets::{inline_error, page_header};
 use crate::workspace::Workspace;
 
-/// The Settings page: appearance, the engine connection, and About.
+/// The Settings page: appearance, behavior, the engine connection, and About.
 pub struct SettingsView {
     pub(super) workspace: Entity<Workspace>,
     /// Captain Engine, when the app has one.
-    host: Option<Entity<HostModel>>,
+    pub(super) host: Option<Entity<HostModel>>,
+    /// The Docker daemon fields. They need a window, so the first render creates them.
+    pub(super) daemon_form: Option<DaemonForm>,
+    /// The k3s cluster, when Captain Engine has one.
+    pub(super) kubernetes: Option<Entity<KubernetesModel>>,
+    /// The Kubernetes version picker and port. The first render creates them.
+    pub(super) kube_form: Option<KubeForm>,
     /// The custom endpoint field. It needs a window, so the first render creates it.
     input: Option<Entity<InputState>>,
     /// Why the custom endpoint is not valid.
     pub(super) hint: Option<SharedString>,
     /// Engines found on this machine. A rescan or a switch refreshes them.
     pub(super) detected: Vec<DetectedEndpoint>,
-    subscriptions: Vec<Subscription>,
+    /// Why the last change to the login item failed.
+    pub(super) login_error: Option<SharedString>,
+    pub(super) admin_access: AdminAccess,
+    pub(super) subscriptions: Vec<Subscription>,
 }
 
 impl SettingsView {
@@ -30,17 +44,28 @@ impl SettingsView {
         let observe = cx.observe(&workspace, |_, _, cx| cx.notify());
         let settings = cx.observe_global::<SettingsStore>(|_, cx| cx.notify());
         let host = host_model(cx);
+        let kubernetes = kubernetes_model(cx);
         let mut subscriptions = vec![observe, settings];
         subscriptions.extend(
             host.as_ref()
                 .map(|host| cx.observe(host, |_, _, cx| cx.notify())),
         );
+        subscriptions.extend(
+            kubernetes
+                .as_ref()
+                .map(|model| cx.observe(model, |_, _, cx| cx.notify())),
+        );
         let mut view = Self {
             workspace,
             host,
+            daemon_form: None,
+            kubernetes,
+            kube_form: None,
             input: None,
             hint: None,
             detected: Vec::new(),
+            login_error: None,
+            admin_access: AdminAccess::default(),
             subscriptions,
         };
         view.rescan(cx);
@@ -115,28 +140,56 @@ impl Render for SettingsView {
         let palette = Palette::of(cx);
         let settings = store::current(cx);
         let input = self.input(window, cx);
+        if self.daemon_form.is_none() {
+            self.daemon_form = Some(DaemonForm::new(&settings.engine_daemon, window, cx));
+        }
+        let versions = self
+            .kubernetes
+            .as_ref()
+            .map(|model| model.read(cx).versions().clone());
+        let saved = settings.kubernetes.version.clone();
+        if let (Some(form), Some(versions)) =
+            (self.kube_form(&settings.kubernetes, window, cx), versions)
+        {
+            form.show_versions(&versions, saved.as_deref(), window, cx);
+        }
 
-        let cards = div()
-            .w_full()
-            .max_w(px(720.))
-            .flex()
-            .flex_col()
-            .gap(px(22.))
-            .children(store::save_error(cx).map(|error| {
-                inline_error(
-                    format!("Captain cannot save the settings. {error}"),
-                    &palette,
+        let cards =
+            div()
+                .w_full()
+                .max_w(px(720.))
+                .flex()
+                .flex_col()
+                .gap(px(22.))
+                .children(store::save_error(cx).map(|error| {
+                    inline_error(
+                        format!("Captain cannot save the settings. {error}"),
+                        &palette,
+                    )
+                }))
+                .child(appearance_section::render(&settings, &palette))
+                .children(behavior_section::render(self, &settings, &palette, cx))
+                .children(
+                    self.host
+                        .as_ref()
+                        .map(|host| captain_engine_section::render(host, &settings, &palette, cx)),
                 )
-            }))
-            .child(appearance_section::render(&settings, &palette))
-            .children(
-                self.host
-                    .as_ref()
-                    .map(|host| captain_engine_section::render(host, &settings, &palette, cx)),
-            )
-            .child(engine_section::render(self, &settings, &palette, cx))
-            .child(endpoint_picker::render(self, &input, &palette, cx))
-            .child(about_section::render(&palette));
+                .children(
+                    self.host
+                        .as_ref()
+                        .zip(self.daemon_form.as_ref())
+                        .and_then(|(host, form)| daemon_section::render(host, form, &palette, cx)),
+                )
+                .children(self.kubernetes.clone().zip(self.host.clone()).and_then(
+                    |(model, host)| {
+                        let form = self.kube_form.as_ref()?;
+                        kubernetes_section::render(&model, &host, form, &palette, cx)
+                    },
+                ))
+                .children(admin_access_section::render(self, &palette, cx))
+                .child(engine_section::render(self, &settings, &palette, cx))
+                .child(endpoint_picker::render(self, &input, &palette, cx))
+                .child(about_section::render(&palette));
 
         div()
             .size_full()
@@ -145,7 +198,7 @@ impl Render for SettingsView {
             .child(page_header(
                 "settings-header",
                 "Settings",
-                "Appearance, Captain Engine, the engine connection, and information about Captain",
+                "Appearance, behavior, Captain Engine, the engine connection, and information about Captain",
                 None,
                 &palette,
             ))

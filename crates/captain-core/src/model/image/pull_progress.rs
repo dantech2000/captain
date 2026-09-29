@@ -1,4 +1,4 @@
-/// One message from an image pull, for example `Downloading` for one layer.
+/// One message from an image pull or push, for example `Downloading` for one layer.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct PullProgress {
     /// The layer ID for layer messages. Other messages may carry the tag here.

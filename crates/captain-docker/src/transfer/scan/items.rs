@@ -79,17 +79,21 @@ pub fn containers(
     exists: impl Fn(&Path) -> bool,
 ) -> Vec<MigrationItem> {
     let mut changed: HashMap<String, u64> = HashMap::new();
+    let mut mounted: HashMap<String, Vec<String>> = HashMap::new();
     let containers: Vec<Container> = summaries
         .into_iter()
         .map(|summary| {
             let size_rw = summary.size_rw.and_then(|s| u64::try_from(s).ok());
+            let volumes = named_volumes(&summary);
             let container = mapping::container(summary);
             changed.insert(container.id.clone(), size_rw.unwrap_or(0));
+            mounted.insert(container.id.clone(), volumes);
             container
         })
         .filter(|c| !c.name.starts_with(&format!("{HELPER_PREFIX}-")))
         .collect();
     let size_rw = |c: &Container| changed.get(&c.id).copied().unwrap_or(0);
+    let volumes = |c: &Container| mounted.get(&c.id).cloned().unwrap_or_default();
     let mut items: Vec<MigrationItem> = compose_projects(&containers)
         .into_iter()
         .map(|project| {
@@ -98,6 +102,21 @@ pub fn containers(
                 .iter()
                 .flat_map(|s| &s.containers)
                 .collect();
+            let running_services = project
+                .services
+                .iter()
+                .filter(|s| s.containers.iter().any(|c| c.state.is_active()))
+                .map(|s| s.name.clone())
+                .collect();
+            let running_containers = members
+                .iter()
+                .filter(|c| c.state.is_active())
+                .map(|c| c.name.clone())
+                .collect();
+            let mut project_volumes: Vec<String> =
+                members.iter().flat_map(|c| volumes(c)).collect();
+            project_volumes.sort();
+            project_volumes.dedup();
             MigrationItem::ComposeProject {
                 files_exist: files_exist(&project, &exists),
                 containers: members.iter().map(|c| c.name.clone()).collect(),
@@ -106,6 +125,9 @@ pub fn containers(
                     .filter(|c| size_rw(c) > 0)
                     .map(|c| c.name.clone())
                     .collect(),
+                running_services,
+                running_containers,
+                volumes: project_volumes,
                 name: project.name,
                 working_dir: project.working_dir,
                 config_files: project.config_files,
@@ -122,9 +144,21 @@ pub fn containers(
                 image: c.image.clone(),
                 running: c.state.is_active(),
                 size_rw: size_rw(c),
+                volumes: volumes(c),
             }),
     );
     items
+}
+
+/// The names of the named volumes a container mounts, in mount order.
+fn named_volumes(summary: &ContainerSummary) -> Vec<String> {
+    summary
+        .mounts
+        .iter()
+        .flatten()
+        .filter(|m| m.typ.as_deref() == Some("volume"))
+        .filter_map(|m| m.name.clone())
+        .collect()
 }
 
 /// True if the project's folder and every Compose file exist on this computer.

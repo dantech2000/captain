@@ -1,5 +1,8 @@
 //! [`LimaHost`]: Captain Engine as one Lima instance named `captain`. See ADR 0008.
 
+mod daemon_steps;
+mod engine_lock;
+mod kube_steps;
 mod steps;
 
 use std::path::{Path, PathBuf};
@@ -7,13 +10,20 @@ use std::process::Child;
 use std::sync::atomic::AtomicBool;
 use std::sync::{Arc, Mutex, MutexGuard};
 
+use captain_core::daemon::{DaemonSettings, DaemonState};
+use captain_core::kubernetes::{KubernetesHost, KubernetesSettings};
+use captain_core::process_lock::ProcessLock;
+use captain_core::snapshot::EngineSnapshots;
 use captain_core::{EngineHost, HostError, HostFuture, HostResources, HostStatus, HostStream};
 use futures::StreamExt;
 use futures::channel::mpsc;
 
+use super::instance::LimaInstance;
+use super::kubernetes::LimaKubernetes;
 use super::limactl::Limactl;
-use super::locate::locate_limactl;
+use super::locate::{current_exe, locate_limactl};
 use super::paths::LimaPaths;
+use super::snapshot::LimaSnapshots;
 use super::version::check_version;
 use crate::blocking::blocking;
 
@@ -39,6 +49,13 @@ struct Inner {
     rosetta: bool,
     phase: Mutex<Phase>,
     resources: Mutex<HostResources>,
+    /// The Docker daemon settings for the next start.
+    daemon: Mutex<DaemonSettings>,
+    /// What the running engine uses, once a start applied it or a status check read
+    /// it. `None` while stopped or not known yet.
+    running_daemon: Mutex<Option<DaemonState>>,
+    /// The Kubernetes settings for the next start. See ADR 0010.
+    kubernetes: Mutex<KubernetesSettings>,
     /// The `limactl` that passed the version check.
     checked: Mutex<Option<PathBuf>>,
     /// The `limactl` command that is running now, so a stop can kill a start.
@@ -59,10 +76,13 @@ impl LimaHost {
         Self {
             inner: Arc::new(Inner {
                 paths,
-                exe: std::env::current_exe().ok(),
+                exe: current_exe(),
                 rosetta: cfg!(target_arch = "aarch64"),
                 phase: Mutex::new(Phase::Idle),
                 resources: Mutex::new(resources),
+                daemon: Mutex::new(DaemonSettings::default()),
+                running_daemon: Mutex::new(None),
+                kubernetes: Mutex::new(KubernetesSettings::default()),
                 checked: Mutex::new(None),
                 running: Mutex::new(None),
                 cancel: AtomicBool::new(false),
@@ -72,13 +92,40 @@ impl LimaHost {
 
     /// True if `limactl` exists on this computer. It does not check the version.
     pub fn is_installed() -> bool {
-        let exe = std::env::current_exe().ok();
+        let exe = current_exe();
         let path = std::env::var_os("PATH");
         locate_limactl(exe.as_deref(), path.as_deref(), Path::is_file).is_some()
     }
 
     pub fn paths(&self) -> &LimaPaths {
         &self.inner.paths
+    }
+
+    /// The checked `limactl` that this host runs, or why there is none.
+    pub fn limactl_path(&self) -> Result<PathBuf, String> {
+        self.inner
+            .limactl()
+            .map(|limactl| limactl.binary().to_path_buf())
+    }
+
+    /// `limactl shell <instance> [command...]` with the caller's terminal, for the
+    /// `captain shell` command.
+    pub fn shell(&self, command: &[String]) -> Result<std::process::Command, HostError> {
+        let mut args = vec!["shell".to_string(), self.inner.paths.instance.clone()];
+        args.extend(command.iter().cloned());
+        self.inner.limactl().map_err(HostError)?.interactive(&args)
+    }
+
+    /// The instance as `limactl list` reports it, or `None` when it does not exist.
+    pub(crate) fn instance(&self) -> Result<Option<LimaInstance>, HostError> {
+        let limactl = self.inner.limactl().map_err(HostError)?;
+        steps::find(&self.inner, &limactl)
+    }
+
+    /// Takes the engine lock for a snapshot step, or fails when another process
+    /// holds it.
+    pub(crate) fn lock_for_snapshot(&self) -> Result<ProcessLock, HostError> {
+        engine_lock::acquire_with(&self.inner, engine_lock::SNAPSHOT)
     }
 }
 
@@ -180,6 +227,26 @@ impl EngineHost for LimaHost {
     fn reset(&self) -> HostFuture<()> {
         let inner = self.inner.clone();
         blocking(move || steps::reset(&inner))
+    }
+
+    fn set_daemon(&self, daemon: DaemonSettings) {
+        *lock(&self.inner.daemon) = daemon;
+    }
+
+    fn running_daemon(&self) -> Option<DaemonState> {
+        lock(&self.inner.running_daemon).clone()
+    }
+
+    fn snapshots(&self) -> Option<Arc<dyn EngineSnapshots>> {
+        Some(Arc::new(LimaSnapshots::new(self.clone())))
+    }
+
+    fn set_kubernetes(&self, kubernetes: KubernetesSettings) {
+        self.set_kubernetes_settings(kubernetes);
+    }
+
+    fn kubernetes(&self) -> Option<Arc<dyn KubernetesHost>> {
+        Some(Arc::new(LimaKubernetes::new(self.clone())))
     }
 }
 

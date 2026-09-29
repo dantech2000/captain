@@ -5,7 +5,7 @@ use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::*;
 
 use crate::theme::Palette;
-use crate::widgets::{icon_button, pill, scales, sparkline, status_dot};
+use crate::widgets::{icon_button, pill, scales, select_mode, sparkline, status_dot};
 use crate::workspace::Workspace;
 
 pub const PORTS_WIDTH: f32 = 150.;
@@ -21,6 +21,7 @@ pub fn render(
     palette: &Palette,
 ) -> impl IntoElement {
     let selected = workspace.selected().is_some_and(|s| s.id == container.id);
+    let highlighted = selected || workspace.bulk().contains(&container.id);
     let history = workspace.stats().get(&container.id);
     let running = container.state == ContainerState::Running;
     let cpu = history
@@ -44,14 +45,19 @@ pub fn render(
         .gap(px(12.))
         .rounded(px(9.))
         .cursor_pointer()
-        .when(selected, |row| {
+        .when(highlighted, |row| {
             row.bg(palette.accent.alpha(if palette.dark { 0.15 } else { 0.08 }))
                 .border_1()
                 .border_color(palette.accent.alpha(0.35))
         })
-        .when(!selected, |row| row.hover(|style| style.bg(palette.group)))
-        .on_click(move |_, _, cx| {
-            select.update(cx, |workspace, cx| workspace.select(id.clone(), cx));
+        .when(!highlighted, |row| {
+            row.hover(|style| style.bg(palette.group))
+        })
+        .on_click(move |event, _, cx| {
+            let mode = select_mode(event);
+            select.update(cx, |workspace, cx| {
+                workspace.click_row(id.clone(), mode, cx)
+            });
         })
         .child(name_cell(container, palette))
         .child(ports_cell(container, palette))

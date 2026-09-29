@@ -62,7 +62,7 @@ impl HostModel {
 
     /// Creates the engine if needed and starts it, then connects the workspace.
     pub fn start(&mut self, cx: &mut Context<Self>) {
-        if self.start_task.is_some() || !self.host.can_control() {
+        if self.start_task.is_some() || !self.can_control() {
             return;
         }
         let setup = self.status == HostStatus::NotCreated;
@@ -118,8 +118,16 @@ impl HostModel {
         cx.notify();
     }
 
-    /// Stops the engine. The task ends when it has stopped.
+    /// Stops the engine. The task ends when it has stopped. It does nothing while a
+    /// snapshot step runs.
     pub fn stop(&mut self, cx: &mut Context<Self>) -> Task<()> {
+        if self.snapshotting {
+            return Task::ready(());
+        }
+        self.stop_now(cx)
+    }
+
+    pub(super) fn stop_now(&mut self, cx: &mut Context<Self>) -> Task<()> {
         self.cancelled = self.start_task.is_some();
         self.status = HostStatus::Stopping;
         self.stopping = true;
@@ -155,6 +163,9 @@ impl HostModel {
 
     /// Deletes the engine with all its containers, images, and volumes.
     pub fn reset(&mut self, cx: &mut Context<Self>) {
+        if self.snapshotting {
+            return;
+        }
         self.cancelled = self.start_task.is_some();
         self.status = HostStatus::Stopping;
         self.stopping = true;
@@ -168,11 +179,13 @@ impl HostModel {
                 model.stopping = false;
                 model.log.clear();
                 model.last_error = None;
-                if let Err(error) = result {
-                    cx.emit(HostEvent::Failed {
+                match result {
+                    // The cluster went with the VM, so its context goes too (ADR 0010).
+                    Ok(()) => forget_kubernetes_context(),
+                    Err(error) => cx.emit(HostEvent::Failed {
                         action: "Reset",
                         message: error.0,
-                    });
+                    }),
                 }
                 model.apply_status(status, cx);
             })
@@ -183,6 +196,9 @@ impl HostModel {
 
     /// Saves new resources. A running engine gets them on its next start.
     pub fn set_resources(&mut self, resources: HostResources, cx: &mut Context<Self>) {
+        if self.snapshotting {
+            return;
+        }
         settings::update(cx, |settings| settings.engine_resources = Some(resources));
         let apply = self.host.set_resources(resources);
         cx.spawn(async move |this, cx| {
@@ -237,5 +253,13 @@ impl HostModel {
                 .flatten();
             settings::reconnect_to(&workspace, captain, cx);
         }
+    }
+}
+
+/// Removes the `captain` context from the user's kubeconfig, if it is there.
+fn forget_kubernetes_context() {
+    let paths = captain_core::kubernetes::user_kubeconfig_paths();
+    if let Err(error) = captain_core::kubernetes::uninstall_captain(&paths) {
+        tracing::warn!(%error, "cannot remove the captain context");
     }
 }

@@ -1,16 +1,19 @@
 //! Containers, events, and engine info. Every call runs on the private tokio runtime.
 
 mod exec;
+mod files;
+
+use std::path::{Path, PathBuf};
 
 use std::pin::pin;
 
 use bollard::query_parameters::{
     ListContainersOptionsBuilder, LogsOptionsBuilder, RemoveContainerOptionsBuilder,
-    StatsOptionsBuilder,
+    StatsOptionsBuilder, TopOptions,
 };
 use captain_core::model::{
     Container, ContainerAction, ContainerDetail, EngineEvent, EngineInfo, ExecSession, ExecSpec,
-    LogLine, StatsSample,
+    FileEntry, FilePreview, LogLine, ProcessTable, StatsSample,
 };
 use captain_core::{ContainerApi, EngineFuture, EngineStream};
 use futures::StreamExt;
@@ -131,5 +134,41 @@ impl ContainerApi for DockerEngine {
     fn exec(&self, id: &str, spec: ExecSpec) -> EngineFuture<ExecSession> {
         let handle = self.runtime.handle().clone();
         exec::start(self.docker.clone(), handle, id.to_string(), spec)
+    }
+
+    fn list_files(&self, id: &str, path: &str) -> EngineFuture<Vec<FileEntry>> {
+        let docker = self.docker.clone();
+        let (id, path) = (id.to_string(), path.to_string());
+        runtime::spawn(self.runtime.handle(), async move {
+            files::list(&docker, &id, &path).await
+        })
+    }
+
+    fn read_file(&self, id: &str, path: &str, limit: u64) -> EngineFuture<FilePreview> {
+        let docker = self.docker.clone();
+        let (id, path) = (id.to_string(), path.to_string());
+        runtime::spawn(self.runtime.handle(), async move {
+            files::read(&docker, &id, &path, limit).await
+        })
+    }
+
+    fn save_path(&self, id: &str, path: &str, dir: &Path) -> EngineFuture<PathBuf> {
+        let docker = self.docker.clone();
+        let (id, path, dir) = (id.to_string(), path.to_string(), dir.to_path_buf());
+        runtime::spawn(self.runtime.handle(), async move {
+            files::save(&docker, &id, &path, dir).await
+        })
+    }
+
+    fn top(&self, id: &str) -> EngineFuture<ProcessTable> {
+        let docker = self.docker.clone();
+        let id = id.to_string();
+        runtime::spawn(self.runtime.handle(), async move {
+            let response = docker
+                .top_processes(&id, None::<TopOptions>)
+                .await
+                .map_err(mapping::engine_error)?;
+            Ok(mapping::processes(response))
+        })
     }
 }

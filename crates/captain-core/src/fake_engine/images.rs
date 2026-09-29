@@ -3,7 +3,9 @@ use futures::stream;
 use futures::{FutureExt, StreamExt};
 
 use super::FakeEngine;
-use crate::model::{Image, ImageDetail, ImageLayer, ImageReference, PullProgress, RunSpec};
+use crate::model::{
+    Image, ImageDetail, ImageLayer, ImageReference, PullProgress, RunSpec, ScanProgress, ScanReport,
+};
 use crate::{EngineError, EngineFuture, EngineStream, ImageApi};
 
 /// The ID every run on the fake engine returns.
@@ -17,8 +19,10 @@ pub struct FakeImages {
     pub details: Vec<ImageDetail>,
     /// The history every image reports.
     pub history: Vec<ImageLayer>,
-    /// The messages every pull streams.
+    /// The messages every pull and push streams.
     pub pull: Vec<PullProgress>,
+    /// The report every scan ends with. `None` makes scans fail.
+    pub scan: Option<ScanReport>,
 }
 
 impl ImageApi for FakeEngine {
@@ -99,6 +103,45 @@ impl ImageApi for FakeEngine {
             Ok(FAKE_RUN_ID.to_string())
         };
         ready(result).boxed()
+    }
+
+    fn tag_image(&self, source: &str, target: &str) -> EngineFuture<()> {
+        let result = if !self.images.known(source) {
+            Err(no_such_image(source))
+        } else if ImageReference::parse(target).is_none_or(|r| r.tag.is_empty()) {
+            Err(EngineError::Api(format!(
+                "invalid reference format: {target:?}"
+            )))
+        } else {
+            Ok(())
+        };
+        ready(result).boxed()
+    }
+
+    fn push_image(&self, reference: &str) -> EngineStream<PullProgress> {
+        if !self.images.known(reference) {
+            return stream::once(ready(Err(no_such_image(reference)))).boxed();
+        }
+        stream::iter(self.images.pull.clone().into_iter().map(Ok)).boxed()
+    }
+
+    fn scan_image(&self, reference: &str) -> EngineStream<ScanProgress> {
+        let result = match &self.images.scan {
+            Some(report) if self.images.known(reference) => {
+                Ok(ScanProgress::Report(report.clone()))
+            }
+            Some(_) => Err(no_such_image(reference)),
+            None => Err(EngineError::Api("the scan failed".into())),
+        };
+        stream::once(ready(result)).boxed()
+    }
+}
+
+impl FakeImages {
+    fn known(&self, reference: &str) -> bool {
+        self.images
+            .iter()
+            .any(|image| image.id == reference || image.repo_tags.iter().any(|t| t == reference))
     }
 }
 

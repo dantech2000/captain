@@ -4,7 +4,7 @@
 use captain_core::EngineError;
 use captain_core::migration::TransferEvent;
 use futures::StreamExt;
-use futures::channel::mpsc::UnboundedSender;
+use futures::channel::mpsc::{self, UnboundedSender};
 
 use super::source::ByteStream;
 
@@ -34,6 +34,21 @@ pub fn is_cancelled(events: &Events) -> bool {
 
 pub fn send(events: &Events, event: TransferEvent) {
     events.unbounded_send(Ok(event)).ok();
+}
+
+/// A sender that passes events on to `events` but never reads as cancelled. A
+/// switch-over uses it once the source is stopped, so closing the assistant does
+/// not leave the item stopped in the source and not started in the target. Call it
+/// on the tokio runtime.
+pub fn uncancellable(events: &Events) -> Events {
+    let (sender, mut receiver) = mpsc::unbounded();
+    let events = events.clone();
+    tokio::spawn(async move {
+        while let Some(event) = receiver.next().await {
+            events.unbounded_send(event).ok();
+        }
+    });
+    sender
 }
 
 /// Passes `stream` through, counting bytes and reporting progress against `total`.

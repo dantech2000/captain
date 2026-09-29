@@ -7,6 +7,7 @@ use gpui_kit::component::input::Input;
 use gpui_kit::*;
 
 use super::RunDialog;
+use crate::images::field::field;
 use crate::theme::Palette;
 use crate::widgets::{
     ButtonTone, Segment, icon_button, inline_error, section_note, segmented, text_button,
@@ -165,20 +166,4 @@ impl RunDialog {
             .child(cancel)
             .child(run)
     }
-}
-
-/// A label above a control.
-fn field(label: &'static str, control: AnyElement, palette: &Palette) -> Div {
-    div()
-        .flex()
-        .flex_col()
-        .gap(px(6.))
-        .child(
-            div()
-                .text_size(px(11.))
-                .font_weight(FontWeight::SEMIBOLD)
-                .text_color(palette.text3)
-                .child(label),
-        )
-        .child(control)
 }

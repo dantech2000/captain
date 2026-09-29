@@ -15,6 +15,7 @@ path = "src/main.rs"
 captain-core.workspace = true
 captain-docker.workspace = true
 captain-host.workspace = true
+captain-kube.workspace = true
 captain-ui.workspace = true
 dirs.workspace = true
 futures.workspace = true
@@ -27,5 +28,25 @@ tracing-subscriber.workspace = true
 muda.workspace = true
 tray-icon.workspace = true
 
+[target.'cfg(target_os = "windows")'.dependencies]
+winreg.workspace = true
+
 [lints]
 workspace = true
+
+# Linux and Windows packages, built by cargo-packager in .github/workflows/release.yml.
+# macOS uses scripts/bundle-macos.sh and scripts/package-macos.sh instead; see
+# docs/features/0021-packaging.md. Paths are relative to this folder.
+[package.metadata.packager]
+product-name = "Captain"
+identifier = "dev.captain.Captain"
+publisher = "Captain"
+category = "DeveloperTool"
+description = "A native desktop client for Docker"
+icons = ["../../assets/icon/brand.png"]
+formats = ["deb", "appimage", "wix"]
+before-packaging-command = "cargo build -p captain-app --release"
+
+[package.metadata.packager.deb]
+depends = ["libxkbcommon-x11-0", "libwayland-client0", "libvulkan1", "libfontconfig1"]
+section = "devel"

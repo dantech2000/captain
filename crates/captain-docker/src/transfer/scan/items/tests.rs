@@ -87,6 +87,61 @@ fn groups_projects_and_skips_helpers() {
 }
 
 #[test]
+fn projects_list_running_services_and_volumes() {
+    fn labels(service: &str) -> [(&str, &str); 2] {
+        [
+            ("com.docker.compose.project", "stokecrm"),
+            ("com.docker.compose.service", service),
+        ]
+    }
+    let member = |id: &str, service: &str, state, volume: Option<&str>| ContainerSummary {
+        state: Some(state),
+        mounts: volume.map(|name| {
+            vec![
+                MountPoint {
+                    typ: Some("volume".into()),
+                    name: Some(name.into()),
+                    ..Default::default()
+                },
+                MountPoint {
+                    typ: Some("bind".into()),
+                    name: None,
+                    ..Default::default()
+                },
+            ]
+        }),
+        ..summary(id, &format!("stokecrm-{service}"), 0, &labels(service))
+    };
+    let items = containers(
+        vec![
+            member(
+                "a",
+                "postgres",
+                ContainerSummaryStateEnum::RUNNING,
+                Some("stokecrm-pgdata"),
+            ),
+            // A profile service that ran once and exited.
+            member("b", "backup", ContainerSummaryStateEnum::EXITED, None),
+        ],
+        |_| false,
+    );
+    match &items[0] {
+        MigrationItem::ComposeProject {
+            running_services,
+            running_containers,
+            volumes,
+            ..
+        } => {
+            assert_eq!(running_services, &["postgres"]);
+            assert_eq!(running_containers, &["stokecrm-postgres"]);
+            assert_eq!(volumes, &["stokecrm-pgdata"]);
+        }
+        other => panic!("expected a project, got {other:?}"),
+    }
+    assert!(items[0].can_switch_over());
+}
+
+#[test]
 fn project_files_must_exist() {
     let labels = [
         ("com.docker.compose.project", "shop"),

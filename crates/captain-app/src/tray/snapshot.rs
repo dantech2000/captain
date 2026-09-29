@@ -1,4 +1,5 @@
 use captain_core::HostStatus;
+use captain_core::kubernetes::KubeContexts;
 use captain_core::model::{Container, ContainerState};
 use captain_ui::{Connection, HostSummary, Workspace};
 
@@ -86,6 +87,8 @@ pub struct TraySnapshot {
     pub containers: Vec<ContainerEntry>,
     /// Captain Engine, or `None` when Captain uses another engine.
     pub host: Option<HostEntry>,
+    /// The contexts in the user's kubeconfig, for the Kubernetes Contexts submenu.
+    pub contexts: KubeContexts,
 }
 
 impl TraySnapshot {
@@ -108,6 +111,7 @@ impl TraySnapshot {
             engine,
             containers,
             host: None,
+            contexts: KubeContexts::default(),
         }
     }
 

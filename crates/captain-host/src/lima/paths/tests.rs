@@ -14,6 +14,14 @@ fn lives_in_a_short_dot_folder() {
         paths.template_file(),
         PathBuf::from("/Users/ada/.captain/captain-engine.yaml")
     );
+    assert_eq!(
+        paths.lock_file(),
+        PathBuf::from("/Users/ada/.captain/captain-engine.lock")
+    );
+    assert_eq!(
+        paths.snapshots_dir(),
+        PathBuf::from("/Users/ada/.captain/snapshots")
+    );
 }
 
 #[test]

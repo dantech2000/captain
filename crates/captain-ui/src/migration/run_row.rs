@@ -6,11 +6,13 @@ use gpui_kit::component::{Icon, Sizable};
 use gpui_kit::*;
 
 use super::assistant::MigrationAssistant;
+use super::switch_steps::switch_steps;
 use crate::theme::Palette;
 use crate::widgets::{ButtonTone, progress_bar, text_button};
 
-/// One item of the run: a status icon, the name and step, the status text, a bar
-/// while it copies, and Retry when it failed.
+/// One item of the run: a status icon, the name and step, the status text, the
+/// switch-over steps, a bar while it copies, Retry when it failed, and Roll back
+/// once a switch-over reached the old engine.
 pub fn run_row(
     ix: usize,
     entry: &RunEntry,
@@ -42,6 +44,9 @@ pub fn run_row(
                 ),
         )
         .child(div().text_size(px(11.)).text_color(color).child(text));
+    if let Some(progress) = &entry.switch_over {
+        info = info.child(switch_steps(progress, palette));
+    }
     if let StepStatus::Running { .. } = entry.status {
         info = info.child(progress_bar(
             entry.status.fraction(),
@@ -65,6 +70,20 @@ pub fn run_row(
             true,
             palette,
             cx.listener(move |view, _, _, cx| view.retry(ix, cx)),
+        ));
+    }
+    let can_roll_back = entry
+        .switch_over
+        .as_ref()
+        .is_some_and(|progress| progress.can_roll_back());
+    if can_roll_back && !matches!(entry.status, StepStatus::Running { .. }) {
+        row = row.child(text_button(
+            ("migration-roll-back", ix),
+            "Roll back",
+            ButtonTone::Accent,
+            true,
+            palette,
+            cx.listener(move |view, _, _, cx| view.roll_back(ix, cx)),
         ));
     }
     row.into_any_element()

@@ -57,6 +57,53 @@ impl LimaPaths {
             .join(format!("{}-engine.yaml", self.instance))
     }
 
+    /// The lock that a process holds while it starts, stops, or changes the
+    /// instance, next to the template. See docs/features/0022-command-line.md.
+    pub fn lock_file(&self) -> PathBuf {
+        self.template_file().with_extension("lock")
+    }
+
+    /// Lima's shared folder with the SSH key pair.
+    pub fn config_dir(&self) -> PathBuf {
+        self.lima_home.join("_config")
+    }
+
+    /// Where snapshots live, one folder each, next to `LIMA_HOME` on the same volume
+    /// so the disk can be cloned. See docs/adr/0012-snapshots.md.
+    pub fn snapshots_dir(&self) -> PathBuf {
+        self.lima_home
+            .parent()
+            .unwrap_or(&self.lima_home)
+            .join("snapshots")
+    }
+
+    /// Downloads, next to `LIMA_HOME`: `~/.captain/cache`. The VM sees it through the
+    /// home mount. See ADR 0010.
+    pub fn cache_dir(&self) -> PathBuf {
+        self.lima_home
+            .parent()
+            .unwrap_or(&self.lima_home)
+            .join("cache")
+    }
+
+    /// One folder per downloaded k3s version.
+    pub fn k3s_cache(&self) -> PathBuf {
+        self.cache_dir().join("k3s")
+    }
+
+    /// The cached k3s version list.
+    pub fn k3s_versions_file(&self) -> PathBuf {
+        self.cache_dir().join("k3s-versions.json")
+    }
+
+    /// Captain's own kubeconfig, with only the `captain` context.
+    pub fn kubeconfig(&self) -> PathBuf {
+        self.lima_home
+            .parent()
+            .unwrap_or(&self.lima_home)
+            .join("kubeconfig")
+    }
+
     /// Fails with a message if a socket in the instance folder would be too long.
     pub fn check_socket_paths(&self) -> Result<(), String> {
         let longest = self.instance_dir().join(LONGEST_SOCKET);

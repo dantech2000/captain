@@ -4,12 +4,14 @@
 
 mod blocking;
 mod host;
+mod k3s;
 mod lima;
 pub mod machine;
+pub mod probe;
 mod system_host;
 mod unavailable_host;
 
 pub use host::{captain_engine_available, default_host};
-pub use lima::{LimaHost, LimaPaths};
+pub use lima::{INSTANCE, LimaHost, LimaPaths};
 pub use system_host::SystemHost;
 pub use unavailable_host::UnavailableHost;

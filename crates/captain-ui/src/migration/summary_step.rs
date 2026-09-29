@@ -1,4 +1,4 @@
-use captain_core::migration::StepStatus;
+use captain_core::migration::{RollbackStatus, StepStatus};
 use gpui_kit::assets::IconName;
 use gpui_kit::component::{Icon, WindowExt};
 use gpui_kit::*;
@@ -42,7 +42,27 @@ pub fn body(
             summary.pending
         ));
     }
-    let mut unchanged = "Your old engine was not changed.".to_string();
+    if summary.switched > 0 {
+        lines.push(match summary.switched {
+            1 => "Switched over 1: it runs here now.".to_string(),
+            n => format!("Switched over {n}: they run here now."),
+        });
+    }
+    // Rolled-back items run in the old engine again, so they do not count.
+    let stopped = view
+        .run
+        .switched()
+        .filter(|(_, e)| {
+            e.switch_over
+                .as_ref()
+                .is_some_and(|p| p.rollback != RollbackStatus::Done)
+        })
+        .count();
+    let mut unchanged = match stopped {
+        0 => "Your old engine was not changed.".to_string(),
+        1 => "Captain stopped 1 item in your old engine. It deleted nothing there.".to_string(),
+        n => format!("Captain stopped {n} items in your old engine. It deleted nothing there."),
+    };
     if snapshots > 0 {
         unchanged.push_str(&format!(
             " Captain made {snapshots} temporary snapshot images there and removed them again."
@@ -69,6 +89,9 @@ pub fn body(
             .text_color(palette.text2)
             .children(lines),
     );
+    if let Some(section) = switched(view, palette, cx) {
+        body = body.child(section);
+    }
     let notable: Vec<AnyElement> = view
         .run
         .entries
@@ -87,6 +110,44 @@ pub fn body(
         body = body.child(titled_section("Not copied", None, card, palette));
     }
     body
+}
+
+/// The items that switched over, each with Roll back, and what that means for the
+/// old engine.
+fn switched(
+    view: &MigrationAssistant,
+    palette: &Palette,
+    cx: &mut Context<MigrationAssistant>,
+) -> Option<Div> {
+    let rows: Vec<AnyElement> = view
+        .run
+        .switched()
+        .filter(|(_, e)| e.status == StepStatus::Done)
+        .map(|(ix, entry)| run_row(ix, entry, palette, cx))
+        .collect();
+    if rows.is_empty() {
+        return None;
+    }
+    let note = "The old containers are stopped, not deleted. Roll back stops the copy here \
+                and starts the original again.";
+    let card = div()
+        .rounded(px(10.))
+        .bg(palette.group)
+        .border_1()
+        .border_color(palette.sep)
+        .children(rows);
+    let content = div()
+        .flex()
+        .flex_col()
+        .gap(px(6.))
+        .child(
+            div()
+                .text_size(px(12.))
+                .text_color(palette.text2)
+                .child(note),
+        )
+        .child(card);
+    Some(titled_section("Switched over", None, content, palette))
 }
 
 pub fn footer(

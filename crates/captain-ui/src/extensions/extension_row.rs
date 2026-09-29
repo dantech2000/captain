@@ -1,0 +1,82 @@
+use captain_core::extension::InstalledExtension;
+use gpui_kit::*;
+
+use super::{ExtensionsModel, remove_dialog};
+use crate::theme::Palette;
+use crate::widgets::{ButtonTone, text_button};
+
+/// One extension: title, image and publisher, and Open and Remove. Open is off for
+/// an extension without a page, and where Captain has no web view.
+pub fn render(
+    model: &Entity<ExtensionsModel>,
+    extension: &InstalledExtension,
+    enabled: bool,
+    palette: &Palette,
+) -> AnyElement {
+    let details = format!("{} · {}", extension.image, extension.labels.publisher());
+    let can_open = super::CAN_OPEN && extension.page_url().is_some();
+    let open = {
+        let (model, extension) = (model.clone(), extension.clone());
+        text_button(
+            SharedString::from(format!("extension-open-{}", extension.id)),
+            "Open",
+            ButtonTone::Accent,
+            can_open,
+            palette,
+            move |_, _, cx| {
+                if let Some(manager) = model.read(cx).manager(cx) {
+                    super::open_window(extension.clone(), manager, cx);
+                }
+            },
+        )
+    };
+    let remove = {
+        let (model, extension) = (model.clone(), extension.clone());
+        text_button(
+            SharedString::from(format!("extension-remove-{}", extension.id)),
+            "Remove…",
+            ButtonTone::Danger,
+            enabled,
+            palette,
+            move |_, window, cx| remove_dialog::open(model.clone(), extension.clone(), window, cx),
+        )
+    };
+    div()
+        .min_h(px(52.))
+        .px(px(14.))
+        .py(px(8.))
+        .flex()
+        .items_center()
+        .gap(px(16.))
+        .child(
+            div()
+                .flex_1()
+                .min_w_0()
+                .flex()
+                .flex_col()
+                .gap(px(2.))
+                .child(
+                    div()
+                        .font_weight(FontWeight::MEDIUM)
+                        .truncate()
+                        .child(extension.title().to_string()),
+                )
+                .children((!extension.labels.description.is_empty()).then(|| {
+                    div()
+                        .text_size(px(12.))
+                        .text_color(palette.text2)
+                        .truncate()
+                        .child(extension.labels.description.clone())
+                }))
+                .child(
+                    div()
+                        .text_size(px(11.))
+                        .text_color(palette.text3)
+                        .truncate()
+                        .child(details),
+                ),
+        )
+        .child(open)
+        .child(remove)
+        .into_any_element()
+}

@@ -1,7 +1,9 @@
 //! The source engine, behind a read-only surface. The assistant must never change
 //! the engine it copies from (ADR 0009), so this type offers only lists, inspects,
-//! exports, and its own helper containers. The single write it allows is the opt-in
-//! snapshot, which it names `captain-migrate/<container>:snapshot` and removes again.
+//! exports, and its own helper containers. It allows two writes, both opt-in: a
+//! snapshot, which it names `captain-migrate/<container>:snapshot` and removes again,
+//! and the switch-over's stop and roll-back start of containers the user confirmed.
+//! Apart from its own helpers and snapshots, it removes nothing.
 
 use std::collections::HashSet;
 use std::pin::Pin;
@@ -16,7 +18,7 @@ use bollard::models::{
 use bollard::query_parameters::{
     CommitContainerOptionsBuilder, DataUsageOptionsBuilder, DownloadFromContainerOptionsBuilder,
     InspectContainerOptionsBuilder, ListContainersOptionsBuilder, ListImagesOptionsBuilder,
-    ListNetworksOptions, ListVolumesOptions, RemoveImageOptions,
+    ListNetworksOptions, ListVolumesOptions, RemoveImageOptions, StopContainerOptionsBuilder,
 };
 use captain_core::EngineError;
 use captain_core::migration::HELPER_PREFIX;
@@ -185,6 +187,21 @@ impl SourceEngine {
             .remove_image(reference, None::<RemoveImageOptions>, None)
             .await;
         removed.map(|_| ()).map_err(mapping::engine_error)
+    }
+
+    /// Stops `container` and waits up to `timeout` seconds before the engine kills
+    /// it. This is the switch-over's write to the source, only for containers the
+    /// user confirmed. It never removes the container.
+    pub async fn stop_container(&self, container: &str, timeout: i32) -> Result<(), EngineError> {
+        let options = StopContainerOptionsBuilder::default().t(timeout).build();
+        let stopped = self.docker.stop_container(container, Some(options)).await;
+        stopped.map_err(mapping::engine_error)
+    }
+
+    /// Starts `container` again, to roll back a switch-over.
+    pub async fn start_container(&self, container: &str) -> Result<(), EngineError> {
+        let started = self.docker.start_container(container, None).await;
+        started.map_err(mapping::engine_error)
     }
 
     /// Removes this session's helpers, any helper left from an earlier session, and

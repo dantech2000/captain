@@ -2,9 +2,12 @@
 //! shows while the engine is not running. See docs/adr/0008-captain-engine.md.
 
 mod host_actions;
+mod host_daemon;
 mod host_event;
+mod host_kubernetes;
 mod host_model;
 mod host_screen;
+mod host_snapshot;
 mod host_summary;
 mod progress_log;
 mod setup_screen;

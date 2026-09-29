@@ -17,6 +17,7 @@ fn container(id: &str, size_rw: u64) -> MigrationItem {
         image: "app".into(),
         running: false,
         size_rw,
+        volumes: Vec::new(),
     }
 }
 
@@ -91,6 +92,67 @@ fn snapshot_adds_changes_and_clears_the_warning() {
         plan.selected()
             .all(|e| e.snapshot == (e.item.key() == "container:web"))
     );
+}
+
+fn running_project() -> MigrationItem {
+    MigrationItem::ComposeProject {
+        name: "crm".into(),
+        working_dir: None,
+        config_files: vec![],
+        files_exist: false,
+        containers: vec!["crm-db".into()],
+        changed: vec![],
+        running_services: vec!["db".into()],
+        running_containers: vec!["crm-db".into()],
+        volumes: vec!["pgdata".into()],
+    }
+}
+
+#[test]
+fn switch_over_is_off_by_default_and_only_for_running_items() {
+    let mut plan = MigrationPlan::new(
+        "test",
+        vec![
+            running_project(),
+            container("stopped", 0),
+            MigrationItem::Volume {
+                name: "pgdata".into(),
+                size: None,
+                used_by_running: vec!["crm-db".into()],
+            },
+        ],
+    );
+    assert!(plan.entries.iter().all(|e| !e.switch_over));
+    assert!(plan.switch_overs().is_empty());
+    plan.set_switch_over("volume:pgdata", true);
+    plan.set_switch_over("container:stopped", true);
+    assert!(plan.switch_overs().is_empty());
+    plan.set_switch_over("project:crm", true);
+    assert_eq!(plan.switch_overs().len(), 1);
+    // A cleared item does not switch over.
+    plan.toggle("project:crm");
+    assert!(plan.switch_overs().is_empty());
+    plan.toggle("project:crm");
+    plan.set_switch_over("project:crm", false);
+    assert!(plan.switch_overs().is_empty());
+}
+
+#[test]
+fn switch_over_clears_the_live_volume_warning() {
+    let mut plan = MigrationPlan::new(
+        "test",
+        vec![
+            running_project(),
+            MigrationItem::Volume {
+                name: "pgdata".into(),
+                size: None,
+                used_by_running: vec!["crm-db".into()],
+            },
+        ],
+    );
+    assert_eq!(plan.live_volumes().len(), 1);
+    plan.set_switch_over("project:crm", true);
+    assert!(plan.live_volumes().is_empty());
 }
 
 #[test]

@@ -1,6 +1,7 @@
 use std::sync::Arc;
+use std::time::Duration;
 
-use super::{MigrationItem, MigrationPlan};
+use super::{MigrationItem, MigrationPlan, SwitchOverStep};
 use crate::{EngineError, EngineFuture, EngineStream};
 
 /// An engine the user can copy from.
@@ -22,6 +23,11 @@ pub enum TransferEvent {
     Note(String),
     /// The item was not copied, for the reason given.
     Skipped(String),
+    /// A switch-over entered this step.
+    SwitchOver(SwitchOverStep),
+    /// How long the item was down during a switch-over: from the stop in the source
+    /// until the check in the target passed.
+    Downtime(Duration),
 }
 
 /// Finds engines and opens migration sessions. The app implements it, because only
@@ -39,8 +45,9 @@ pub trait MigrationBackend: Send + Sync + 'static {
 ///
 /// The session never changes the source engine. It only lists, inspects, and exports
 /// from it, and runs its own helper containers there, named `captain-migrate-*`,
-/// which it removes again. The one exception is an opt-in snapshot: it commits a
-/// container to a `captain-migrate/<name>:snapshot` image, copies it, and removes it.
+/// which it removes again. There are two exceptions, both opt-in. A snapshot commits
+/// a container to a `captain-migrate/<name>:snapshot` image, copies it, and removes
+/// it. A switch-over stops the containers the user confirmed and never removes them.
 pub trait MigrationSession: Send + Sync + 'static {
     /// The source endpoint.
     fn source(&self) -> &str;
@@ -54,6 +61,17 @@ pub trait MigrationSession: Send + Sync + 'static {
     /// Copies one item into the target. Dropping the stream cancels the copy and
     /// removes its helpers and any half-copied volume.
     fn copy(&self, item: &MigrationItem, snapshot: bool) -> EngineStream<TransferEvent>;
+
+    /// Switches `item` over: stops its running containers in the source (never
+    /// removes them), copies its volumes again, starts it in the target, and checks
+    /// it. It reports each step with [`TransferEvent::SwitchOver`] and ends with
+    /// [`TransferEvent::Downtime`]. Once the source is stopped, dropping the stream
+    /// no longer stops the switch-over, so the item is not left half-moved.
+    fn switch_over(&self, item: &MigrationItem, snapshot: bool) -> EngineStream<TransferEvent>;
+
+    /// Undoes a switch-over of `item`: stops its containers in the target and starts
+    /// the stopped originals in the source. Nothing is removed on either side.
+    fn roll_back(&self, item: &MigrationItem) -> EngineFuture<()>;
 
     /// Waits for stopped copies to clean up, then removes helper containers that
     /// are left and a helper image the session pulled into the source. Keep the

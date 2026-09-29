@@ -8,6 +8,13 @@ pub fn parse_version(stdout: &str) -> Option<String> {
     (!version.is_empty()).then(|| version.to_string())
 }
 
+/// The version from `docker --version`, which prints
+/// `Docker version 28.1.1, build 4eba377`.
+pub fn parse_cli_version(stdout: &str) -> Option<String> {
+    let version = stdout.split_whitespace().nth(2)?.trim_end_matches(',');
+    (!version.is_empty()).then(|| version.to_string())
+}
+
 /// The message to show for a failed command. Compose prints progress lines and the
 /// error on stderr, so this prefers the last line that mentions an error, then the
 /// last non-empty line.

@@ -29,12 +29,13 @@ pub fn register(cx: &mut App) {
     .detach();
 }
 
+/// True while the menu bar icon is up.
 #[cfg(any(target_os = "macos", target_os = "windows"))]
-fn has_tray(cx: &App) -> bool {
+pub fn has_tray(cx: &App) -> bool {
     crate::tray::is_running(cx)
 }
 
 #[cfg(not(any(target_os = "macos", target_os = "windows")))]
-fn has_tray(_: &App) -> bool {
+pub fn has_tray(_: &App) -> bool {
     false
 }

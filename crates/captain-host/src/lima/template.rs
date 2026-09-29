@@ -4,10 +4,7 @@
 //! `<instance dir>/sock/docker.sock`. See ADR 0008.
 
 use captain_core::HostResources;
-
-/// Lima 2.2.0 fixed a guest agent leak that silently killed port forwarding after
-/// many connections (lima-vm/lima#5210). Older versions are refused.
-pub const MINIMUM_LIMA_VERSION: &str = "2.2.0";
+use captain_core::diagnostics::MINIMUM_LIMA_VERSION;
 
 /// The rootful Docker setup, copied from `docker-rootful.yaml`.
 const DOCKER: &str = r#"# containerd is managed by Docker, not by Lima.

@@ -1,7 +1,9 @@
+use std::path::{Path, PathBuf};
+
 use super::{EngineFuture, EngineStream};
 use crate::model::{
     Container, ContainerAction, ContainerDetail, EngineEvent, EngineInfo, ExecSession, ExecSpec,
-    LogLine, StatsSample,
+    FileEntry, FilePreview, LogLine, ProcessTable, StatsSample,
 };
 
 /// Engine info, events, and containers.
@@ -31,4 +33,18 @@ pub trait ContainerApi {
     /// `spec.cmd` runs the default shell: `/bin/bash` if the container has it, else
     /// `/bin/sh`. The session reports the command it picked.
     fn exec(&self, id: &str, spec: ExecSpec) -> EngineFuture<ExecSession>;
+
+    /// The entries of the folder `path` in a running container, in no set order.
+    fn list_files(&self, id: &str, path: &str) -> EngineFuture<Vec<FileEntry>>;
+
+    /// The first `limit` bytes of the file `path`, and its full size.
+    fn read_file(&self, id: &str, path: &str, limit: u64) -> EngineFuture<FilePreview>;
+
+    /// Copies the file `path` into the host folder `dir`, or a folder as `name.tar`,
+    /// like `docker cp`. It never overwrites a file; it picks a free name with
+    /// [`save_name`](crate::model::save_name). Returns the new file's path.
+    fn save_path(&self, id: &str, path: &str, dir: &Path) -> EngineFuture<PathBuf>;
+
+    /// The processes of a running container, like `docker top`.
+    fn top(&self, id: &str) -> EngineFuture<ProcessTable>;
 }

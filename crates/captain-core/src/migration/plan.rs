@@ -17,6 +17,10 @@ pub struct PlanEntry {
     /// Copy the container's own filesystem with `docker commit`. Opt-in, and only
     /// for containers that have changes. It writes a temporary image in the source.
     pub snapshot: bool,
+    /// Stop the item in the source, copy its volumes again, and start it in the
+    /// target. Opt-in, and only for running projects and containers. See
+    /// docs/adr/0009-migration.md, "Switch-over mode".
+    pub switch_over: bool,
 }
 
 /// What the source engine holds and what the user picked. Everything starts selected.
@@ -39,6 +43,7 @@ impl MigrationPlan {
                 item,
                 selected: true,
                 snapshot: false,
+                switch_over: false,
             })
             .collect();
         Self {
@@ -77,6 +82,23 @@ impl MigrationPlan {
         }
     }
 
+    /// Turns the switch-over on or off. Only running projects and containers can
+    /// switch over; for other items it stays off.
+    pub fn set_switch_over(&mut self, key: &str, switch_over: bool) {
+        if let Some(entry) = self.find_mut(key) {
+            entry.switch_over = switch_over && entry.item.can_switch_over();
+        }
+    }
+
+    /// Selected items that switch over. The run asks before it starts them, because
+    /// they stop containers in the source.
+    pub fn switch_overs(&self) -> Vec<&MigrationItem> {
+        self.selected()
+            .filter(|e| e.switch_over)
+            .map(|e| &e.item)
+            .collect()
+    }
+
     /// The entries of one step.
     pub fn step(&self, step: Step) -> impl Iterator<Item = &PlanEntry> {
         self.entries.iter().filter(move |e| e.item.step() == step)
@@ -110,14 +132,21 @@ impl MigrationPlan {
     }
 
     /// Selected volumes that running containers use, with those containers' names.
+    /// A volume whose every user switches over is left out, because the switch-over
+    /// copies it again after the stop.
     pub fn live_volumes(&self) -> Vec<(&str, &[String])> {
+        let stopped: Vec<String> = self
+            .switch_overs()
+            .iter()
+            .flat_map(|item| item.running_containers())
+            .collect();
         self.selected()
             .filter_map(|e| match &e.item {
                 MigrationItem::Volume {
                     name,
                     used_by_running,
                     ..
-                } if !used_by_running.is_empty() => {
+                } if used_by_running.iter().any(|user| !stopped.contains(user)) => {
                     Some((name.as_str(), used_by_running.as_slice()))
                 }
                 _ => None,

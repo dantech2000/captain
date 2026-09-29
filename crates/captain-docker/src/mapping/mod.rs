@@ -4,6 +4,7 @@ mod container;
 mod detail;
 mod error;
 mod event;
+mod files;
 mod image;
 mod info;
 mod log;
@@ -15,6 +16,7 @@ pub use container::container;
 pub use detail::detail;
 pub use error::engine_error;
 pub use event::event;
+pub use files::{processes, stat_listing, tar_listing, tar_preview};
 #[allow(unused_imports)]
 pub use image::*;
 pub use info::engine_info;

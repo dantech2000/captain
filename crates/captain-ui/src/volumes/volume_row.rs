@@ -5,17 +5,18 @@ use gpui_kit::*;
 
 use super::VolumesView;
 use crate::theme::Palette;
-use crate::widgets::{ButtonTone, list_row, pill, status_dot, text_button};
+use crate::widgets::{ButtonTone, list_row, pill, select_mode, status_dot, text_button};
 
 pub const SIZE_WIDTH: f32 = 80.;
 pub const USAGE_WIDTH: f32 = 110.;
 pub const CREATED_WIDTH: f32 = 92.;
 
 /// One volume: usage dot, name, driver and mountpoint, size, users, and the creation
-/// date, or Remove when selected.
+/// date, or Remove when selected. `highlighted` marks a row in a bulk selection.
 pub fn render(
     volume: &Volume,
     selected: bool,
+    highlighted: bool,
     removing: bool,
     handle: &Entity<VolumesView>,
     palette: &Palette,
@@ -31,11 +32,12 @@ pub fn render(
 
     list_row(
         SharedString::from(format!("volume-{}", volume.name)),
-        selected,
+        highlighted,
         palette,
     )
-    .on_click(move |_, _, cx| {
-        select.update(cx, |view, cx| view.select(name.clone(), cx));
+    .on_click(move |event, _, cx| {
+        let mode = select_mode(event);
+        select.update(cx, |view, cx| view.click_row(name.clone(), mode, cx));
     })
     .child(
         div()

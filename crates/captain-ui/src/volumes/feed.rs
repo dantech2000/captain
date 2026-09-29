@@ -69,6 +69,8 @@ impl VolumesView {
                 if !valid {
                     self.selected = None;
                 }
+                let store = &self.store;
+                self.checked.retain(|name| store.find(name).is_some());
                 // A container create or destroy reloads the list, and may change the users.
                 self.load_users(cx);
             }

@@ -1,0 +1,24 @@
+[package]
+name = "captain-kube"
+description = "Kubernetes Services and port forwarding for Captain, built on kube-rs"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+captain-core.workspace = true
+futures.workspace = true
+k8s-openapi.workspace = true
+kube.workspace = true
+tokio = { workspace = true, features = ["net"] }
+tracing.workspace = true
+
+[dev-dependencies]
+captain-host.workspace = true
+serde_json.workspace = true
+tracing-subscriber.workspace = true
+
+[lints]
+workspace = true

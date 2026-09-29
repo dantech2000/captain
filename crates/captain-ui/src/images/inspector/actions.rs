@@ -2,12 +2,13 @@ use captain_core::model::Image;
 use gpui_kit::assets::IconName;
 use gpui_kit::*;
 
-use crate::images::{ImagesState, run_dialog};
+use crate::images::{ImagesState, push_dialog, run_dialog, scan_dialog, tag_dialog};
 use crate::theme::Palette;
 use crate::widgets::action_button;
 
-/// Run, Remove, and Copy ID, as three equal buttons. Run waits for the details,
-/// because the dialog is prefilled from them. Remove is off for an image in use.
+/// Run, Tag, and Push, then Scan, Remove, and Copy ID, as two rows of equal buttons.
+/// Run waits for the details, because the dialog is prefilled from them. Push needs a
+/// tag. Remove is off for an image in use.
 pub fn render(
     image: &Image,
     handle: &Entity<ImagesState>,
@@ -47,6 +48,53 @@ pub fn render(
             move |_, cx| handle.update(cx, |state, cx| state.remove(id.clone(), cx)),
         )
     };
+    let tag = {
+        let handle = handle.clone();
+        let id = image.id.clone();
+        let current = image.repo_tags.first().cloned().unwrap_or_default();
+        action_button(
+            "Tag",
+            IconName::Tag,
+            palette.accent,
+            true,
+            palette,
+            move |window, cx| {
+                tag_dialog::open(handle.clone(), id.clone(), current.clone(), window, cx);
+            },
+        )
+    };
+    let push = {
+        let handle = handle.clone();
+        let tags = image.repo_tags.clone();
+        action_button(
+            "Push",
+            IconName::Upload,
+            palette.accent,
+            !tags.is_empty() && !state.is_pushing(),
+            palette,
+            move |window, cx| push_dialog::open(handle.clone(), tags.clone(), window, cx),
+        )
+    };
+    let scan = {
+        let engine = state.engine.clone();
+        let reference = image
+            .repo_tags
+            .first()
+            .cloned()
+            .unwrap_or_else(|| image.id.clone());
+        action_button(
+            "Scan",
+            IconName::ShieldCheck,
+            palette.accent,
+            engine.is_some(),
+            palette,
+            move |window, cx| {
+                if let Some(engine) = engine.clone() {
+                    scan_dialog::open(engine, reference.clone(), window, cx);
+                }
+            },
+        )
+    };
     let copy = {
         let id = image.id.clone();
         action_button(
@@ -61,8 +109,15 @@ pub fn render(
 
     div()
         .flex()
+        .flex_col()
         .gap(px(8.))
-        .child(run)
-        .child(remove)
-        .child(copy)
+        .child(div().flex().gap(px(8.)).child(run).child(tag).child(push))
+        .child(
+            div()
+                .flex()
+                .gap(px(8.))
+                .child(scan)
+                .child(remove)
+                .child(copy),
+        )
 }

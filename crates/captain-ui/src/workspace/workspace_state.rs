@@ -1,9 +1,12 @@
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
+use captain_core::extension::ExtensionManager;
 use captain_core::model::{Container, EngineInfo, ProjectAction};
-use captain_core::store::{ContainerFilter, ContainerStore, StatsBoard};
-use captain_core::{Engine, EngineError, ProjectRunner};
+use captain_core::store::{
+    ContainerFilter, ContainerStore, MultiSelection, SelectMode, StatsBoard,
+};
+use captain_core::{Engine, EngineError, ImageBuilder, ProjectRunner};
 use gpui_kit::*;
 
 use super::{Page, WorkspaceEvent};
@@ -27,6 +30,8 @@ pub struct Workspace {
     pub(super) stats: StatsBoard,
     pub(super) filter: ContainerFilter,
     pub(super) selected: Option<String>,
+    /// The rows selected for a bulk action. It holds the selected row too.
+    pub(super) checked: MultiSelection,
     pub(super) reload_task: Option<Task<()>>,
     pub(super) events_task: Option<Task<()>>,
     pub(super) stats_tasks: HashMap<String, Task<()>>,
@@ -35,6 +40,10 @@ pub struct Workspace {
     pub(super) collapsed: HashSet<Option<String>>,
     /// Runs `docker compose`. `None` when the CLI is missing.
     pub(super) projects: Option<Arc<dyn ProjectRunner>>,
+    /// Runs `docker buildx build`. `None` when the CLI or the plugin is missing.
+    pub(super) builder: Option<Arc<dyn ImageBuilder>>,
+    /// Installs extensions and answers their pages. `None` until connected.
+    pub(super) extensions: Option<Arc<dyn ExtensionManager>>,
     /// The Compose command running on each project.
     pub(super) project_pending: HashMap<String, ProjectAction>,
     /// The project the Containers page shows alone, if any.
@@ -55,12 +64,15 @@ impl Workspace {
             stats: StatsBoard::default(),
             filter: ContainerFilter::default(),
             selected: None,
+            checked: MultiSelection::default(),
             reload_task: None,
             events_task: None,
             stats_tasks: HashMap::new(),
             pending: HashSet::new(),
             collapsed: HashSet::new(),
             projects: None,
+            builder: None,
+            extensions: None,
             project_pending: HashMap::new(),
             project_filter: None,
         }
@@ -68,6 +80,16 @@ impl Workspace {
 
     pub fn engine(&self) -> Option<Arc<dyn Engine>> {
         self.engine.clone()
+    }
+
+    /// The image builder, once connected, if `docker buildx` is installed.
+    pub fn image_builder(&self) -> Option<Arc<dyn ImageBuilder>> {
+        self.builder.clone()
+    }
+
+    /// The extension manager for the connected engine.
+    pub fn extension_manager(&self) -> Option<Arc<dyn ExtensionManager>> {
+        self.extensions.clone()
     }
 
     pub fn connection(&self) -> &Connection {
@@ -125,6 +147,7 @@ impl Workspace {
     }
 
     pub fn select(&mut self, id: String, cx: &mut Context<Self>) {
+        self.checked.click(&id, SelectMode::Replace, &[]);
         self.selected = Some(id);
         cx.notify();
     }

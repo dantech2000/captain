@@ -1,4 +1,5 @@
 use super::{SETTINGS_VERSION, Settings};
+use crate::daemon::DaemonSettings;
 use crate::settings::{Accent, Appearance, EngineChoice};
 use crate::{GIB, HostResources};
 
@@ -8,6 +9,7 @@ fn round_trips() {
         appearance: Appearance::Dark,
         accent: Accent::Teal,
         engine_endpoint: Some("tcp://10.0.0.5:2375".into()),
+        debug_logging: true,
         ..Settings::default()
     };
     assert_eq!(Settings::from_json(&settings.to_json()).unwrap(), settings);
@@ -80,6 +82,7 @@ fn old_files_get_the_engine_defaults() {
     assert_eq!(settings.engine, None);
     assert!(settings.stop_engine_on_quit);
     assert_eq!(settings.engine_resources, None);
+    assert_eq!(settings.engine_daemon, DaemonSettings::default());
 }
 
 #[test]
@@ -92,6 +95,15 @@ fn engine_fields_round_trip() {
             memory_bytes: 8 * GIB,
             disk_bytes: 100 * GIB,
         }),
+        engine_daemon: DaemonSettings {
+            registry_mirrors: vec!["https://mirror.gcr.io".into()],
+            custom: serde_json::json!({"log-level": "warn"})
+                .as_object()
+                .cloned()
+                .unwrap(),
+            tcp: true,
+            ..DaemonSettings::default()
+        },
         ..Settings::default()
     };
     let json = settings.to_json();
@@ -132,4 +144,22 @@ fn a_saved_choice_wins() {
         ..Settings::default()
     };
     assert_eq!(settings.engine_choice(false), EngineChoice::Captain);
+}
+
+#[test]
+fn old_files_get_the_behavior_defaults() {
+    let settings = Settings::from_json(r#"{"version": 1, "show_menu_bar_icon": "no"}"#).unwrap();
+    assert!(!settings.start_in_background);
+    assert!(settings.show_menu_bar_icon);
+}
+
+#[test]
+fn background_launch_needs_the_menu_bar_icon() {
+    let settings = Settings {
+        start_in_background: true,
+        ..Settings::default()
+    };
+    assert!(!settings.opens_window_at_launch(true));
+    assert!(settings.opens_window_at_launch(false));
+    assert!(Settings::default().opens_window_at_launch(true));
 }

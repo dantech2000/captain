@@ -32,6 +32,13 @@ pub enum MigrationItem {
         containers: Vec<String>,
         /// Names of the containers whose own filesystem has changes.
         changed: Vec<String>,
+        /// Services with a running container. A switch-over starts only these, so
+        /// services that were off (profiles, one-off tools) stay off.
+        running_services: Vec<String>,
+        /// Names of the running containers. A switch-over stops these in the source.
+        running_containers: Vec<String>,
+        /// Named volumes that the project's containers mount.
+        volumes: Vec<String>,
     },
     /// A container that is not part of a Compose project.
     Container {
@@ -42,6 +49,8 @@ pub enum MigrationItem {
         /// Bytes written to the container's own filesystem, outside volumes. These
         /// are lost when the container is recreated, unless it is snapshotted.
         size_rw: u64,
+        /// Named volumes the container mounts.
+        volumes: Vec<String>,
     },
 }
 
@@ -95,6 +104,33 @@ impl MigrationItem {
         match self {
             Self::Container { size_rw, .. } => *size_rw,
             _ => 0,
+        }
+    }
+
+    /// True if the item can switch over: a running container, or a project with a
+    /// running service. See docs/adr/0009-migration.md, "Switch-over mode".
+    pub fn can_switch_over(&self) -> bool {
+        match self {
+            Self::Container { running, .. } => *running,
+            Self::ComposeProject {
+                running_services, ..
+            } => !running_services.is_empty(),
+            _ => false,
+        }
+    }
+
+    /// Names of the containers that a switch-over stops in the source.
+    pub fn running_containers(&self) -> Vec<String> {
+        match self {
+            Self::Container {
+                name,
+                running: true,
+                ..
+            } => vec![name.clone()],
+            Self::ComposeProject {
+                running_containers, ..
+            } => running_containers.clone(),
+            _ => Vec::new(),
         }
     }
 

@@ -4,6 +4,7 @@ use captain_core::model::ContainerAction;
 
 use captain_core::HostStatus;
 
+use super::contexts::contexts_item;
 use super::snapshot::{ContainerEntry, EngineStatus, HostEntry, TraySnapshot};
 
 /// What a menu item does when the user picks it.
@@ -28,6 +29,8 @@ pub enum TrayCommand {
     },
     /// Opens `http://localhost:<port>` in the browser.
     OpenPort(u16),
+    /// Makes a Kubernetes context the current one.
+    UseContext(String),
 }
 
 /// The menu as plain data, so it can be tested without a menu bar.
@@ -39,6 +42,12 @@ pub enum TrayItem {
         label: String,
         command: TrayCommand,
         enabled: bool,
+    },
+    /// A command with a check mark, such as the current Kubernetes context.
+    Check {
+        label: String,
+        command: TrayCommand,
+        checked: bool,
     },
     Submenu {
         label: String,
@@ -86,6 +95,9 @@ pub fn build(snapshot: &TraySnapshot) -> Vec<TrayItem> {
                 items: projects(snapshot),
             },
         ]);
+    }
+    if let Some(contexts) = contexts_item(&snapshot.contexts) {
+        items.extend([TrayItem::Separator, contexts]);
     }
     items.extend([
         TrayItem::Separator,

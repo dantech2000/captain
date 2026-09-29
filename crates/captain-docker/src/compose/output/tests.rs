@@ -1,4 +1,4 @@
-use super::{error_message, parse_version};
+use super::{error_message, parse_cli_version, parse_version};
 
 #[test]
 fn parses_the_version_json() {
@@ -28,4 +28,13 @@ fn error_message_falls_back_to_the_last_line() {
         Some("no such service: api".into())
     );
     assert_eq!(error_message("  \n"), None);
+}
+
+#[test]
+fn parses_the_cli_version() {
+    assert_eq!(
+        parse_cli_version("Docker version 28.1.1, build 4eba377\n"),
+        Some("28.1.1".into())
+    );
+    assert_eq!(parse_cli_version("docker"), None);
 }

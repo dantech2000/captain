@@ -34,7 +34,11 @@ impl MigrationAssistant {
         };
         let entry = &self.run.entries[ix];
         let total = entry.item.size();
-        let mut events = session.copy(&entry.item, entry.snapshot);
+        let mut events = if entry.switch_over.is_some() {
+            session.switch_over(&entry.item, entry.snapshot)
+        } else {
+            session.copy(&entry.item, entry.snapshot)
+        };
         self.run
             .set_status(ix, StepStatus::Running { done: 0, total });
         cx.notify();
@@ -51,6 +55,19 @@ impl MigrationAssistant {
                     }
                     Ok(TransferEvent::Skipped(reason)) => {
                         result = StepStatus::Skipped(reason);
+                        continue;
+                    }
+                    Ok(TransferEvent::SwitchOver(step)) => {
+                        this.update(cx, |this, cx| {
+                            this.run.enter_switch_step(ix, step);
+                            cx.notify();
+                        })
+                        .ok();
+                        continue;
+                    }
+                    Ok(TransferEvent::Downtime(downtime)) => {
+                        this.update(cx, |this, _| this.run.set_downtime(ix, downtime))
+                            .ok();
                         continue;
                     }
                     Err(error) => {
@@ -73,7 +90,8 @@ impl MigrationAssistant {
     }
 
     /// Stops the run. The item that is copying stops too: its helpers and any
-    /// half-copied volume are removed, and it goes back in the queue.
+    /// half-copied volume are removed, and it goes back in the queue. A switch-over
+    /// cannot stop halfway, so the footer turns Stop off while one runs.
     pub(super) fn stop(&mut self, cx: &mut Context<Self>) {
         self.task = None;
         self.run.stop();

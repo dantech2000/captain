@@ -1,14 +1,21 @@
 use std::sync::Arc;
 use std::time::Duration;
 
+use captain_core::extension::ExtensionManager;
 use captain_core::store::{ContainerStore, StatsBoard};
-use captain_core::{Engine, EngineError, ProjectRunner};
+use captain_core::{Engine, EngineError, ImageBuilder, ProjectRunner};
 use gpui_kit::*;
 
 use super::{Connection, Workspace};
 
-/// An engine, and the Compose runner when the `docker compose` CLI is installed.
-pub type Connected = (Arc<dyn Engine>, Option<Arc<dyn ProjectRunner>>);
+/// An engine, the Compose runner when the `docker compose` CLI is installed, the
+/// image builder when the `docker buildx` CLI is installed, and the extension manager.
+pub type Connected = (
+    Arc<dyn Engine>,
+    Option<Arc<dyn ProjectRunner>>,
+    Option<Arc<dyn ImageBuilder>>,
+    Option<Arc<dyn ExtensionManager>>,
+);
 
 /// Connects to an engine. It may block, so the workspace runs it on a background thread.
 pub type Connector = Box<dyn FnOnce() -> Result<Connected, EngineError> + Send>;
@@ -48,7 +55,7 @@ impl Workspace {
                 .background_executor()
                 .spawn(async move { connect() })
                 .await;
-            let (engine, projects) = match connected {
+            let (engine, projects, builder, extensions) = match connected {
                 Ok(connected) => connected,
                 Err(error) => {
                     this.update(cx, |this, cx| {
@@ -70,6 +77,8 @@ impl Workspace {
                         this.connection = Connection::Connected(info);
                         this.engine = Some(engine);
                         this.set_project_runner(projects, cx);
+                        this.builder = builder;
+                        this.extensions = extensions;
                         this.reload(Duration::ZERO, cx);
                         this.watch_events(cx);
                         cx.notify();
@@ -97,6 +106,8 @@ impl Workspace {
         self.stats_tasks.clear();
         self.pending.clear();
         self.projects = None;
+        self.builder = None;
+        self.extensions = None;
         self.project_pending.clear();
         self.page_counts.clear();
         cx.notify();

@@ -168,8 +168,8 @@ fn live_volumes(plan: &MigrationPlan, palette: &Palette) -> Option<Div> {
         .collect();
     let text = format!(
         "These volumes belong to running containers: {}. A copy made while a program \
-         writes (a database, for example) may not be clean. For a clean copy, stop those \
-         containers in the old engine first. Captain does not stop them for you.",
+         writes (a database, for example) may not be clean. For a clean copy, turn on \
+         Switch over for those containers, or stop them in the old engine first.",
         list.join("; ")
     );
     Some(
@@ -239,9 +239,14 @@ pub fn footer(
         ButtonTone::Accent,
         selected > 0 && fits,
         palette,
-        cx.listener(|view, _, _, cx| view.start(cx)),
+        cx.listener(|view, _, window, cx| view.confirm_start(window, cx)),
     );
-    let note = "Your old engine is not changed.".to_string();
+    let switching = plan.map_or(0, |plan| plan.switch_overs().len());
+    let note = match switching {
+        0 => "Your old engine is not changed.".to_string(),
+        1 => "The switched item is stopped in your old engine. Nothing is deleted.".to_string(),
+        n => format!("{n} switched items are stopped in your old engine. Nothing is deleted."),
+    };
     footer_row(
         Some(note),
         vec![back.into_any_element(), start.into_any_element()],

@@ -1,6 +1,7 @@
 //! Converts bollard image types.
 
 mod detail;
+mod push;
 mod run;
 
 use std::collections::HashMap;
@@ -11,6 +12,7 @@ use captain_core::EngineError;
 use captain_core::model::{Image, PullProgress};
 
 pub use detail::{image_detail, image_history};
+pub use push::{credentials, push_progress};
 pub use run::run_body;
 
 use super::engine_error;

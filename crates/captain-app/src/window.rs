@@ -1,6 +1,6 @@
 //! The main window, and the workspace that outlives it.
 
-use captain_ui::{AppShell, Workspace};
+use captain_ui::{AppShell, DiagnosticsSetup, Workspace};
 use gpui_kit::*;
 
 use crate::connect;
@@ -17,10 +17,16 @@ struct MainWindow {
 
 impl Global for MainWindow {}
 
-/// Sets up Captain Engine, connects the workspace, and opens the main window.
+/// Sets up Captain Engine and connects the workspace. The caller opens the window
+/// with [`show`], unless Captain starts in the background.
 /// `endpoint` is the other engine saved in the settings; `None` means discovery.
 /// With Captain Engine, the workspace connects once the engine runs.
-pub fn init(endpoint: Option<String>, engine: EngineSetup, cx: &mut App) {
+pub fn init(
+    endpoint: Option<String>,
+    engine: EngineSetup,
+    diagnostics: DiagnosticsSetup,
+    cx: &mut App,
+) {
     let connect_now = engine.connects_elsewhere();
     let workspace = cx.new(|cx| {
         let mut workspace = Workspace::new();
@@ -30,11 +36,11 @@ pub fn init(endpoint: Option<String>, engine: EngineSetup, cx: &mut App) {
         workspace
     });
     engine.install(&workspace, cx);
+    captain_ui::diagnostics_init(cx, &workspace, diagnostics);
     cx.set_global(MainWindow {
         workspace,
         handle: None,
     });
-    open(cx);
 }
 
 /// The workspace that the window and the menu bar icon share.

@@ -1,14 +1,21 @@
 use captain_core::format::bytes_label;
 use captain_core::migration::{MigrationItem, PlanEntry};
 use gpui_kit::component::checkbox::Checkbox;
+use gpui_kit::component::switch::Switch;
+use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::*;
 
 use super::assistant::MigrationAssistant;
 use crate::theme::Palette;
 use crate::widgets::pill;
 
-/// One item in the plan: a checkbox with the name, a detail line, the size, and for
-/// a container with changes inside it, a Snapshot checkbox.
+/// What the Switch over toggle does, under a running project or container.
+const SWITCH_OVER_NOTE: &str = "Stops it in the old engine (not deleted), copies its data again, \
+     and starts it here. Downtime is usually a few seconds.";
+
+/// One item in the plan: a checkbox with the name, a detail line, the size, for a
+/// container with changes inside it a Snapshot checkbox, and for a running project
+/// or container a Switch over toggle.
 pub fn plan_row(
     ix: usize,
     entry: &PlanEntry,
@@ -54,7 +61,15 @@ pub fn plan_row(
                         .text_color(palette.text2)
                         .truncate()
                         .child(detail(&entry.item)),
-                ),
+                )
+                .when(entry.item.can_switch_over(), |info| {
+                    info.child(
+                        div()
+                            .text_size(px(11.))
+                            .text_color(palette.text3)
+                            .child(SWITCH_OVER_NOTE),
+                    )
+                }),
         );
     if entry.item.loses_changes() {
         row = row.child(pill(
@@ -73,6 +88,19 @@ pub fn plan_row(
                     .ok();
             });
         row = row.child(snapshot);
+    }
+    if entry.item.can_switch_over() {
+        let key = entry.item.key();
+        let this = cx.entity().downgrade();
+        let switch = Switch::new(("migration-switch-over", ix))
+            .label("Switch over")
+            .checked(entry.switch_over)
+            .on_click(move |on, _, cx| {
+                let on = *on;
+                this.update(cx, |view, cx| view.set_switch_over(&key, on, cx))
+                    .ok();
+            });
+        row = row.child(switch);
     }
     row.child(
         div()

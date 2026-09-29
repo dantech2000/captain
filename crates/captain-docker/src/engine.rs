@@ -29,14 +29,7 @@ impl DockerEngine {
     /// This blocks for up to a few seconds. Call it from a background thread,
     /// never from inside a tokio runtime.
     pub fn connect(endpoint: Endpoint) -> Result<Self, EngineError> {
-        let runtime = runtime::build().map_err(|err| EngineError::Unreachable(err.to_string()))?;
-        let docker = runtime.block_on(async {
-            let docker = client(&endpoint).map_err(mapping::engine_error)?;
-            tokio::time::timeout(CONNECT_TIMEOUT, docker.negotiate_version())
-                .await
-                .map_err(|_| EngineError::Unreachable(format!("{endpoint} did not answer")))?
-                .map_err(mapping::engine_error)
-        })?;
+        let (docker, runtime) = connect(&endpoint)?;
         tracing::info!(%endpoint, "connected to Docker engine");
         Ok(Self {
             docker,
@@ -44,6 +37,20 @@ impl DockerEngine {
             runtime,
         })
     }
+}
+
+/// A client for `endpoint` with an agreed API version, and the runtime it runs on.
+/// Blocks for up to a few seconds; call it from a background thread.
+pub(crate) fn connect(endpoint: &Endpoint) -> Result<(Docker, Runtime), EngineError> {
+    let runtime = runtime::build().map_err(|err| EngineError::Unreachable(err.to_string()))?;
+    let docker = runtime.block_on(async {
+        let docker = client(endpoint).map_err(mapping::engine_error)?;
+        tokio::time::timeout(CONNECT_TIMEOUT, docker.negotiate_version())
+            .await
+            .map_err(|_| EngineError::Unreachable(format!("{endpoint} did not answer")))?
+            .map_err(mapping::engine_error)
+    })?;
+    Ok((docker, runtime))
 }
 
 fn client(endpoint: &Endpoint) -> Result<Docker, bollard::errors::Error> {

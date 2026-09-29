@@ -10,6 +10,12 @@ use futures::stream::BoxStream;
 pub use resources::{GIB, HostResources};
 pub use status::HostStatus;
 
+use std::sync::Arc;
+
+use crate::daemon::{DaemonSettings, DaemonState};
+use crate::kubernetes::{KubernetesHost, KubernetesSettings};
+use crate::snapshot::EngineSnapshots;
+
 /// Why a host action failed. The message is for the user.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 #[error("{0}")]
@@ -49,4 +55,26 @@ pub trait EngineHost: Send + Sync + 'static {
 
     /// Deletes the machine with all its containers, images, and volumes.
     fn reset(&self) -> HostFuture<()>;
+
+    /// Changes the Docker daemon settings. The next start applies them.
+    fn set_daemon(&self, _daemon: DaemonSettings) {}
+
+    /// The daemon settings the running engine uses, when the host knows them. The
+    /// UI compares them with the saved ones to ask for a restart.
+    fn running_daemon(&self) -> Option<DaemonState> {
+        None
+    }
+
+    /// Snapshots of this machine, or `None` for a host without them. See ADR 0012.
+    fn snapshots(&self) -> Option<Arc<dyn EngineSnapshots>> {
+        None
+    }
+
+    /// Changes the Kubernetes settings. The next start applies them. See ADR 0010.
+    fn set_kubernetes(&self, _kubernetes: KubernetesSettings) {}
+
+    /// The k3s cluster in this machine, or `None` for a host without one.
+    fn kubernetes(&self) -> Option<Arc<dyn KubernetesHost>> {
+        None
+    }
 }

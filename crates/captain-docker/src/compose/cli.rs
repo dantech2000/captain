@@ -1,7 +1,7 @@
 //! Runs the `docker compose` CLI on a plain thread and hands the result back through
 //! a runtime-neutral future. See docs/adr/0005-compose-via-cli.md.
 
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::process::{Command, Output, Stdio};
 use std::sync::mpsc;
 use std::time::Duration;
@@ -12,7 +12,7 @@ use futures::FutureExt;
 use futures::channel::oneshot;
 
 use super::command::{compose_command, docker_host};
-use super::locate::locate_docker;
+use super::docker_cli::DockerCli;
 use super::output::{error_message, parse_version};
 use crate::Endpoint;
 
@@ -22,7 +22,7 @@ const DETECT_TIMEOUT: Duration = Duration::from_secs(5);
 /// The `docker compose` CLI, pointed at one engine endpoint.
 #[derive(Debug, Clone)]
 pub struct ComposeCli {
-    docker: PathBuf,
+    docker: DockerCli,
     host: String,
     version: String,
 }
@@ -33,10 +33,8 @@ impl ComposeCli {
     ///
     /// This blocks for up to a few seconds. Call it from a background thread.
     pub fn detect(endpoint: &Endpoint) -> Result<Self, String> {
-        let path = std::env::var_os("PATH");
-        let home = std::env::home_dir();
-        let docker = locate_docker(path.as_deref(), home.as_deref(), Path::is_file)
-            .ok_or_else(|| "the docker CLI is not installed".to_string())?;
+        let docker =
+            DockerCli::find().ok_or_else(|| "the docker CLI is not installed".to_string())?;
         let mut cli = Self {
             docker,
             host: docker_host(endpoint),
@@ -50,13 +48,13 @@ impl ComposeCli {
         }
         cli.version = parse_version(&String::from_utf8_lossy(&output.stdout))
             .ok_or_else(|| "cannot read the Compose version".to_string())?;
-        tracing::info!(version = %cli.version, docker = %cli.docker.display(), "found docker compose");
+        tracing::info!(version = %cli.version, docker = %cli.docker.binary.display(), "found docker compose");
         Ok(cli)
     }
 
     /// A `docker` command with the environment pointed at Captain's endpoint.
     fn command(&self, args: &[String], dir: Option<&Path>) -> Command {
-        let mut command = Command::new(&self.docker);
+        let mut command = self.docker.command();
         command
             .args(args)
             .env("DOCKER_HOST", &self.host)
@@ -89,9 +87,31 @@ impl ProjectRunner for ComposeCli {
     }
 
     fn run_project(&self, project: &ComposeProject, action: ProjectAction) -> EngineFuture<()> {
+        self.run_with(project, action, &[])
+    }
+}
+
+impl ComposeCli {
+    /// `up -d` for only `services`. Services that are not named stay off, including
+    /// the ones behind a profile. A named service with a profile starts, and so do
+    /// the services it depends on.
+    pub fn up_services(&self, project: &ComposeProject, services: &[String]) -> EngineFuture<()> {
+        self.run_with(project, ProjectAction::Up, services)
+    }
+
+    /// Runs `action` for `project`, with `services` after the action's arguments.
+    fn run_with(
+        &self,
+        project: &ComposeProject,
+        action: ProjectAction,
+        services: &[String],
+    ) -> EngineFuture<()> {
         let built = compose_command(project, action, &std::env::temp_dir(), Path::exists);
         let command = match built {
-            Ok(built) => self.command(&built.args, Some(&built.dir)),
+            Ok(mut built) => {
+                built.args.extend(services.iter().cloned());
+                self.command(&built.args, Some(&built.dir))
+            }
             Err(message) => return futures::future::ready(Err(EngineError::Api(message))).boxed(),
         };
         let (tx, rx) = oneshot::channel();

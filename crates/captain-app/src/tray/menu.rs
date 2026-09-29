@@ -3,7 +3,7 @@
 use std::collections::HashMap;
 
 use muda::accelerator::Accelerator;
-use muda::{IsMenuItem, Menu, MenuId, MenuItem, PredefinedMenuItem, Submenu};
+use muda::{CheckMenuItem, IsMenuItem, Menu, MenuId, MenuItem, PredefinedMenuItem, Submenu};
 
 use super::menu_model::{TrayCommand, TrayItem};
 
@@ -51,6 +51,15 @@ fn build_item(item: &TrayItem, commands: &mut HashMap<MenuId, TrayCommand>) -> B
                 .flatten();
             commands.insert(id.clone(), command.clone());
             Box::new(MenuItem::with_id(id, label, *enabled, accelerator))
+        }
+        TrayItem::Check {
+            label,
+            command,
+            checked,
+        } => {
+            let id = MenuId::new(format!("captain-tray-{}", commands.len()));
+            commands.insert(id.clone(), command.clone());
+            Box::new(CheckMenuItem::with_id(id, label, true, *checked, None))
         }
         TrayItem::Submenu { label, items } => {
             let submenu = Submenu::new(label, true);

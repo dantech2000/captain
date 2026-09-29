@@ -5,14 +5,17 @@
 mod assistant;
 mod backend;
 mod choose_step;
+mod confirm_switch;
 mod connect;
 mod open;
 mod plan_row;
 mod review_step;
+mod roll_back;
 mod run_row;
 mod run_step;
 mod runner;
 mod summary_step;
+mod switch_steps;
 mod view;
 
 pub use assistant::MigrationAssistant;

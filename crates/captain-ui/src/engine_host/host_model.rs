@@ -33,6 +33,8 @@ pub struct HostModel {
     pub(super) stopping: bool,
     /// True when a stop interrupted the start, so its error is expected.
     pub(super) cancelled: bool,
+    /// True while a snapshot step runs. Start, stop, reset, and resizing wait.
+    pub(super) snapshotting: bool,
     pub(super) _poll: Option<Task<()>>,
 }
 
@@ -68,6 +70,7 @@ pub fn init(
             start_task: None,
             stopping: false,
             cancelled: false,
+            snapshotting: false,
             _poll: None,
         };
         model.rescan(cx);
@@ -108,8 +111,9 @@ impl HostModel {
         self.checking
     }
 
+    /// False for a host Captain does not control, and while a snapshot step runs.
     pub fn can_control(&self) -> bool {
-        self.host.can_control()
+        self.host.can_control() && !self.snapshotting
     }
 
     /// Why the last start failed, until the next start.

@@ -5,7 +5,7 @@ use crate::theme::Palette;
 
 /// A titled group of settings rows, with a line between rows, like a macOS form.
 pub fn settings_card(
-    title: &'static str,
+    title: impl Into<SharedString>,
     rows: impl IntoIterator<Item = AnyElement>,
     palette: &Palette,
 ) -> Div {
@@ -20,7 +20,7 @@ pub fn settings_card(
                 .text_size(px(11.))
                 .font_weight(FontWeight::SEMIBOLD)
                 .text_color(palette.text2)
-                .child(title),
+                .child(title.into()),
         )
         .child(
             div()

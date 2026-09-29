@@ -59,13 +59,14 @@ pub fn footer(
     cx: &mut Context<MigrationAssistant>,
 ) -> Div {
     let mut buttons = Vec::new();
+    let switching = view.run.is_switching();
     if view.is_copying() {
         buttons.push(
             text_button(
                 "migration-stop",
                 "Stop",
                 ButtonTone::Danger,
-                true,
+                !switching,
                 palette,
                 cx.listener(|view, _, _, cx| view.stop(cx)),
             )
@@ -97,7 +98,9 @@ pub fn footer(
             );
         }
     }
-    let note = if view.is_copying() {
+    let note = if switching {
+        "A switch-over runs to the end, so the item is not left stopped in both engines."
+    } else if view.is_copying() {
         "Stop ends the current item and removes its partial copy."
     } else {
         "Stopped. Resume copies the items that are not done."

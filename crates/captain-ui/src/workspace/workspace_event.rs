@@ -1,5 +1,5 @@
 use captain_core::EngineError;
-use captain_core::model::{ContainerAction, EngineEvent, ProjectAction};
+use captain_core::model::{BulkOutcome, ContainerAction, EngineEvent, ProjectAction};
 use gpui_kit::EventEmitter;
 use gpui_kit::component::notification::Notification;
 
@@ -13,6 +13,11 @@ pub enum WorkspaceEvent {
         name: String,
         action: ContainerAction,
         error: EngineError,
+    },
+    /// An action on several containers finished, on some or all of them.
+    BulkDone {
+        action: ContainerAction,
+        outcome: BulkOutcome,
     },
     /// A container was deleted.
     ContainerRemoved { name: String },
@@ -42,6 +47,12 @@ impl WorkspaceEvent {
             } => Notification::error(error.to_string())
                 .title(format!("{} {name} failed", action.label()))
                 .id1::<WorkspaceEvent>(id.clone())
+                .autohide(false),
+            Self::BulkDone { action, outcome } if outcome.failed.is_empty() => {
+                Notification::success(outcome.done_message(action.done_label(), "container"))
+            }
+            Self::BulkDone { action, outcome } => Notification::error(outcome.failed_lines())
+                .title(outcome.failed_title(action.label(), "container"))
                 .autohide(false),
             Self::ContainerRemoved { name } => Notification::success(format!("Deleted {name}.")),
             Self::ProjectFailed {

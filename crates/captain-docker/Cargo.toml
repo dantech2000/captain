@@ -11,9 +11,11 @@ rust-version.workspace = true
 bollard.workspace = true
 captain-core.workspace = true
 futures.workspace = true
+serde.workspace = true
 serde_json.workspace = true
+tar.workspace = true
 thiserror.workspace = true
-tokio.workspace = true
+tokio = { workspace = true, features = ["net"] }
 tracing.workspace = true
 
 [lints]

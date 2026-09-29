@@ -4,6 +4,7 @@
 use std::collections::HashMap;
 use std::time::Duration;
 
+use captain_core::kubernetes::{KubeContexts, load_contexts, user_kubeconfig_paths};
 use captain_ui::Workspace;
 use gpui_kit::*;
 use muda::MenuId;
@@ -19,6 +20,10 @@ use crate::window;
 /// after a change before rebuilding the menu.
 const REBUILD_DEBOUNCE: Duration = Duration::from_millis(200);
 
+/// How often the tray reads the kubeconfig for the Kubernetes Contexts submenu.
+/// kubectl and other tools change it too.
+const CONTEXTS_POLL: Duration = Duration::from_secs(5);
+
 /// Template images on macOS take the menu bar's color, so only the alpha counts.
 /// The Windows taskbar is dark by default, so the icon is white there.
 const COLOR: [u8; 3] = if cfg!(target_os = "macos") {
@@ -33,8 +38,11 @@ struct Tray {
     shown: Option<TraySnapshot>,
     commands: HashMap<MenuId, TrayCommand>,
     rebuild: Option<Task<()>>,
+    workspace: Entity<Workspace>,
+    contexts: KubeContexts,
     _observe: Vec<Subscription>,
     _events: Task<()>,
+    _contexts: Option<Task<()>>,
 }
 
 /// Keeps the tray alive for the life of the app.
@@ -47,7 +55,8 @@ impl Global for TrayHandle {}
 /// Captain runs without the icon and quits when its last window closes.
 pub fn start(cx: &mut App) {
     let workspace = window::workspace(cx);
-    let snapshot = snapshot(&workspace, cx);
+    let contexts = load_contexts(&user_kubeconfig_paths());
+    let snapshot = snapshot(&workspace, &contexts, cx);
     let host = captain_ui::host_model(cx);
     let icon = TrayIconBuilder::new()
         .with_tooltip("Captain")
@@ -78,10 +87,14 @@ pub fn start(cx: &mut App) {
             shown: None,
             commands: HashMap::new(),
             rebuild: None,
+            workspace,
+            contexts,
             _observe: observe,
             _events: events,
+            _contexts: None,
         };
         tray.show(snapshot);
+        tray.poll_contexts(cx);
         tray
     });
     cx.set_global(TrayHandle(tray));
@@ -90,6 +103,22 @@ pub fn start(cx: &mut App) {
 /// True while the menu bar icon is up.
 pub fn is_running(cx: &App) -> bool {
     cx.has_global::<TrayHandle>()
+}
+
+/// Removes the icon. The settings turned it off.
+pub fn stop(cx: &mut App) {
+    if is_running(cx) {
+        cx.remove_global::<TrayHandle>();
+    }
+}
+
+/// Reads the kubeconfig again now, after the menu switched the context.
+pub fn refresh_contexts(cx: &mut App) {
+    if let Some(tray) = cx.try_global::<TrayHandle>().map(|handle| handle.0.clone()) {
+        tray.update(cx, |tray, cx| {
+            tray.set_contexts(load_contexts(&user_kubeconfig_paths()), cx)
+        });
+    }
 }
 
 /// What the item `id` in the current menu does.
@@ -102,17 +131,44 @@ impl Tray {
     /// Stats samples notify many times a second. Compare the small snapshot first,
     /// and rebuild only when the menu would change.
     fn workspace_changed(&mut self, workspace: Entity<Workspace>, cx: &mut Context<Self>) {
-        if self.rebuild.is_some() || self.shown.as_ref() == Some(&snapshot(&workspace, cx)) {
+        let current = snapshot(&workspace, &self.contexts, cx);
+        if self.rebuild.is_some() || self.shown.as_ref() == Some(&current) {
             return;
         }
         self.rebuild = Some(cx.spawn(async move |this, cx| {
             cx.background_executor().timer(REBUILD_DEBOUNCE).await;
             this.update(cx, |this, cx| {
                 this.rebuild = None;
-                this.show(snapshot(&workspace, cx));
+                this.show(snapshot(&workspace, &this.contexts, cx));
             })
             .ok();
         }));
+    }
+
+    /// Reads the contexts every few seconds, off the main thread.
+    fn poll_contexts(&mut self, cx: &mut Context<Self>) {
+        self._contexts = Some(cx.spawn(async move |this, cx| {
+            loop {
+                cx.background_executor().timer(CONTEXTS_POLL).await;
+                let contexts = cx
+                    .background_executor()
+                    .spawn(async { load_contexts(&user_kubeconfig_paths()) })
+                    .await;
+                if this
+                    .update(cx, |tray, cx| tray.set_contexts(contexts, cx))
+                    .is_err()
+                {
+                    return;
+                }
+            }
+        }));
+    }
+
+    fn set_contexts(&mut self, contexts: KubeContexts, cx: &mut Context<Self>) {
+        if contexts != self.contexts {
+            self.contexts = contexts;
+            self.workspace_changed(self.workspace.clone(), cx);
+        }
     }
 
     fn show(&mut self, snapshot: TraySnapshot) {
@@ -134,8 +190,11 @@ impl Tray {
     }
 }
 
-fn snapshot(workspace: &Entity<Workspace>, cx: &App) -> TraySnapshot {
-    TraySnapshot::of(workspace.read(cx), captain_ui::host_summary(cx).as_ref())
+fn snapshot(workspace: &Entity<Workspace>, contexts: &KubeContexts, cx: &App) -> TraySnapshot {
+    TraySnapshot {
+        contexts: contexts.clone(),
+        ..TraySnapshot::of(workspace.read(cx), captain_ui::host_summary(cx).as_ref())
+    }
 }
 
 fn status_icon(status: EngineStatus) -> Icon {

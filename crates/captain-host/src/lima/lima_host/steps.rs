@@ -6,7 +6,7 @@ use std::time::{Duration, Instant};
 
 use captain_core::{HostError, HostResources, HostStatus};
 
-use super::{Inner, Phase, lock};
+use super::{Inner, Phase, daemon_steps, engine_lock, kube_steps, lock};
 use crate::lima::args;
 use crate::lima::instance::{LimaInstance, find_instance};
 use crate::lima::limactl::{Limactl, kill};
@@ -21,6 +21,9 @@ pub fn status(inner: &Inner) -> HostStatus {
         Phase::Stopping => return HostStatus::Stopping,
         Phase::Idle => {}
     }
+    if let Some(status) = engine_lock::other_process(inner) {
+        return status;
+    }
     if let Err(message) = inner.paths.check_socket_paths() {
         return HostStatus::Failed(message);
     }
@@ -28,16 +31,19 @@ pub fn status(inner: &Inner) -> HostStatus {
         Ok(limactl) => limactl,
         Err(reason) => return HostStatus::NotInstalled(reason),
     };
-    match find(inner, &limactl) {
+    let status = match find(inner, &limactl) {
         Ok(Some(instance)) => instance.host_status(),
         Ok(None) => HostStatus::NotCreated,
         Err(error) => HostStatus::Failed(error.0),
-    }
+    };
+    daemon_steps::track(inner, &limactl, &status);
+    status
 }
 
 /// Creates the instance if needed, applies changed resources, and starts it.
 pub fn start(inner: &Inner, sink: &mut dyn FnMut(String)) -> Result<(), HostError> {
     let _guard = inner.begin(Phase::Starting)?;
+    let _lock = engine_lock::acquire(inner, true)?;
     inner.cancel.store(false, Ordering::SeqCst);
     inner.paths.check_socket_paths().map_err(HostError)?;
     let limactl = inner.limactl().map_err(HostError)?;
@@ -66,6 +72,8 @@ pub fn start(inner: &Inner, sink: &mut dyn FnMut(String)) -> Result<(), HostErro
             socket.display()
         )));
     }
+    daemon_steps::apply(inner, &limactl, sink)?;
+    kube_steps::on_start(inner, &limactl, sink);
     sink("Captain Engine is running.".into());
     Ok(())
 }
@@ -97,6 +105,7 @@ fn create(
 pub fn stop(inner: &Inner) -> Result<(), HostError> {
     cancel_start(inner);
     let _guard = inner.begin(Phase::Stopping)?;
+    let _lock = engine_lock::acquire(inner, false)?;
     let limactl = inner.limactl().map_err(HostError)?;
     match find(inner, &limactl)? {
         None => Ok(()),
@@ -130,6 +139,9 @@ pub fn apply_resources(inner: &Inner) -> Result<(), HostError> {
     let Ok(limactl) = inner.limactl() else {
         return Ok(());
     };
+    let Some(_lock) = engine_lock::try_acquire(inner, engine_lock::EDITING)? else {
+        return Ok(());
+    };
     let wanted = *lock(&inner.resources);
     match find(inner, &limactl)? {
         Some(instance) if instance.status == "Stopped" => {
@@ -146,6 +158,7 @@ pub fn apply_resources(inner: &Inner) -> Result<(), HostError> {
 pub fn reset(inner: &Inner) -> Result<(), HostError> {
     cancel_start(inner);
     let _guard = inner.begin(Phase::Stopping)?;
+    let _lock = engine_lock::acquire(inner, false)?;
     let limactl = inner.limactl().map_err(HostError)?;
     if find(inner, &limactl)?.is_some() {
         limactl.output(&args::delete(&inner.paths.instance))?;
@@ -175,7 +188,7 @@ fn check_cancel(inner: &Inner) -> Result<(), HostError> {
     Ok(())
 }
 
-fn find(inner: &Inner, limactl: &Limactl) -> Result<Option<LimaInstance>, HostError> {
+pub fn find(inner: &Inner, limactl: &Limactl) -> Result<Option<LimaInstance>, HostError> {
     let json = limactl.output(&args::list())?;
     Ok(find_instance(&json, &inner.paths.instance))
 }

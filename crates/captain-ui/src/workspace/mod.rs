@@ -3,6 +3,7 @@
 //! Compose project actions.
 
 mod actions;
+mod bulk;
 mod connect;
 mod containers;
 mod page;

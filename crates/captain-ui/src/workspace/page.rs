@@ -8,11 +8,16 @@ pub enum Page {
     Images,
     Volumes,
     Networks,
+    Extensions,
+    Snapshots,
+    PortForwarding,
+    Diagnostics,
     Settings,
 }
 
 impl Page {
-    /// The pages in the sidebar's main list. Settings has its own entry.
+    /// The pages in the sidebar's main list. Extensions, Snapshots, Port Forwarding,
+    /// Diagnostics, and Settings have their own entries at the bottom.
     pub const ALL: [Page; 4] = [
         Page::Containers,
         Page::Images,
@@ -26,6 +31,10 @@ impl Page {
             Page::Images => "Images",
             Page::Volumes => "Volumes",
             Page::Networks => "Networks",
+            Page::Extensions => "Extensions",
+            Page::Snapshots => "Snapshots",
+            Page::PortForwarding => "Port Forwarding",
+            Page::Diagnostics => "Diagnostics",
             Page::Settings => "Settings",
         }
     }
@@ -36,6 +45,10 @@ impl Page {
             Page::Images => IconName::Layers,
             Page::Volumes => IconName::HardDrive,
             Page::Networks => IconName::Network,
+            Page::Extensions => IconName::Puzzle,
+            Page::Snapshots => IconName::Camera,
+            Page::PortForwarding => IconName::ArrowRightLeft,
+            Page::Diagnostics => IconName::Stethoscope,
             Page::Settings => IconName::Settings,
         }
     }

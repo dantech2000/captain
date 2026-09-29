@@ -1,10 +1,15 @@
 //! Copies a volume: a helper in the source streams `/v` as a tar, and a helper in
 //! the target unpacks it into a new volume with the same driver, options, and
-//! labels. Then both sides are measured and compared.
+//! labels. Then both sides are measured and compared. A switch-over copies into the
+//! existing target volume again, after it empties it.
+
+use std::collections::HashMap;
 
 use bollard::Docker;
 use bollard::models::{Volume, VolumeCreateRequest};
-use bollard::query_parameters::{RemoveVolumeOptions, UploadToContainerOptionsBuilder};
+use bollard::query_parameters::{
+    ListContainersOptionsBuilder, RemoveVolumeOptions, UploadToContainerOptionsBuilder,
+};
 use captain_core::EngineError;
 use captain_core::migration::TransferEvent;
 use futures::StreamExt;
@@ -15,33 +20,56 @@ use super::source::SourceEngine;
 use super::verify::{MEASURE_SCRIPT, Measure};
 use crate::mapping;
 
-/// Copies the source volume `name` into a new target volume `target_name`. A volume
-/// that already exists in the target is skipped, never overwritten. If the copy
-/// fails or is stopped, the half-filled target volume is removed again.
+/// Empties a volume, hidden entries included.
+const EMPTY_SCRIPT: &str = "find /v -mindepth 1 -delete";
+
+/// What a volume copy does when the target already has the volume.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Existing {
+    /// Skip it and leave it alone. Every normal copy does this.
+    Skip,
+    /// Empty it and copy again. Only a switch-over does this, once nothing in the
+    /// source writes to the volume.
+    Replace,
+}
+
+/// Copies the source volume `name` into the target volume `target_name`. A volume
+/// that already exists in the target is skipped, unless `existing` is
+/// [`Existing::Replace`]. If the copy into a new volume fails or is stopped, the
+/// half-filled target volume is removed again.
 pub async fn copy_volume(
     source: &SourceEngine,
     target: &Docker,
-    name: &str,
-    target_name: &str,
+    (name, target_name): (&str, &str),
+    existing: Existing,
     events: &Events,
 ) -> Result<Outcome, EngineError> {
-    if target.inspect_volume(target_name).await.is_ok() {
+    let exists = target.inspect_volume(target_name).await.is_ok();
+    if exists && existing == Existing::Skip {
         return Ok(Outcome::Skipped(
             "A volume with this name is already in the target.".into(),
         ));
     }
     let volume = source.inspect_volume(name).await?;
     if let Some(note) = data_elsewhere(&volume) {
-        create(target, &volume, target_name).await?;
+        if !exists {
+            create(target, &volume, target_name).await?;
+        }
         progress::send(events, TransferEvent::Note(note));
         return Ok(Outcome::Copied);
     }
     source.ensure_helper_image().await?;
     helper::ensure_image(target).await?;
     let measure = measure(source.run_script(name, MEASURE_SCRIPT).await?)?;
-    create(target, &volume, target_name).await?;
+    if exists {
+        empty(target, target_name).await?;
+    } else {
+        create(target, &volume, target_name).await?;
+    }
     let copied = fill(source, target, name, target_name, measure, events).await;
-    if copied.is_err() {
+    // A replaced volume stays: containers in the target may refer to it, and a
+    // retry fills it again.
+    if copied.is_err() && !exists {
         let options = RemoveVolumeOptions { force: true };
         if let Err(error) = target.remove_volume(target_name, Some(options)).await {
             tracing::warn!(%error, target_name, "cannot remove a half-copied volume");
@@ -77,6 +105,37 @@ async fn create(target: &Docker, volume: &Volume, name: &str) -> Result<(), Engi
     };
     let created = target.create_volume(request).await;
     created.map(|_| ()).map_err(mapping::engine_error)
+}
+
+/// Empties the target volume `name` before a switch-over copies it again. It
+/// refuses while a running container in the target uses the volume.
+async fn empty(target: &Docker, name: &str) -> Result<(), EngineError> {
+    let filters = HashMap::from([("volume", vec![name]), ("status", vec!["running"])]);
+    let options = ListContainersOptionsBuilder::default()
+        .filters(&filters)
+        .build();
+    let running = target.list_containers(Some(options)).await;
+    let users: Vec<String> = running
+        .map_err(mapping::engine_error)?
+        .into_iter()
+        .filter_map(|c| {
+            c.names?
+                .first()
+                .map(|n| n.trim_start_matches('/').to_string())
+        })
+        .collect();
+    if !users.is_empty() {
+        return Err(EngineError::Api(format!(
+            "{} runs in this engine and uses {name}. Roll back or stop it, then retry.",
+            users.join(", ")
+        )));
+    }
+    let mount = Mount {
+        volume: name,
+        read_only: false,
+    };
+    helper::run_script(target, "empty", Some(mount), EMPTY_SCRIPT).await?;
+    Ok(())
 }
 
 fn measure(output: String) -> Result<Measure, EngineError> {

@@ -1,16 +1,20 @@
-//! Images: list, inspect, remove, prune, pull, and run. Every call runs on the private
-//! tokio runtime.
+//! Images: list, inspect, remove, prune, pull, run, tag, push, and scan. Every call
+//! runs on the private tokio runtime.
 
+mod push;
 mod run;
+mod scan;
 
 use std::collections::HashMap;
 use std::pin::pin;
 
 use bollard::query_parameters::{
     CreateImageOptionsBuilder, ListContainersOptionsBuilder, ListImagesOptionsBuilder,
-    PruneImagesOptionsBuilder, RemoveImageOptions,
+    PruneImagesOptionsBuilder, RemoveImageOptions, TagImageOptionsBuilder,
 };
-use captain_core::model::{Image, ImageDetail, ImageLayer, ImageReference, PullProgress, RunSpec};
+use captain_core::model::{
+    Image, ImageDetail, ImageLayer, ImageReference, PullProgress, RunSpec, ScanProgress,
+};
 use captain_core::{EngineError, EngineFuture, EngineStream, ImageApi};
 use futures::StreamExt;
 
@@ -124,6 +128,44 @@ impl ImageApi for DockerEngine {
         let docker = self.docker.clone();
         runtime::spawn(self.runtime.handle(), async move {
             run::run_container(&docker, spec).await
+        })
+    }
+
+    fn tag_image(&self, source: &str, target: &str) -> EngineFuture<()> {
+        let docker = self.docker.clone();
+        let source = source.to_string();
+        let target = target.to_string();
+        runtime::spawn(self.runtime.handle(), async move {
+            let Some(reference) = ImageReference::parse(&target).filter(|r| !r.tag.is_empty())
+            else {
+                return Err(EngineError::Api(format!(
+                    "invalid reference format: {target:?}"
+                )));
+            };
+            let options = TagImageOptionsBuilder::default()
+                .repo(&reference.name)
+                .tag(&reference.tag)
+                .build();
+            docker
+                .tag_image(&source, Some(options))
+                .await
+                .map_err(mapping::engine_error)
+        })
+    }
+
+    fn push_image(&self, reference: &str) -> EngineStream<PullProgress> {
+        let docker = self.docker.clone();
+        let input = reference.to_string();
+        runtime::forward(self.runtime.handle(), move |tx| {
+            push::push(docker, input, tx)
+        })
+    }
+
+    fn scan_image(&self, reference: &str) -> EngineStream<ScanProgress> {
+        let docker = self.docker.clone();
+        let reference = reference.to_string();
+        runtime::forward(self.runtime.handle(), move |tx| {
+            scan::scan(docker, reference, tx)
         })
     }
 }

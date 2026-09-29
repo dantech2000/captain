@@ -1,11 +1,12 @@
 use captain_core::model::{ContainerDetail, ContainerState};
-use gpui_kit::assets::IconName;
 use gpui_kit::*;
 
+use super::files::FilesPane;
 use super::logs::LogsPane;
+use super::processes::ProcessList;
 use super::tabs::{self, Tab};
 use super::terminal::{TerminalPane, TerminalTarget};
-use super::{actions, header, overview, placeholder, stats_tab};
+use super::{actions, header, overview, stats_tab};
 use crate::theme::Palette;
 use crate::widgets::drag_region;
 use crate::workspace::Workspace;
@@ -22,6 +23,8 @@ pub struct InspectorView {
     detail: Option<ContainerDetail>,
     logs: Entity<LogsPane>,
     terminal: Entity<TerminalPane>,
+    files: Entity<FilesPane>,
+    processes: Entity<ProcessList>,
     detail_task: Option<Task<()>>,
     _observe: Subscription,
 }
@@ -39,6 +42,8 @@ impl InspectorView {
             detail: None,
             logs: cx.new(|_| LogsPane::default()),
             terminal: cx.new(TerminalPane::new),
+            files: cx.new(FilesPane::new),
+            processes: cx.new(|_| ProcessList::new()),
             detail_task: None,
             _observe: observe,
         };
@@ -61,11 +66,23 @@ impl InspectorView {
         let engine = workspace.engine();
         let show_terminal = self.tab == Tab::Terminal;
         self.terminal.update(cx, |terminal, cx| {
-            terminal.set_target(target, engine, cx);
+            terminal.set_target(target, engine.clone(), cx);
             if show_terminal {
                 terminal.show(cx);
             }
         });
+        let target = current
+            .clone()
+            .map(|(id, state)| (id, state == ContainerState::Running));
+        let show_files = self.tab == Tab::Files;
+        self.files.update(cx, |files, cx| {
+            files.set_target(target.clone(), engine.clone(), cx);
+            if show_files {
+                files.show(cx);
+            }
+        });
+        self.processes
+            .update(cx, |processes, cx| processes.set_target(target, engine, cx));
         let workspace = self.workspace.read(cx);
         let same_container = current.as_ref().map(|c| &c.0) == self.shown.as_ref().map(|s| &s.0);
         self.shown = current.clone();
@@ -106,6 +123,12 @@ impl Render for InspectorView {
                     if tab == Tab::Terminal {
                         this.terminal.update(cx, |terminal, cx| terminal.show(cx));
                     }
+                    if tab == Tab::Files {
+                        this.files.update(cx, |files, cx| files.show(cx));
+                    }
+                    this.processes.update(cx, |processes, cx| {
+                        processes.set_active(tab == Tab::Stats, cx)
+                    });
                     cx.notify();
                 })
                 .ok();
@@ -120,16 +143,18 @@ impl Render for InspectorView {
             }
             Tab::Stats => {
                 let history = self.workspace.read(cx).stats().get(&container.id);
-                stats_tab::render(history, &palette).into_any_element()
+                div()
+                    .id("stats-tab")
+                    .flex_1()
+                    .min_h_0()
+                    .overflow_y_scroll()
+                    .pb(px(20.))
+                    .child(stats_tab::render(history, &palette))
+                    .child(self.processes.clone())
+                    .into_any_element()
             }
             Tab::Terminal => self.terminal.clone().into_any_element(),
-            Tab::Files => placeholder::render(
-                IconName::Folder,
-                "Files are coming later",
-                "Browse and copy files inside the container.",
-                &palette,
-            )
-            .into_any_element(),
+            Tab::Files => self.files.clone().into_any_element(),
         };
         let workspace = self.workspace.read(cx);
 

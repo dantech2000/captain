@@ -2,6 +2,8 @@ use serde::{Deserialize, Deserializer, Serialize};
 
 use super::{Accent, Appearance, EngineChoice};
 use crate::HostResources;
+use crate::daemon::DaemonSettings;
+use crate::kubernetes::KubernetesSettings;
 
 /// The settings file format that this build writes. See ADR 0004.
 pub const SETTINGS_VERSION: u32 = 1;
@@ -36,6 +38,22 @@ pub struct Settings {
     /// this computer.
     #[serde(deserialize_with = "lenient")]
     pub engine_resources: Option<HostResources>,
+    /// Captain Engine's Docker daemon: registry mirrors, custom `daemon.json` keys,
+    /// and the TCP socket. See feature 0020.
+    #[serde(deserialize_with = "lenient")]
+    pub engine_daemon: DaemonSettings,
+    /// The k3s cluster in Captain Engine. Off by default. See ADR 0010.
+    #[serde(deserialize_with = "lenient")]
+    pub kubernetes: KubernetesSettings,
+    /// Launch with only the menu bar icon, and no main window.
+    #[serde(deserialize_with = "lenient")]
+    pub start_in_background: bool,
+    /// Show Captain's icon in the menu bar (macOS) or the notification area (Windows).
+    #[serde(deserialize_with = "lenient_true")]
+    pub show_menu_bar_icon: bool,
+    /// Write debug-level logs. The Diagnostics page has the switch.
+    #[serde(deserialize_with = "lenient")]
+    pub debug_logging: bool,
 }
 
 impl Default for Settings {
@@ -48,6 +66,11 @@ impl Default for Settings {
             engine: None,
             stop_engine_on_quit: true,
             engine_resources: None,
+            engine_daemon: DaemonSettings::default(),
+            kubernetes: KubernetesSettings::default(),
+            start_in_background: false,
+            show_menu_bar_icon: true,
+            debug_logging: false,
         }
     }
 }
@@ -69,6 +92,12 @@ impl Settings {
         self.engine.unwrap_or_else(|| {
             EngineChoice::default_for(captain_available, self.engine_endpoint.is_some())
         })
+    }
+
+    /// True if Captain opens its main window at launch. It stays hidden only when the
+    /// user asked for the background and the menu bar icon is up to reach Captain.
+    pub fn opens_window_at_launch(&self, tray_up: bool) -> bool {
+        !(self.start_in_background && tray_up)
     }
 
     /// The file contents, stamped with the current [`SETTINGS_VERSION`].

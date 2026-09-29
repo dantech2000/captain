@@ -69,3 +69,13 @@ fn exec_needs_a_running_container() {
     assert!(block_on(engine.exec("web", ExecSpec::shell(80, 24))).is_err());
     assert!(block_on(engine.exec("nope", ExecSpec::shell(80, 24))).is_err());
 }
+
+#[test]
+fn files_and_top_need_a_running_container() {
+    let mut engine = engine_with(ContainerState::Exited);
+    engine.files.folders.insert("/".into(), Vec::new());
+    assert!(block_on(engine.list_files("web", "/")).is_err());
+    assert!(block_on(engine.top("web")).is_err());
+    engine.containers[0].state = ContainerState::Running;
+    assert_eq!(block_on(engine.list_files("web", "/")), Ok(Vec::new()));
+}

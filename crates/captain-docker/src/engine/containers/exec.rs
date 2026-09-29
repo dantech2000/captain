@@ -146,7 +146,7 @@ async fn runs(docker: &Docker, id: &str, shell: &str) -> bool {
 
 /// The exit code of a finished exec. The engine can report it a moment after the
 /// output ends, so this asks a few times.
-async fn exit_code(docker: &Docker, exec_id: &str) -> Option<i64> {
+pub(super) async fn exit_code(docker: &Docker, exec_id: &str) -> Option<i64> {
     for _ in 0..EXIT_POLLS {
         let inspect = docker.inspect_exec(exec_id).await.ok()?;
         if inspect.running != Some(true) {

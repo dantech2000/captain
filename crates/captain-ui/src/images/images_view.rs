@@ -50,8 +50,11 @@ impl ImagesView {
 
     /// Hands the workspace engine to the image state once it has connected.
     fn attach_engine(&mut self, cx: &mut Context<Self>) {
-        if let Some(engine) = self.workspace.read(cx).engine() {
-            self.state.update(cx, |state, cx| state.attach(engine, cx));
+        let workspace = self.workspace.read(cx);
+        if let Some(engine) = workspace.engine() {
+            let builder = workspace.image_builder();
+            self.state
+                .update(cx, |state, cx| state.attach(engine, builder, cx));
         }
         cx.notify();
     }

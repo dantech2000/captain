@@ -1,5 +1,5 @@
-//! User settings: appearance, accent color, the engine choice, and the engine
-//! endpoint override.
+//! User settings: appearance, accent color, the engine choice, the engine
+//! endpoint override, and app behavior.
 //! The app picks where the file lives. See ADR 0004.
 
 mod accent;

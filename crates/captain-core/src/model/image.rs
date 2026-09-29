@@ -1,19 +1,25 @@
 //! Image models: the image list entry, pull progress, pull references, the inspect
-//! details and history, and what a new container needs.
+//! details and history, what a new container needs, builds, and scan reports.
 
+mod build_spec;
 mod detail;
 mod exposed_port;
 mod layer;
 mod pull_progress;
 mod reference;
 mod run_spec;
+mod scan;
+mod trivy;
 
+pub use build_spec::BuildSpec;
 pub use detail::{ImageConfig, ImageDetail};
 pub use exposed_port::ExposedPort;
 pub use layer::{ImageLayer, largest_layer_size};
 pub use pull_progress::PullProgress;
 pub use reference::ImageReference;
 pub use run_spec::{PublishPort, RestartPolicy, RunSpec};
+pub use scan::{ScanProgress, ScanReport, Severity, Vulnerability};
+pub use trivy::{parse_trivy_report, trivy_status};
 
 /// What Captain shows for a missing repository or tag.
 const NONE_LABEL: &str = "<none>";

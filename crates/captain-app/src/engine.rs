@@ -25,8 +25,11 @@ impl EngineSetup {
             .unwrap_or_else(machine::recommended_resources);
         let choice = settings.engine_choice(available);
         tracing::info!(?choice, available, "engine choice");
+        let host = captain_host::default_host(resources);
+        host.set_daemon(settings.engine_daemon.clone());
+        host.set_kubernetes(settings.kubernetes.clone());
         Self {
-            host: captain_host::default_host(resources),
+            host,
             available,
             machine: HostResources {
                 cpus: machine::host_cpus(),
@@ -45,6 +48,17 @@ impl EngineSetup {
 
     /// Installs the host model for `workspace`.
     pub fn install(self, workspace: &Entity<Workspace>, cx: &mut App) {
+        let kubeconfig = self
+            .host
+            .kubernetes()
+            .map(|kubernetes| kubernetes.kubeconfig());
         captain_ui::engine_host_init(cx, self.host, self.available, self.machine, workspace);
+        captain_ui::kubernetes_init(cx);
+        // Port forwards run on their own runtime until Captain quits. See ADR 0010.
+        match kubeconfig.map(captain_kube::KubeForwarder::new) {
+            Some(Ok(forwarder)) => captain_ui::port_forwarding_init(cx, Arc::new(forwarder)),
+            Some(Err(error)) => tracing::warn!(%error, "cannot start the port forwarder"),
+            None => {}
+        }
     }
 }

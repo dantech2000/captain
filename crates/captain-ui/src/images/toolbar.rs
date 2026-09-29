@@ -2,13 +2,15 @@ use captain_core::format::bytes_label;
 use gpui_kit::assets::IconName;
 use gpui_kit::component::Sizable;
 use gpui_kit::component::input::{Input, InputState};
+use gpui_kit::component::tooltip::Tooltip;
 use gpui_kit::*;
 
-use super::ImagesState;
 use super::toolbar_button::toolbar_button;
+use super::{ImagesState, build_dialog};
 use crate::theme::Palette;
 
-/// The pull field and button, then Remove for the selected image and Prune dangling.
+/// The pull field and button, Build, then Remove for the selected image and Prune
+/// dangling.
 pub fn render(
     handle: &Entity<ImagesState>,
     state: &ImagesState,
@@ -28,6 +30,27 @@ pub fn render(
             palette,
             move |window, cx| start_pull(&handle, &input, window, cx),
         )
+    };
+
+    let can_build = state.builder().is_some();
+    let build = {
+        let handle = handle.clone();
+        toolbar_button(
+            "build-image",
+            "Build",
+            IconName::Hammer,
+            palette.accent,
+            can_build,
+            palette,
+            move |window, cx| build_dialog::open(handle.clone(), window, cx),
+        )
+    };
+    let build = if can_build {
+        build
+    } else {
+        build.tooltip(|window, cx| {
+            Tooltip::new("Install Docker Buildx to build images.").build(window, cx)
+        })
     };
 
     let selected = state.selected();
@@ -83,6 +106,7 @@ pub fn render(
                 .child(Input::new(input).small().disabled(pulling)),
         )
         .child(pull)
+        .child(build)
         .child(div().flex_1())
         .child(remove)
         .child(prune)

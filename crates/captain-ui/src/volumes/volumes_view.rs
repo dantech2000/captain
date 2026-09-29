@@ -4,7 +4,7 @@ use std::sync::Arc;
 use captain_core::Engine;
 use captain_core::model::EngineEvent;
 use captain_core::store::changes_volume_list;
-use captain_core::store::{UsageFilter, VolumeStore};
+use captain_core::store::{MultiSelection, UsageFilter, VolumeStore};
 use gpui_kit::component::input::InputState;
 use gpui_kit::*;
 
@@ -12,7 +12,9 @@ use super::feed::RELOAD_DEBOUNCE;
 use super::users::VolumeUsers;
 use super::{toolbar, volume_inspector, volume_list};
 use crate::theme::Palette;
-use crate::widgets::{create_field, inline_error, inline_notice, page_header};
+use crate::widgets::{
+    ButtonTone, create_field, inline_error, inline_notice, page_header, selection_bar, text_button,
+};
 use crate::workspace::{Connection, Workspace};
 
 /// The Volumes page: volumes grouped by Compose project, with create, remove, prune,
@@ -26,6 +28,8 @@ pub struct VolumesView {
     pub(super) filter: UsageFilter,
     /// The name of the selected volume.
     pub(super) selected: Option<String>,
+    /// The volumes selected for a bulk delete. It holds the selected volume too.
+    pub(super) checked: MultiSelection,
     /// Volumes that are being removed.
     pub(super) removing: HashSet<String>,
     pub(super) creating: bool,
@@ -63,6 +67,7 @@ impl VolumesView {
             loaded: false,
             filter: UsageFilter::default(),
             selected: None,
+            checked: MultiSelection::default(),
             removing: HashSet::new(),
             creating: false,
             pruning: false,
@@ -95,6 +100,22 @@ impl Render for VolumesView {
         };
         let tools = toolbar::render(self, cx, &palette);
         let create = cx.listener(|this, _: &ClickEvent, window, cx| this.create(window, cx));
+        let bulk = self.checked.is_bulk().then(|| {
+            let delete = text_button(
+                "bulk-delete-volumes",
+                "Delete",
+                ButtonTone::Danger,
+                true,
+                &palette,
+                cx.listener(|this, _, window, cx| this.confirm_bulk_delete(window, cx)),
+            );
+            selection_bar(
+                self.checked.len(),
+                vec![delete],
+                &palette,
+                cx.listener(|this, _, _, cx| this.clear_bulk(cx)),
+            )
+        });
         let workspace = self.workspace.read(cx);
         let panel = self
             .selected
@@ -145,6 +166,7 @@ impl Render for VolumesView {
                             .map(|notice| inline_notice(notice, &palette)),
                     ),
             )
+            .children(bulk)
             .child(
                 div()
                     .flex_1()

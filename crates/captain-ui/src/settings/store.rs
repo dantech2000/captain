@@ -42,6 +42,12 @@ pub fn accent(cx: &App) -> Accent {
         .unwrap_or_default()
 }
 
+/// Calls `f` after each change to the settings. The app uses it to follow the menu
+/// bar icon switch.
+pub fn observe(cx: &mut App, f: impl FnMut(&mut App) + 'static) -> Subscription {
+    cx.observe_global::<SettingsStore>(f)
+}
+
 /// Why the last save failed, if it did.
 pub fn save_error(cx: &App) -> Option<SharedString> {
     cx.try_global::<SettingsStore>()

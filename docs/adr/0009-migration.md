@@ -21,7 +21,7 @@ Captain gets a **Migration Assistant** that copies data from any engine it can c
 
 ### Rules
 
-1. **Copy, never move.** Nothing in the source engine is changed or deleted. The assistant never offers to clean up the source.
+1. **Copy, never move.** Nothing in the source engine is changed or deleted. The assistant never offers to clean up the source. The one exception is the opt-in switch-over (below), which stops confirmed containers and never deletes them.
 2. **Plan before copying.** The assistant lists what it found, with sizes, and estimates the total size and time. It checks free disk space first, because a copy briefly needs about twice the space.
 3. **Per-item progress, check, and retry.** Each image, volume, and project is its own step. A failed step can be retried alone. The run can be stopped and resumed.
 4. **Say what is lost.** Changes made inside a container's own filesystem (not in a volume) are not kept when the container is recreated. The assistant says so before it starts, and offers an opt-in snapshot (`docker commit`) for those containers.
@@ -32,6 +32,18 @@ Captain gets a **Migration Assistant** that copies data from any engine it can c
 - **Images:** all images, or only images that containers use. They stream from the source's `GET /images/get` into Captain Engine's `POST /images/load`, tags included.
 - **Compose projects:** after their images and volumes arrive, each project is recreated with `docker compose up -d` from its files (the working folder and file labels, ADR 0005), pointed at Captain Engine. Projects whose files no longer exist on disk fall back to the standalone path.
 - **Standalone containers:** recreated from their inspect data: image, command, environment, ports, mounts, labels, restart policy, and networks. User-defined networks are created first.
+
+### Switch-over mode
+
+Amended 2026-09-29. A copy of a running database is only crash-consistent, because the program writes while the tar stream reads. The old container also holds its published ports, so the copy cannot take them. Switch-over mode solves both for one project or container at a time.
+
+It adds one write to the source: Captain **stops** the containers that the user explicitly confirmed. It never removes them, and nothing in the source is ever deleted. Rule 1 still holds for everything else.
+
+- **Opt-in per item.** Only running Compose projects and running standalone containers offer it. It is off by default.
+- **Confirmation.** Before the run, a dialog lists every container that Captain will stop in the old engine.
+- **Steps.** Stop in the source (with the container's own stop timeout, or 30 s) → copy the item's volumes again into the emptied target volumes, and check them → start the item in the target → check it (health, or a steady run, and the published ports) → done. A Compose project starts with `docker compose up -d <services>`, with only the services that ran in the source. Services behind a profile, or ones that were off, stay off.
+- **Roll back.** Stop the item in the target, then start the originals in the source. Nothing is removed on either side.
+- **No live migration.** Checkpoint and restore (CRIU) would avoid the stop, but it is experimental in Docker and has open issues with volume mounts and networking (moby/moby#32227, #48207, #50750). A short stop is the reliable way to get a consistent copy.
 
 ### Where it appears
 
@@ -44,3 +56,4 @@ Captain gets a **Migration Assistant** that copies data from any engine it can c
 - It is slower than a raw disk copy for large image sets, because images are re-exported. Selecting only images in use keeps it short.
 - It needs both engines running at once, so it needs enough memory for two VMs for the duration.
 - The source stays intact, so a failed or partial migration never costs the user data. They can keep using the old engine from Settings.
+- With switch-over mode, a confirmed item is stopped in the source, not deleted. The user can roll back at any time and start it there again.

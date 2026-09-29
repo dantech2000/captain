@@ -15,6 +15,7 @@ mod progress;
 mod scan;
 mod session;
 mod source;
+mod switch_over;
 mod verify;
 mod volume;
 

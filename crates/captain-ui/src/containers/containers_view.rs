@@ -1,7 +1,9 @@
 use captain_core::store::ContainerFilter;
 use gpui_kit::*;
 
-use super::{column_header, empty_state, error_state, header, project_card, stat_tiles};
+use super::{
+    column_header, empty_state, error_state, header, project_card, selection_bar, stat_tiles,
+};
 use crate::engine_host::{HostModel, host_model, host_screen};
 use crate::theme::Palette;
 use crate::workspace::{Connection, Workspace};
@@ -92,6 +94,12 @@ impl ContainersView {
             .flex()
             .flex_col()
             .child(stat_tiles::render(workspace, palette))
+            .children(
+                workspace
+                    .bulk()
+                    .is_bulk()
+                    .then(|| selection_bar::render(&self.workspace, workspace, palette)),
+            )
             .child(column_header::render(palette))
             .child(
                 div()

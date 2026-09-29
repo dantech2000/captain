@@ -1,4 +1,5 @@
 mod actions;
+mod bulk;
 mod feed;
 mod prune;
 mod toolbar;

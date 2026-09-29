@@ -1,0 +1,30 @@
+[package]
+name = "captain-cli"
+description = "The captain command: control Captain Engine from the terminal"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+# The binary is `captain-cli` because captain-app already builds `captain`.
+# scripts/bundle-macos.sh installs it as Captain.app/Contents/Resources/bin/captain.
+[[bin]]
+name = "captain-cli"
+path = "src/main.rs"
+
+[dependencies]
+anyhow.workspace = true
+captain-core.workspace = true
+captain-docker.workspace = true
+captain-host.workspace = true
+chrono.workspace = true
+clap.workspace = true
+clap_complete.workspace = true
+dirs.workspace = true
+futures.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+
+[lints]
+workspace = true

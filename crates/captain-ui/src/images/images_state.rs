@@ -1,18 +1,20 @@
 use std::collections::HashSet;
 use std::sync::Arc;
 
-use captain_core::Engine;
 use captain_core::model::{Image, ImageDetail, ImageLayer};
-use captain_core::store::{ImageFilter, ImageStore, PullTracker};
+use captain_core::store::{ImageFilter, ImageStore, PullTracker, PushTracker};
+use captain_core::{Engine, ImageBuilder};
 use gpui_kit::*;
 
 use super::Started;
 
 /// The Images page state: the image list, the filter, the selection and its details,
-/// and any running remove, prune, or pull. The view hands it the engine once the
-/// workspace connects.
+/// and any running remove, prune, pull, or push. The view hands it the engine and the
+/// builder once the workspace connects.
 pub struct ImagesState {
     pub(super) engine: Option<Arc<dyn Engine>>,
+    /// Runs `docker buildx build`. `None` turns the Build button off.
+    pub(super) builder: Option<Arc<dyn ImageBuilder>>,
     pub(super) store: ImageStore,
     pub(super) filter: ImageFilter,
     pub(super) selected: Option<String>,
@@ -29,6 +31,9 @@ pub struct ImagesState {
     pub(super) pull_error: Option<String>,
     pub(super) reload_task: Option<Task<()>>,
     pub(super) pull_task: Option<Task<()>>,
+    pub(super) push: Option<PushTracker>,
+    pub(super) push_error: Option<String>,
+    pub(super) push_task: Option<Task<()>>,
     /// The inspect result of the selected image, once it arrives.
     pub(super) detail: Option<ImageDetail>,
     /// The history of the selected image, once it arrives.
@@ -43,6 +48,7 @@ impl ImagesState {
     pub fn new() -> Self {
         Self {
             engine: None,
+            builder: None,
             store: ImageStore::default(),
             filter: ImageFilter::default(),
             selected: None,
@@ -56,6 +62,9 @@ impl ImagesState {
             pull_error: None,
             reload_task: None,
             pull_task: None,
+            push: None,
+            push_error: None,
+            push_task: None,
             detail: None,
             layers: None,
             detail_error: None,
@@ -65,7 +74,13 @@ impl ImagesState {
     }
 
     /// Starts loading images. A second call with the same engine does nothing.
-    pub fn attach(&mut self, engine: Arc<dyn Engine>, cx: &mut Context<Self>) {
+    pub fn attach(
+        &mut self,
+        engine: Arc<dyn Engine>,
+        builder: Option<Arc<dyn ImageBuilder>>,
+        cx: &mut Context<Self>,
+    ) {
+        self.builder = builder;
         if self
             .engine
             .as_ref()
@@ -106,6 +121,13 @@ impl ImagesState {
         }
         self.selected = Some(id);
         cx.notify();
+    }
+
+    /// Loads the selected image's details again, for example after a new tag.
+    pub fn reload_selected_detail(&mut self, cx: &mut Context<Self>) {
+        if let Some(id) = self.selected.clone() {
+            self.load_detail(&id, cx);
+        }
     }
 
     /// Clears the selection, which closes the inspector.

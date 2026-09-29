@@ -1,7 +1,7 @@
 use super::{EngineFuture, EngineStream};
-use crate::model::{Image, ImageDetail, ImageLayer, PullProgress, RunSpec};
+use crate::model::{Image, ImageDetail, ImageLayer, PullProgress, RunSpec, ScanProgress};
 
-/// Images: list, inspect, remove, prune, pull, and run.
+/// Images: list, inspect, remove, prune, pull, run, tag, push, and scan.
 pub trait ImageApi {
     /// All images, including untagged ones, with the number of containers that use each.
     fn list_images(&self) -> EngineFuture<Vec<Image>>;
@@ -26,4 +26,18 @@ pub trait ImageApi {
     /// Creates a container from `spec` and starts it, like `docker run -d`. Returns the
     /// new container's ID. If the start fails, the created container stays.
     fn run_container(&self, spec: RunSpec) -> EngineFuture<String>;
+
+    /// Adds the tag `target`, for example `ghcr.io/team/app:1.0`, to the image
+    /// `source`, an ID or a reference. A missing tag means `latest`.
+    fn tag_image(&self, source: &str, target: &str) -> EngineFuture<()>;
+
+    /// Pushes the tag `reference` with the login from the Docker config. The stream
+    /// ends when the push is done, or after one error. A registry that wants a login
+    /// fails with a hint to run `docker login`.
+    fn push_image(&self, reference: &str) -> EngineStream<PullProgress>;
+
+    /// Scans `reference` for vulnerabilities with Trivy, run as a container. The
+    /// stream yields status lines, then one report, or one error. Dropping the stream
+    /// stops the scan.
+    fn scan_image(&self, reference: &str) -> EngineStream<ScanProgress>;
 }

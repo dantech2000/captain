@@ -1,14 +1,19 @@
+use std::path::{Path, PathBuf};
+
 use futures::FutureExt;
 use futures::StreamExt;
 use futures::future::ready;
 use futures::stream;
 
 mod echo;
+mod files;
+
+pub use files::FakeFiles;
 
 use super::FakeEngine;
 use crate::model::{
     Container, ContainerAction, ContainerDetail, ContainerState, EngineEvent, EngineInfo,
-    ExecSession, ExecSpec, LogLine, StatsSample,
+    ExecSession, ExecSpec, FileEntry, FilePreview, LogLine, ProcessTable, StatsSample,
 };
 use crate::{ContainerApi, EngineError, EngineFuture, EngineStream};
 
@@ -57,14 +62,37 @@ impl ContainerApi for FakeEngine {
     /// An echo session. Like the Docker engine, it refuses a container that is not
     /// running.
     fn exec(&self, id: &str, spec: ExecSpec) -> EngineFuture<ExecSession> {
-        let result = match self.containers.iter().find(|c| c.id == id) {
-            Some(container) if container.state == ContainerState::Running => {
-                Ok(echo::echo_session(spec))
-            }
+        let result = self.running(id).map(|()| echo::echo_session(spec));
+        ready(result).boxed()
+    }
+
+    fn list_files(&self, id: &str, path: &str) -> EngineFuture<Vec<FileEntry>> {
+        let result = self.running(id).and_then(|()| self.files.list(path));
+        ready(result).boxed()
+    }
+
+    fn read_file(&self, _id: &str, path: &str, limit: u64) -> EngineFuture<FilePreview> {
+        ready(self.files.read(path, limit)).boxed()
+    }
+
+    fn save_path(&self, _id: &str, path: &str, dir: &Path) -> EngineFuture<PathBuf> {
+        ready(self.files.save(path, dir)).boxed()
+    }
+
+    fn top(&self, id: &str) -> EngineFuture<ProcessTable> {
+        let result = self.running(id).map(|()| self.processes.clone());
+        ready(result).boxed()
+    }
+}
+
+impl FakeEngine {
+    /// Refuses a container that is missing or not running, like exec in the engine.
+    fn running(&self, id: &str) -> Result<(), EngineError> {
+        match self.containers.iter().find(|c| c.id == id) {
+            Some(container) if container.state == ContainerState::Running => Ok(()),
             Some(_) => Err(EngineError::Api(format!("container {id} is not running"))),
             None => Err(EngineError::Api(format!("No such container: {id}"))),
-        };
-        ready(result).boxed()
+        }
     }
 }
 

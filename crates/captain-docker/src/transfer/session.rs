@@ -16,7 +16,8 @@ use super::in_flight::InFlight;
 use super::network::copy_network;
 use super::progress::{Events, Outcome};
 use super::source::SourceEngine;
-use super::volume::copy_volume;
+use super::switch_over::{Job, roll_back, switch_over};
+use super::volume::{Existing, copy_volume};
 use super::{client, disk, helper, scan};
 use crate::{ComposeCli, Endpoint, runtime};
 
@@ -66,7 +67,14 @@ impl DockerSession {
         let (source, target) = (self.source.clone(), self.target.clone());
         let (name, target_name) = (name.to_string(), target_name.to_string());
         run(&self.runtime, &self.in_flight, move |events| async move {
-            copy_volume(&source, &target, &name, &target_name, &events).await
+            copy_volume(
+                &source,
+                &target,
+                (&name, &target_name),
+                Existing::Skip,
+                &events,
+            )
+            .await
         })
     }
 
@@ -83,6 +91,44 @@ impl DockerSession {
         run(&self.runtime, &self.in_flight, move |events| async move {
             copy_container(&source, &target, &id, Some(&target_name), snapshot, &events).await
         })
+    }
+
+    /// Switches the source container `name` over into `target_name`, and copies each
+    /// pair of source and target volumes again. The assistant keeps names; tests
+    /// switch into a new name on one engine.
+    pub fn switch_container_as(
+        &self,
+        name: &str,
+        target_name: &str,
+        volumes: &[(String, String)],
+    ) -> EngineStream<TransferEvent> {
+        let (source, target) = (self.source.clone(), self.target.clone());
+        let (name, target_name) = (name.to_string(), target_name.to_string());
+        let (volumes, local) = (volumes.to_vec(), self.target_is_local());
+        run(&self.runtime, &self.in_flight, move |events| async move {
+            let job = Job::container(&name, &target_name, volumes, local);
+            switch_over(&source, &target, job, &events).await
+        })
+    }
+
+    /// Rolls back [`Self::switch_container_as`].
+    pub fn roll_back_container_as(&self, name: &str, target_name: &str) -> EngineFuture<()> {
+        let (source, target) = (self.source.clone(), self.target.clone());
+        let (name, target_name) = (name.to_string(), target_name.to_string());
+        let local = self.target_is_local();
+        runtime::spawn(self.runtime.handle(), async move {
+            let job = Job::container(&name, &target_name, Vec::new(), local);
+            roll_back(&source, &target, &job).await
+        })
+    }
+
+    /// True if the target runs on this computer, so its published ports are on
+    /// 127.0.0.1.
+    fn target_is_local(&self) -> bool {
+        matches!(
+            self.target_endpoint,
+            Endpoint::Unix(_) | Endpoint::NamedPipe(_)
+        )
     }
 
     fn compose_cli(&self) -> impl Future<Output = Result<ComposeCli, String>> + Send + 'static {
@@ -127,7 +173,7 @@ impl MigrationSession for DockerSession {
                     copy_network(&source, &target, name, &events).await
                 }
                 MigrationItem::Volume { name, .. } => {
-                    copy_volume(&source, &target, name, name, &events).await
+                    copy_volume(&source, &target, (name, name), Existing::Skip, &events).await
                 }
                 MigrationItem::Image { id, tags, size, .. } => {
                     copy_image(&source, &target, id, tags, *size, &events).await
@@ -160,6 +206,33 @@ impl MigrationSession for DockerSession {
         })
     }
 
+    fn switch_over(&self, item: &MigrationItem, snapshot: bool) -> EngineStream<TransferEvent> {
+        let (source, target) = (self.source.clone(), self.target.clone());
+        let item = item.clone();
+        let cli = matches!(item, MigrationItem::ComposeProject { .. }).then(|| self.compose_cli());
+        let local = self.target_is_local();
+        run(&self.runtime, &self.in_flight, move |events| async move {
+            let cli = match cli {
+                Some(cli) => cli.await,
+                None => Err("no Compose CLI".into()),
+            };
+            let job =
+                Job::for_item(&item, snapshot, cli, local).ok_or_else(|| not_running(&item))?;
+            switch_over(&source, &target, job, &events).await
+        })
+    }
+
+    fn roll_back(&self, item: &MigrationItem) -> EngineFuture<()> {
+        let (source, target) = (self.source.clone(), self.target.clone());
+        let item = item.clone();
+        let local = self.target_is_local();
+        runtime::spawn(self.runtime.handle(), async move {
+            let cli = Err("a roll back needs no Compose CLI".into());
+            let job = Job::for_item(&item, false, cli, local).ok_or_else(|| not_running(&item))?;
+            roll_back(&source, &target, &job).await
+        })
+    }
+
     fn finish(&self) -> EngineFuture<()> {
         let (source, target) = (self.source.clone(), self.target.clone());
         let in_flight = self.in_flight.clone();
@@ -172,6 +245,13 @@ impl MigrationSession for DockerSession {
             Ok(())
         })
     }
+}
+
+fn not_running(item: &MigrationItem) -> EngineError {
+    EngineError::Api(format!(
+        "{} did not run in the old engine, so it cannot switch over.",
+        item.label()
+    ))
 }
 
 /// Runs one copy on `runtime` and reports its events. A skip becomes a

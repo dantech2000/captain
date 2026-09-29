@@ -1,5 +1,6 @@
 //! Brings menu clicks from `muda` into GPUI, and runs the command behind each one.
 
+use captain_core::kubernetes::{use_context, user_kubeconfig_paths};
 use futures::StreamExt;
 use futures::channel::mpsc;
 use gpui_kit::*;
@@ -60,5 +61,12 @@ fn run(command: TrayCommand, cx: &mut App) {
             });
         }
         TrayCommand::OpenPort(port) => cx.open_url(&format!("http://localhost:{port}")),
+        TrayCommand::UseContext(name) => {
+            let paths = user_kubeconfig_paths();
+            if let Err(error) = use_context(&paths, &name) {
+                tracing::warn!(%error, "cannot switch the Kubernetes context");
+            }
+            super::controller::refresh_contexts(cx);
+        }
     }
 }

@@ -11,6 +11,9 @@ use super::Workspace;
 /// Events often come in bursts, for example `docker compose up`. Wait this long after
 /// the last event before reloading the list.
 const RELOAD_DEBOUNCE: Duration = Duration::from_millis(150);
+/// The engine's status text ("Up 3 minutes") only changes when Captain lists again,
+/// and a running container sends no events. Reload this often while any runs.
+const STATUS_REFRESH: Duration = Duration::from_secs(30);
 
 impl Workspace {
     /// Reloads the container list after `delay`. A newer call cancels a pending one.
@@ -33,7 +36,12 @@ impl Workspace {
                 self.store.replace(containers);
                 self.loaded = true;
                 self.keep_selection_valid();
+                let store = &self.store;
+                self.checked.retain(|id| store.find(id).is_some());
                 self.sync_stats(cx);
+                if self.store.active_count() > 0 {
+                    self.reload(STATUS_REFRESH, cx);
+                }
                 cx.notify();
             }
             Err(error) => self.fail(error, cx),
