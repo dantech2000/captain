@@ -1,8 +1,10 @@
 use std::rc::Rc;
 
+use captain_core::settings::EngineChoice;
 use gpui_kit::*;
 
 use super::store;
+use crate::engine_host;
 use crate::workspace::{Connector, Workspace, active_workspace};
 
 /// An engine endpoint found on this machine.
@@ -40,21 +42,25 @@ pub fn engine_source(cx: &App) -> Option<Rc<dyn EngineSource>> {
         .map(|global| global.0.clone())
 }
 
-/// Drops the current connection and connects again, to the endpoint in the settings
-/// or by discovery.
+/// Drops the current connection and connects again: to Captain Engine when the
+/// settings choose it, else to the endpoint in the settings or by discovery.
 pub fn reconnect(workspace: &Entity<Workspace>, cx: &mut App) {
     let Some(source) = engine_source(cx) else {
         tracing::warn!("no engine source, so Captain cannot reconnect");
         return;
     };
-    let endpoint = store::current(cx).engine_endpoint;
+    let endpoint = engine_host::captain_endpoint(cx).or_else(|| store::current(cx).engine_endpoint);
     let connector = source.connector(endpoint.as_deref());
     workspace.update(cx, |workspace, cx| workspace.reconnect(connector, cx));
 }
 
-/// Saves `endpoint` as the engine to use (`None` means discovery) and reconnects.
+/// Saves `endpoint` as the engine to use (`None` means discovery), switches away
+/// from Captain Engine, and reconnects.
 pub fn use_engine(workspace: &Entity<Workspace>, endpoint: Option<String>, cx: &mut App) {
-    store::update(cx, |settings| settings.engine_endpoint = endpoint);
+    store::update(cx, |settings| {
+        settings.engine_endpoint = endpoint;
+        settings.engine = Some(EngineChoice::External);
+    });
     reconnect(workspace, cx);
 }
 

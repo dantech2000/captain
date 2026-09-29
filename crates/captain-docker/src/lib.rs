@@ -8,6 +8,7 @@ mod endpoint;
 mod engine;
 mod mapping;
 mod runtime;
+mod transfer;
 
 pub use compose::ComposeCli;
 pub use discovery::{
@@ -15,3 +16,4 @@ pub use discovery::{
 };
 pub use endpoint::{Endpoint, UnsupportedHost};
 pub use engine::DockerEngine;
+pub use transfer::{DockerMigrator, DockerSession};

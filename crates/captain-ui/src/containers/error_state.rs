@@ -3,12 +3,37 @@ use gpui_kit::assets::IconName;
 use gpui_kit::component::Icon;
 use gpui_kit::*;
 
+use crate::engine_host::HostModel;
 use crate::settings;
 use crate::theme::Palette;
 use crate::widgets::{ButtonTone, text_button};
 
-/// Shown when Captain cannot reach its engine.
-pub fn render(error: &EngineError, palette: &Palette) -> impl IntoElement {
+/// Shown when Captain cannot reach its engine. When Captain Engine runs but does not
+/// answer, the Docker socket forward may have died after the Mac slept
+/// (lima-vm/lima#5420), so it offers a restart.
+pub fn render(
+    error: &EngineError,
+    host: Option<&Entity<HostModel>>,
+    palette: &Palette,
+    cx: &App,
+) -> impl IntoElement {
+    let restart = host
+        .filter(|host| {
+            let host = host.read(cx);
+            host.uses_captain(cx) && host.status().is_running() && host.can_control()
+        })
+        .cloned();
+    let (heading, hint) = if restart.is_some() {
+        (
+            "Captain Engine is not answering",
+            "Its Docker socket can stop working after the Mac sleeps. Restart the engine.",
+        )
+    } else {
+        (
+            "Captain's engine isn't running",
+            "Start the engine, then click Retry. Settings can switch engines.",
+        )
+    };
     div()
         .size_full()
         .flex()
@@ -40,21 +65,32 @@ pub fn render(error: &EngineError, palette: &Palette) -> impl IntoElement {
                     div()
                         .text_size(px(22.))
                         .font_weight(FontWeight::BOLD)
-                        .child("Captain's engine isn't running"),
+                        .child(heading),
                 )
+                .child(div().text_color(palette.text2).child(hint))
                 .child(
                     div()
-                        .text_color(palette.text2)
-                        .child("Start the engine, then click Retry. Settings can switch engines."),
+                        .flex()
+                        .gap(px(8.))
+                        .child(text_button(
+                            "engine-retry",
+                            "Retry",
+                            ButtonTone::Accent,
+                            true,
+                            palette,
+                            |_, _, cx| settings::retry(cx),
+                        ))
+                        .children(restart.map(|host| {
+                            text_button(
+                                "engine-restart",
+                                "Restart Captain Engine",
+                                ButtonTone::Accent,
+                                true,
+                                palette,
+                                move |_, _, cx| host.update(cx, |host, cx| host.restart(cx)),
+                            )
+                        })),
                 )
-                .child(text_button(
-                    "engine-retry",
-                    "Retry",
-                    ButtonTone::Accent,
-                    true,
-                    palette,
-                    |_, _, cx| settings::retry(cx),
-                ))
                 .child(
                     div()
                         .w_full()

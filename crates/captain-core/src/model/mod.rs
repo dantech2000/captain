@@ -7,6 +7,7 @@ mod container_detail;
 mod engine_info;
 mod env_var;
 mod event;
+mod exec;
 mod health;
 mod image;
 mod log_line;
@@ -24,6 +25,7 @@ pub use container_detail::{ContainerDetail, HealthCheck, Mount};
 pub use engine_info::EngineInfo;
 pub use env_var::EnvVar;
 pub use event::{EngineEvent, EventKind};
+pub use exec::{DEFAULT_SHELLS, ExecInput, ExecResizer, ExecSession, ExecSpec};
 pub use health::Health;
 #[allow(unused_imports)]
 pub use image::*;

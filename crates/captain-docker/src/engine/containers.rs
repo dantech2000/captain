@@ -1,5 +1,7 @@
 //! Containers, events, and engine info. Every call runs on the private tokio runtime.
 
+mod exec;
+
 use std::pin::pin;
 
 use bollard::query_parameters::{
@@ -7,7 +9,8 @@ use bollard::query_parameters::{
     StatsOptionsBuilder,
 };
 use captain_core::model::{
-    Container, ContainerAction, ContainerDetail, EngineEvent, EngineInfo, LogLine, StatsSample,
+    Container, ContainerAction, ContainerDetail, EngineEvent, EngineInfo, ExecSession, ExecSpec,
+    LogLine, StatsSample,
 };
 use captain_core::{ContainerApi, EngineFuture, EngineStream};
 use futures::StreamExt;
@@ -123,5 +126,10 @@ impl ContainerApi for DockerEngine {
             };
             result.map_err(mapping::engine_error)
         })
+    }
+
+    fn exec(&self, id: &str, spec: ExecSpec) -> EngineFuture<ExecSession> {
+        let handle = self.runtime.handle().clone();
+        exec::start(self.docker.clone(), handle, id.to_string(), spec)
     }
 }

@@ -2,7 +2,9 @@ use std::collections::BTreeMap;
 
 use captain_core::model::ContainerAction;
 
-use super::snapshot::{ContainerEntry, EngineStatus, TraySnapshot};
+use captain_core::HostStatus;
+
+use super::snapshot::{ContainerEntry, EngineStatus, HostEntry, TraySnapshot};
 
 /// What a menu item does when the user picks it.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -10,6 +12,10 @@ pub enum TrayCommand {
     OpenCaptain,
     Settings,
     Quit,
+    /// Starts Captain Engine.
+    StartEngine,
+    /// Stops Captain Engine.
+    StopEngine,
     /// Runs an action on one container.
     Container {
         id: String,
@@ -53,11 +59,16 @@ impl TrayItem {
 
 /// The whole menu for `snapshot`, top to bottom.
 pub fn build(snapshot: &TraySnapshot) -> Vec<TrayItem> {
-    let mut items = vec![TrayItem::Label(snapshot.engine.label().into())];
+    let status = snapshot
+        .host
+        .as_ref()
+        .map_or(snapshot.engine.label(), HostEntry::label);
+    let mut items = vec![TrayItem::Label(status.into())];
     let running = snapshot.engine == EngineStatus::Running;
     if running {
         items.push(TrayItem::Label(count_label(snapshot)));
     }
+    items.extend(snapshot.host.as_ref().and_then(host_item));
     items.extend([
         TrayItem::Separator,
         TrayItem::command("Open Captain", TrayCommand::OpenCaptain),
@@ -81,6 +92,33 @@ pub fn build(snapshot: &TraySnapshot) -> Vec<TrayItem> {
         TrayItem::command("Quit Captain", TrayCommand::Quit),
     ]);
     items
+}
+
+/// Start or Stop for Captain Engine. Setup has choices, so it opens the window.
+fn host_item(host: &HostEntry) -> Option<TrayItem> {
+    if !host.can_control {
+        return None;
+    }
+    let (label, command, enabled) = match host.status {
+        HostStatus::Running | HostStatus::Starting => {
+            ("Stop Captain Engine", TrayCommand::StopEngine, true)
+        }
+        HostStatus::Stopping => ("Stop Captain Engine", TrayCommand::StopEngine, false),
+        HostStatus::NotCreated => (
+            "Set Up Captain Engine\u{2026}",
+            TrayCommand::OpenCaptain,
+            true,
+        ),
+        HostStatus::NotInstalled(_) => ("Start Captain Engine", TrayCommand::StartEngine, false),
+        HostStatus::Stopped | HostStatus::Failed(_) => {
+            ("Start Captain Engine", TrayCommand::StartEngine, true)
+        }
+    };
+    Some(TrayItem::Command {
+        label: label.into(),
+        command,
+        enabled,
+    })
 }
 
 /// "3 of 5 containers running".

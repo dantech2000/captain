@@ -8,5 +8,6 @@ mod placeholder;
 mod section;
 mod stats_tab;
 mod tabs;
+mod terminal;
 
 pub use inspector_view::InspectorView;

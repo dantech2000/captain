@@ -9,6 +9,7 @@ pub use projects::project_badge;
 
 use gpui_kit::*;
 
+use crate::engine_host::HostSummary;
 use crate::theme::Palette;
 use crate::widgets::drag_region;
 use crate::workspace::Workspace;
@@ -16,6 +17,7 @@ use crate::workspace::Workspace;
 pub fn render(
     handle: &Entity<Workspace>,
     workspace: &Workspace,
+    host: Option<&HostSummary>,
     palette: &Palette,
 ) -> impl IntoElement {
     div()
@@ -31,11 +33,11 @@ pub fn render(
         .border_r_1()
         .border_color(palette.sep)
         .child(drag_region("sidebar-drag").h(px(48.)).flex_shrink_0())
-        .child(brand::render(workspace.connection(), palette))
+        .child(brand::render(workspace.connection(), host, palette))
         .child(search_button::render(palette))
         .child(nav::render(handle, workspace, palette))
         .child(projects::render(workspace.store(), palette))
         .child(div().flex_1())
         .child(settings_link::render(handle, workspace, palette))
-        .child(engine_card::render(workspace, palette))
+        .child(engine_card::render(workspace, host, palette))
 }

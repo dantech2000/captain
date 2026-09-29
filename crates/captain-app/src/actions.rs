@@ -3,10 +3,12 @@
 use captain_ui::ToggleCommandPalette;
 use gpui_kit::*;
 
+use crate::quit;
+
 gpui_kit::actions!(captain, [Quit]);
 
 pub fn register(cx: &mut App) {
-    cx.on_action(|_: &Quit, cx| cx.quit());
+    cx.on_action(|_: &Quit, cx| quit::quit(cx));
     cx.bind_keys([
         KeyBinding::new("cmd-q", Quit, None),
         KeyBinding::new("ctrl-q", Quit, None),
@@ -21,7 +23,7 @@ pub fn register(cx: &mut App) {
     cx.set_quit_mode(QuitMode::Explicit);
     cx.on_window_closed(|cx, _| {
         if cx.windows().is_empty() && !has_tray(cx) {
-            cx.quit();
+            quit::quit(cx);
         }
     })
     .detach();

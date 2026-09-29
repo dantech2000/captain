@@ -2,6 +2,9 @@ use captain_core::EngineError;
 use captain_core::model::{Container, ContainerState, PortMapping};
 use captain_ui::Connection;
 
+use captain_core::HostStatus;
+use captain_core::model::EngineInfo;
+
 use super::{EngineStatus, TraySnapshot};
 
 fn container(name: &str, state: ContainerState, project: Option<&str>) -> Container {
@@ -78,4 +81,30 @@ fn snapshots_compare_equal_when_nothing_the_menu_shows_changed() {
     b.state = ContainerState::Exited;
     let third = TraySnapshot::new(EngineStatus::Running, &[b]);
     assert_ne!(first, third);
+}
+
+#[test]
+fn captain_engine_status_comes_from_the_host() {
+    let failed = Connection::Failed(EngineError::Unreachable("gone".into()));
+    assert_eq!(
+        EngineStatus::of_host(&HostStatus::Starting, &failed),
+        EngineStatus::Starting
+    );
+    assert_eq!(
+        EngineStatus::of_host(&HostStatus::Running, &Connection::Connecting),
+        EngineStatus::Starting
+    );
+    assert_eq!(
+        EngineStatus::of_host(&HostStatus::Running, &failed),
+        EngineStatus::Stopped
+    );
+    assert_eq!(
+        EngineStatus::of_host(&HostStatus::NotCreated, &Connection::Connecting),
+        EngineStatus::Stopped
+    );
+    let connected = Connection::Connected(EngineInfo::default());
+    assert_eq!(
+        EngineStatus::of_host(&HostStatus::Running, &connected),
+        EngineStatus::Running
+    );
 }

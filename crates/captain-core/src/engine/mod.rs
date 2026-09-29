@@ -1,6 +1,7 @@
 //! The engine API, one trait per resource. [`Engine`] is all of them together.
 
 mod containers;
+mod host;
 mod images;
 mod networks;
 mod projects;
@@ -10,6 +11,7 @@ use futures::future::BoxFuture;
 use futures::stream::BoxStream;
 
 pub use containers::ContainerApi;
+pub use host::{EngineHost, GIB, HostError, HostFuture, HostResources, HostStatus, HostStream};
 pub use images::ImageApi;
 pub use networks::NetworkApi;
 pub use projects::ProjectRunner;

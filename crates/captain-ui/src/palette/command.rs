@@ -4,6 +4,7 @@ use gpui_kit::assets::IconName;
 use gpui_kit::*;
 
 use crate::containers::down_dialog;
+use crate::migration::OpenMigrationAssistant;
 use crate::workspace::{Page, Workspace};
 
 /// The group a command is listed under.
@@ -42,6 +43,8 @@ pub enum CommandKind {
     Show(String),
     /// Opens a published port on localhost in the browser.
     OpenPort(u16),
+    /// Opens the Migration Assistant.
+    BringData,
 }
 
 impl CommandKind {
@@ -75,6 +78,7 @@ impl CommandKind {
                 w.set_page(Page::Containers, cx);
             }),
             CommandKind::OpenPort(port) => cx.open_url(&format!("http://localhost:{port}")),
+            CommandKind::BringData => open_migration(cx),
         }
     }
 }
@@ -100,6 +104,21 @@ fn run_project(
         window
             .update(cx, |_, window, cx| {
                 down_dialog::open(project, workspace, window, cx);
+            })
+            .ok();
+    });
+}
+
+/// Dispatches [`OpenMigrationAssistant`] in the active window, once the palette's
+/// own event has finished.
+fn open_migration(cx: &mut App) {
+    let Some(window) = cx.active_window() else {
+        return;
+    };
+    cx.defer(move |cx| {
+        window
+            .update(cx, |_, window, cx| {
+                window.dispatch_action(Box::new(OpenMigrationAssistant), cx);
             })
             .ok();
     });

@@ -1,20 +1,33 @@
+use captain_core::HostStatus;
 use captain_core::format::{bytes_label, percent_label};
+use captain_core::model::EngineInfo;
 use gpui_kit::*;
 
+use crate::engine_host::HostSummary;
 use crate::theme::Palette;
+use crate::widgets::{ButtonTone, pill, text_button};
 use crate::workspace::{Connection, Workspace};
 
-/// Engine resources and how much the containers use.
-pub fn render(workspace: &Workspace, palette: &Palette) -> impl IntoElement {
-    let Connection::Connected(info) = workspace.connection() else {
-        return div();
+/// The engine: with Captain Engine, its state and a Start or Stop button; while
+/// connected, its resources and how much the containers use.
+pub fn render(
+    workspace: &Workspace,
+    host: Option<&HostSummary>,
+    palette: &Palette,
+) -> impl IntoElement {
+    let info = match workspace.connection() {
+        Connection::Connected(info) => Some(info),
+        _ => None,
     };
-    let stats = workspace.stats();
-    let cpu_capacity = f64::from(info.cpus.max(1)) * 100.0;
-    let cpu = stats.total_cpu() / cpu_capacity;
-    let memory = stats.total_memory() as f64 / info.memory_bytes.max(1) as f64;
-
-    div()
+    if host.is_none() && info.is_none() {
+        return div();
+    }
+    let title = if host.is_some() {
+        "Captain Engine"
+    } else {
+        "Engine"
+    };
+    let card = div()
         .flex()
         .flex_col()
         .gap(px(10.))
@@ -31,9 +44,9 @@ pub fn render(workspace: &Workspace, palette: &Palette) -> impl IntoElement {
                     div()
                         .text_size(px(12.))
                         .font_weight(FontWeight::SEMIBOLD)
-                        .child("Captain Engine"),
+                        .child(title),
                 )
-                .child(
+                .children(info.map(|info| {
                     div()
                         .text_size(px(11.))
                         .text_color(palette.text3)
@@ -41,17 +54,72 @@ pub fn render(workspace: &Workspace, palette: &Palette) -> impl IntoElement {
                             "{} CPUs · {}",
                             info.cpus,
                             bytes_label(info.memory_bytes)
-                        )),
-                ),
+                        ))
+                })),
         )
-        .child(gauge(
+        .children(host.map(|host| controls(host, palette)));
+    match info {
+        Some(info) => card.children(gauges(workspace, info, palette)),
+        None => card,
+    }
+}
+
+/// The host state and a Start or Stop button.
+fn controls(host: &HostSummary, palette: &Palette) -> Div {
+    let color = match host.status {
+        HostStatus::Running => palette.green,
+        HostStatus::Starting | HostStatus::Stopping => palette.orange,
+        HostStatus::NotCreated => palette.gray,
+        _ => palette.red,
+    };
+    let model = host.model.clone();
+    let button = if host.status.can_stop() {
+        text_button(
+            "sidebar-engine-stop",
+            "Stop",
+            ButtonTone::Accent,
+            host.can_control,
+            palette,
+            move |_, _, cx| model.update(cx, |model, cx| model.stop(cx)).detach(),
+        )
+    } else {
+        let label = if host.status == HostStatus::NotCreated {
+            "Set up"
+        } else {
+            "Start"
+        };
+        text_button(
+            "sidebar-engine-start",
+            label,
+            ButtonTone::Accent,
+            host.can_control && host.status.can_start(),
+            palette,
+            move |_, _, cx| model.update(cx, |model, cx| model.start(cx)),
+        )
+    };
+    div()
+        .flex()
+        .items_center()
+        .justify_between()
+        .child(pill(host.status.label(), color, palette.tint(color)))
+        .child(button)
+}
+
+/// CPU and memory use of the containers against the engine's capacity.
+fn gauges(workspace: &Workspace, info: &EngineInfo, palette: &Palette) -> [Div; 2] {
+    let stats = workspace.stats();
+    let cpu_capacity = f64::from(info.cpus.max(1)) * 100.0;
+    let cpu = stats.total_cpu() / cpu_capacity;
+    let memory = stats.total_memory() as f64 / info.memory_bytes.max(1) as f64;
+    [
+        gauge(
             "CPU",
             percent_label(cpu * 100.0),
             cpu,
             palette.accent,
             palette,
-        ))
-        .child(gauge(
+        ),
+        gauge(
             "Memory",
             format!(
                 "{} of {}",
@@ -61,7 +129,8 @@ pub fn render(workspace: &Workspace, palette: &Palette) -> impl IntoElement {
             memory,
             palette.accent,
             palette,
-        ))
+        ),
+    ]
 }
 
 fn gauge(label: &'static str, value: String, fraction: f64, color: Hsla, palette: &Palette) -> Div {

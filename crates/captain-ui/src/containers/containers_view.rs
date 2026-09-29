@@ -2,20 +2,29 @@ use captain_core::store::ContainerFilter;
 use gpui_kit::*;
 
 use super::{column_header, empty_state, error_state, header, project_card, stat_tiles};
+use crate::engine_host::{HostModel, host_model, host_screen};
 use crate::theme::Palette;
 use crate::workspace::{Connection, Workspace};
 
 /// The Containers page: stat tiles and containers grouped into project cards.
 pub struct ContainersView {
     workspace: Entity<Workspace>,
-    _observe: Subscription,
+    /// Captain Engine, whose screens replace the list while it is not running.
+    host: Option<Entity<HostModel>>,
+    _observe: Vec<Subscription>,
 }
 
 impl ContainersView {
     pub fn new(workspace: Entity<Workspace>, cx: &mut Context<Self>) -> Self {
-        let observe = cx.observe(&workspace, |_, _, cx| cx.notify());
+        let host = host_model(cx);
+        let mut observe = vec![cx.observe(&workspace, |_, _, cx| cx.notify())];
+        observe.extend(
+            host.as_ref()
+                .map(|host| cx.observe(host, |_, _, cx| cx.notify())),
+        );
         Self {
             workspace,
+            host,
             _observe: observe,
         }
     }
@@ -26,9 +35,17 @@ impl Render for ContainersView {
         let palette = Palette::of(cx);
         let workspace = self.workspace.read(cx);
 
-        let body = match workspace.connection() {
-            Connection::Failed(error) => error_state::render(error, &palette).into_any_element(),
-            _ if !workspace.is_loaded() => div()
+        // While Captain Engine is not running, its screens replace the list.
+        let screen = self
+            .host
+            .as_ref()
+            .and_then(|host| host_screen(host, &palette, cx));
+        let body = match (screen, workspace.connection()) {
+            (Some(screen), _) => screen,
+            (None, Connection::Failed(error)) => {
+                error_state::render(error, self.host.as_ref(), &palette, cx).into_any_element()
+            }
+            (None, _) if !workspace.is_loaded() => div()
                 .size_full()
                 .flex()
                 .items_center()
@@ -36,7 +53,7 @@ impl Render for ContainersView {
                 .text_color(palette.text2)
                 .child("Connecting to the engine...")
                 .into_any_element(),
-            _ => self.list(workspace, &palette).into_any_element(),
+            (None, _) => self.list(workspace, &palette).into_any_element(),
         };
 
         div()

@@ -4,6 +4,7 @@ use gpui_kit::*;
 
 use super::logs::LogsPane;
 use super::tabs::{self, Tab};
+use super::terminal::{TerminalPane, TerminalTarget};
 use super::{actions, header, overview, placeholder, stats_tab};
 use crate::theme::Palette;
 use crate::widgets::drag_region;
@@ -20,6 +21,7 @@ pub struct InspectorView {
     shown: Option<(String, ContainerState)>,
     detail: Option<ContainerDetail>,
     logs: Entity<LogsPane>,
+    terminal: Entity<TerminalPane>,
     detail_task: Option<Task<()>>,
     _observe: Subscription,
 }
@@ -36,6 +38,7 @@ impl InspectorView {
             shown: None,
             detail: None,
             logs: cx.new(|_| LogsPane::default()),
+            terminal: cx.new(TerminalPane::new),
             detail_task: None,
             _observe: observe,
         };
@@ -50,6 +53,20 @@ impl InspectorView {
         if current == self.shown {
             return;
         }
+        let target = workspace.selected().map(|c| TerminalTarget {
+            id: c.id.clone(),
+            name: c.name.clone(),
+            running: c.state == ContainerState::Running,
+        });
+        let engine = workspace.engine();
+        let show_terminal = self.tab == Tab::Terminal;
+        self.terminal.update(cx, |terminal, cx| {
+            terminal.set_target(target, engine, cx);
+            if show_terminal {
+                terminal.show(cx);
+            }
+        });
+        let workspace = self.workspace.read(cx);
         let same_container = current.as_ref().map(|c| &c.0) == self.shown.as_ref().map(|s| &s.0);
         self.shown = current.clone();
         let (Some((id, _)), Some(engine)) = (current, workspace.engine()) else {
@@ -86,6 +103,9 @@ impl Render for InspectorView {
             entity
                 .update(cx, |this, cx| {
                     this.tab = tab;
+                    if tab == Tab::Terminal {
+                        this.terminal.update(cx, |terminal, cx| terminal.show(cx));
+                    }
                     cx.notify();
                 })
                 .ok();
@@ -102,13 +122,7 @@ impl Render for InspectorView {
                 let history = self.workspace.read(cx).stats().get(&container.id);
                 stats_tab::render(history, &palette).into_any_element()
             }
-            Tab::Terminal => placeholder::render(
-                IconName::SquareTerminal,
-                "Terminal is coming in M8",
-                "An interactive shell in the container, built on libghostty-vt.",
-                &palette,
-            )
-            .into_any_element(),
+            Tab::Terminal => self.terminal.clone().into_any_element(),
             Tab::Files => placeholder::render(
                 IconName::Folder,
                 "Files are coming later",

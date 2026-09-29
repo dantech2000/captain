@@ -1,0 +1,19 @@
+[package]
+name = "captain-host"
+description = "Captain Engine: the machine that runs the engine (a Lima VM on macOS)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+captain-core.workspace = true
+dirs.workspace = true
+futures.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tracing.workspace = true
+
+[lints]
+workspace = true

@@ -3,7 +3,10 @@ use gpui_kit::*;
 
 use super::engine_source::{self, DetectedEndpoint};
 use super::store::{self, SettingsStore};
-use super::{about_section, appearance_section, endpoint_picker, engine_section};
+use super::{
+    about_section, appearance_section, captain_engine_section, endpoint_picker, engine_section,
+};
+use crate::engine_host::{HostModel, host_model};
 use crate::theme::Palette;
 use crate::widgets::{inline_error, page_header};
 use crate::workspace::Workspace;
@@ -11,6 +14,8 @@ use crate::workspace::Workspace;
 /// The Settings page: appearance, the engine connection, and About.
 pub struct SettingsView {
     pub(super) workspace: Entity<Workspace>,
+    /// Captain Engine, when the app has one.
+    host: Option<Entity<HostModel>>,
     /// The custom endpoint field. It needs a window, so the first render creates it.
     input: Option<Entity<InputState>>,
     /// Why the custom endpoint is not valid.
@@ -24,12 +29,19 @@ impl SettingsView {
     pub fn new(workspace: Entity<Workspace>, cx: &mut Context<Self>) -> Self {
         let observe = cx.observe(&workspace, |_, _, cx| cx.notify());
         let settings = cx.observe_global::<SettingsStore>(|_, cx| cx.notify());
+        let host = host_model(cx);
+        let mut subscriptions = vec![observe, settings];
+        subscriptions.extend(
+            host.as_ref()
+                .map(|host| cx.observe(host, |_, _, cx| cx.notify())),
+        );
         let mut view = Self {
             workspace,
+            host,
             input: None,
             hint: None,
             detected: Vec::new(),
-            subscriptions: vec![observe, settings],
+            subscriptions,
         };
         view.rescan(cx);
         view
@@ -117,6 +129,11 @@ impl Render for SettingsView {
                 )
             }))
             .child(appearance_section::render(&settings, &palette))
+            .children(
+                self.host
+                    .as_ref()
+                    .map(|host| captain_engine_section::render(host, &settings, &palette, cx)),
+            )
             .child(engine_section::render(self, &settings, &palette, cx))
             .child(endpoint_picker::render(self, &input, &palette, cx))
             .child(about_section::render(&palette));
@@ -128,7 +145,7 @@ impl Render for SettingsView {
             .child(page_header(
                 "settings-header",
                 "Settings",
-                "Appearance, the engine connection, and information about Captain",
+                "Appearance, Captain Engine, the engine connection, and information about Captain",
                 None,
                 &palette,
             ))

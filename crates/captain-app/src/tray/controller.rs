@@ -33,7 +33,7 @@ struct Tray {
     shown: Option<TraySnapshot>,
     commands: HashMap<MenuId, TrayCommand>,
     rebuild: Option<Task<()>>,
-    _observe: Subscription,
+    _observe: Vec<Subscription>,
     _events: Task<()>,
 }
 
@@ -47,7 +47,8 @@ impl Global for TrayHandle {}
 /// Captain runs without the icon and quits when its last window closes.
 pub fn start(cx: &mut App) {
     let workspace = window::workspace(cx);
-    let snapshot = TraySnapshot::of(workspace.read(cx));
+    let snapshot = snapshot(&workspace, cx);
+    let host = captain_ui::host_model(cx);
     let icon = TrayIconBuilder::new()
         .with_tooltip("Captain")
         .with_icon(status_icon(snapshot.engine))
@@ -62,9 +63,16 @@ pub fn start(cx: &mut App) {
     };
     let events = events::listen(command, cx);
     let tray = cx.new(|cx| {
-        let observe = cx.observe(&workspace, |tray: &mut Tray, workspace, cx| {
+        let mut observe = vec![cx.observe(&workspace, |tray: &mut Tray, workspace, cx| {
             tray.workspace_changed(workspace, cx);
-        });
+        })];
+        // Captain Engine changes the status line and the Start or Stop item.
+        let watched = workspace.clone();
+        observe.extend(host.map(|host| {
+            cx.observe(&host, move |tray: &mut Tray, _, cx| {
+                tray.workspace_changed(watched.clone(), cx);
+            })
+        }));
         let mut tray = Tray {
             icon,
             shown: None,
@@ -127,7 +135,7 @@ impl Tray {
 }
 
 fn snapshot(workspace: &Entity<Workspace>, cx: &App) -> TraySnapshot {
-    TraySnapshot::of(workspace.read(cx))
+    TraySnapshot::of(workspace.read(cx), captain_ui::host_summary(cx).as_ref())
 }
 
 fn status_icon(status: EngineStatus) -> Icon {

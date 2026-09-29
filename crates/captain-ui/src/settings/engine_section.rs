@@ -9,7 +9,7 @@ use crate::theme::Palette;
 use crate::widgets::{ButtonTone, pill, settings_card, settings_row, text_button};
 use crate::workspace::Connection;
 
-/// The Engine card: the connection state, what the engine reports, and the endpoint
+/// The Connection card: the connection state, what the engine reports, and the endpoint
 /// Captain uses.
 pub fn render(
     view: &SettingsView,
@@ -52,7 +52,7 @@ pub fn render(
     }
     rows.push(endpoint_row(settings, palette, cx));
 
-    settings_card("Engine", rows, palette)
+    settings_card("Connection", rows, palette)
 }
 
 /// What the engine reports about itself.

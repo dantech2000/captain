@@ -20,6 +20,9 @@ for size in 128 256 512; do
   render captain.svg "$((size * 2))" "icon_${size}x${size}@2x.png"
 done
 
+# The brand mark in the sidebar. 160 px keeps it sharp at 40 pt on Retina screens.
+rsvg-convert -w 160 -h 160 captain.svg -o brand.png
+
 if command -v iconutil >/dev/null; then
   iconutil -c icns "$out" -o Captain.icns
   echo "wrote assets/icon/Captain.icns"

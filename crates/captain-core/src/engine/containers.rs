@@ -1,6 +1,7 @@
 use super::{EngineFuture, EngineStream};
 use crate::model::{
-    Container, ContainerAction, ContainerDetail, EngineEvent, EngineInfo, LogLine, StatsSample,
+    Container, ContainerAction, ContainerDetail, EngineEvent, EngineInfo, ExecSession, ExecSpec,
+    LogLine, StatsSample,
 };
 
 /// Engine info, events, and containers.
@@ -25,4 +26,9 @@ pub trait ContainerApi {
 
     /// Starts, stops, restarts, or removes a container.
     fn run_action(&self, id: &str, action: ContainerAction) -> EngineFuture<()>;
+
+    /// Runs a command in a running container, like `docker exec -it`. An empty
+    /// `spec.cmd` runs the default shell: `/bin/bash` if the container has it, else
+    /// `/bin/sh`. The session reports the command it picked.
+    fn exec(&self, id: &str, spec: ExecSpec) -> EngineFuture<ExecSession>;
 }

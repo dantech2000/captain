@@ -1,6 +1,7 @@
 //! Small building blocks shared by the views.
 
 mod action_button;
+mod brand_mark;
 mod column_header;
 mod container_link;
 mod create_field;
@@ -16,6 +17,7 @@ mod key_values;
 mod list_row;
 mod page_header;
 mod pill;
+mod primary_button;
 mod progress_bar;
 pub mod scales;
 mod segmented;
@@ -24,11 +26,13 @@ mod settings_row;
 mod sparkline;
 mod stat_tile;
 mod status_dot;
+mod stepper;
 mod swatch;
 mod text_button;
 mod titled_section;
 
 pub use action_button::action_button;
+pub use brand_mark::brand_mark;
 pub use column_header::{Column, column_header};
 pub use container_link::{container_link, state_color};
 pub use create_field::create_field;
@@ -44,6 +48,7 @@ pub use key_values::{KeyValue, colored_key_values};
 pub use list_row::list_row;
 pub use page_header::page_header;
 pub use pill::pill;
+pub use primary_button::primary_button;
 pub use progress_bar::progress_bar;
 pub use segmented::{Segment, segmented};
 pub use settings_card::settings_card;
@@ -51,6 +56,7 @@ pub use settings_row::settings_row;
 pub use sparkline::{Scale, sparkline};
 pub use stat_tile::{StatTile, stat_tile};
 pub use status_dot::status_dot;
+pub use stepper::stepper;
 pub use swatch::swatch;
 pub use text_button::{ButtonTone, text_button};
 pub use titled_section::{section_note, titled_section};

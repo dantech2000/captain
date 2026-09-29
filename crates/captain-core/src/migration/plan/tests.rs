@@ -1,0 +1,93 @@
+use super::{ImageChoice, MigrationPlan};
+use crate::migration::{MigrationItem, Step};
+
+fn image(id: &str, size: u64, in_use: bool) -> MigrationItem {
+    MigrationItem::Image {
+        id: id.into(),
+        tags: vec![format!("{id}:latest")],
+        size,
+        in_use,
+    }
+}
+
+fn container(id: &str, size_rw: u64) -> MigrationItem {
+    MigrationItem::Container {
+        id: id.into(),
+        name: id.into(),
+        image: "app".into(),
+        running: false,
+        size_rw,
+    }
+}
+
+fn plan() -> MigrationPlan {
+    MigrationPlan::new(
+        "unix:///old.sock",
+        vec![
+            container("web", 100),
+            image("unused", 1000, false),
+            MigrationItem::Volume {
+                name: "data".into(),
+                size: Some(500),
+            },
+            image("app", 2000, true),
+            MigrationItem::Network {
+                name: "backend".into(),
+                driver: "bridge".into(),
+            },
+        ],
+    )
+}
+
+#[test]
+fn sorts_by_step_and_selects_all() {
+    let plan = plan();
+    let steps: Vec<Step> = plan.entries.iter().map(|e| e.item.step()).collect();
+    assert_eq!(
+        steps,
+        [
+            Step::Networks,
+            Step::Volumes,
+            Step::Images,
+            Step::Images,
+            Step::Containers
+        ]
+    );
+    assert!(plan.entries.iter().all(|e| e.selected && !e.snapshot));
+    assert_eq!(plan.total_bytes(), 3500);
+}
+
+#[test]
+fn only_images_in_use() {
+    let mut plan = plan();
+    plan.set_image_choice(ImageChoice::InUse);
+    assert_eq!(plan.image_choice(), ImageChoice::InUse);
+    assert_eq!(plan.total_bytes(), 2500);
+    plan.set_image_choice(ImageChoice::All);
+    assert_eq!(plan.total_bytes(), 3500);
+}
+
+#[test]
+fn toggle_clears_and_selects() {
+    let mut plan = plan();
+    plan.toggle("volume:data");
+    assert_eq!(plan.total_bytes(), 3000);
+    assert_eq!(plan.step(Step::Volumes).filter(|e| e.selected).count(), 0);
+    plan.toggle("volume:data");
+    assert_eq!(plan.total_bytes(), 3500);
+}
+
+#[test]
+fn snapshot_adds_changes_and_clears_the_warning() {
+    let mut plan = plan();
+    assert_eq!(plan.lost_changes().len(), 1);
+    plan.set_snapshot("container:web", true);
+    assert_eq!(plan.total_bytes(), 3600);
+    assert!(plan.lost_changes().is_empty());
+    // Only containers take a snapshot.
+    plan.set_snapshot("volume:data", true);
+    assert!(
+        plan.selected()
+            .all(|e| e.snapshot == (e.item.key() == "container:web"))
+    );
+}

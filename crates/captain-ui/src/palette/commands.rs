@@ -11,6 +11,7 @@ use crate::workspace::{Page, Workspace};
 /// Every command the palette offers for the current workspace.
 pub fn build(workspace: &Workspace, palette: &Palette) -> Vec<Command> {
     let mut commands = navigation(workspace, palette);
+    commands.push(bring_data(palette));
     commands.extend(filters(workspace, palette));
     if workspace.has_project_runner() {
         for project in workspace.compose_projects() {
@@ -42,6 +43,19 @@ fn navigation(workspace: &Workspace, palette: &Palette) -> Vec<Command> {
             kind: CommandKind::GoTo(page),
         })
         .collect()
+}
+
+/// Opens the Migration Assistant.
+fn bring_data(palette: &Palette) -> Command {
+    Command {
+        section: Section::Actions,
+        title: "Bring data from another engine…".into(),
+        meta: "Migration Assistant".into(),
+        icon: IconName::Download,
+        color: palette.teal,
+        suggested: false,
+        kind: CommandKind::BringData,
+    }
 }
 
 fn filters(workspace: &Workspace, palette: &Palette) -> Vec<Command> {

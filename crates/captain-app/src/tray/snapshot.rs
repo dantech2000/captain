@@ -1,5 +1,6 @@
+use captain_core::HostStatus;
 use captain_core::model::{Container, ContainerState};
-use captain_ui::{Connection, Workspace};
+use captain_ui::{Connection, HostSummary, Workspace};
 
 /// The engine state that the icon and the first status line show.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -15,6 +16,17 @@ impl EngineStatus {
             Connection::Connecting => Self::Starting,
             Connection::Connected(_) => Self::Running,
             Connection::Failed(_) => Self::Stopped,
+        }
+    }
+
+    /// With Captain Engine the host decides; a running host counts as running once
+    /// the workspace has connected to it.
+    pub fn of_host(host: &HostStatus, connection: &Connection) -> Self {
+        match (host, connection) {
+            (HostStatus::Running, Connection::Connected(_)) => Self::Running,
+            (HostStatus::Running, Connection::Connecting) => Self::Starting,
+            (HostStatus::Starting | HostStatus::Stopping, _) => Self::Starting,
+            _ => Self::Stopped,
         }
     }
 
@@ -43,6 +55,28 @@ impl ContainerEntry {
     }
 }
 
+/// Captain Engine's state, when the settings choose it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct HostEntry {
+    pub status: HostStatus,
+    pub can_control: bool,
+}
+
+impl HostEntry {
+    /// The first line of the menu.
+    pub fn label(&self) -> &'static str {
+        match self.status {
+            HostStatus::Running => "Captain Engine is running",
+            HostStatus::Starting => "Captain Engine is starting",
+            HostStatus::Stopping => "Captain Engine is stopping",
+            HostStatus::Stopped => "Captain Engine is stopped",
+            HostStatus::NotCreated => "Captain Engine is not set up",
+            HostStatus::NotInstalled(_) => "Captain Engine needs Lima",
+            HostStatus::Failed(_) => "Captain Engine did not start",
+        }
+    }
+}
+
 /// The part of the workspace that the menu depends on. The tray rebuilds the menu
 /// only when this changes, so stats samples do not rebuild it.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -50,6 +84,8 @@ pub struct TraySnapshot {
     pub engine: EngineStatus,
     /// In the store's order: active containers first, then by name.
     pub containers: Vec<ContainerEntry>,
+    /// Captain Engine, or `None` when Captain uses another engine.
+    pub host: Option<HostEntry>,
 }
 
 impl TraySnapshot {
@@ -68,14 +104,26 @@ impl TraySnapshot {
                 .collect(),
             _ => Vec::new(),
         };
-        Self { engine, containers }
+        Self {
+            engine,
+            containers,
+            host: None,
+        }
     }
 
-    pub fn of(workspace: &Workspace) -> Self {
-        Self::new(
-            EngineStatus::of(workspace.connection()),
-            workspace.store().containers(),
-        )
+    pub fn of(workspace: &Workspace, host: Option<&HostSummary>) -> Self {
+        let connection = workspace.connection();
+        let engine = host.map_or_else(
+            || EngineStatus::of(connection),
+            |host| EngineStatus::of_host(&host.status, connection),
+        );
+        Self {
+            host: host.map(|host| HostEntry {
+                status: host.status.clone(),
+                can_control: host.can_control,
+            }),
+            ..Self::new(engine, workspace.store().containers())
+        }
     }
 
     /// The number of running, paused, or restarting containers.

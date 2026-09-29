@@ -3,10 +3,12 @@ use futures::StreamExt;
 use futures::future::ready;
 use futures::stream;
 
+mod echo;
+
 use super::FakeEngine;
 use crate::model::{
-    Container, ContainerAction, ContainerDetail, ContainerState, EngineEvent, EngineInfo, LogLine,
-    StatsSample,
+    Container, ContainerAction, ContainerDetail, ContainerState, EngineEvent, EngineInfo,
+    ExecSession, ExecSpec, LogLine, StatsSample,
 };
 use crate::{ContainerApi, EngineError, EngineFuture, EngineStream};
 
@@ -47,6 +49,19 @@ impl ContainerApi for FakeEngine {
     fn run_action(&self, id: &str, action: ContainerAction) -> EngineFuture<()> {
         let result = match self.containers.iter().find(|c| c.id == id) {
             Some(container) => check_action(container.state, action),
+            None => Err(EngineError::Api(format!("No such container: {id}"))),
+        };
+        ready(result).boxed()
+    }
+
+    /// An echo session. Like the Docker engine, it refuses a container that is not
+    /// running.
+    fn exec(&self, id: &str, spec: ExecSpec) -> EngineFuture<ExecSession> {
+        let result = match self.containers.iter().find(|c| c.id == id) {
+            Some(container) if container.state == ContainerState::Running => {
+                Ok(echo::echo_session(spec))
+            }
+            Some(_) => Err(EngineError::Api(format!("container {id} is not running"))),
             None => Err(EngineError::Api(format!("No such container: {id}"))),
         };
         ready(result).boxed()

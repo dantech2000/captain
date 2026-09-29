@@ -30,11 +30,16 @@ cargo run -p captain-app
 
 ## Which engine does Captain use?
 
-Captain checks these in order and uses the first one it finds:
+By default Captain runs its own engine, **Captain Engine**: a small Linux VM with Docker that Captain starts, stops, and configures. On macOS it uses [Lima](https://lima-vm.io) 2.2 or newer. Until release builds bundle it (M9), install Lima with `brew install lima`. The VM lives in `~/.captain/lima` and never touches your own Lima or Colima VMs. See [ADR 0008](docs/adr/0008-captain-engine.md) and [feature 0013](docs/features/0013-captain-engine.md).
 
-1. The `DOCKER_HOST` environment variable.
-2. The current `docker context` (from `~/.docker/config.json`).
-3. Known sockets for Docker Desktop, OrbStack, Colima, Rancher Desktop, and `/var/run/docker.sock`. On Windows it uses the `docker_engine` named pipe.
+On the first launch, Captain offers to set up Captain Engine or to use an engine you already have. You can switch at any time in Settings. With **Other engine**, Captain connects to an engine but does not control it. It checks these in order and uses the first one it finds:
+
+1. The custom endpoint saved in Settings.
+2. The `DOCKER_HOST` environment variable.
+3. The current `docker context` (from `~/.docker/config.json`).
+4. Known sockets for Docker Desktop, OrbStack, Colima, Rancher Desktop, and `/var/run/docker.sock`. On Windows it uses the `docker_engine` named pipe.
+
+Other engine is the default when Lima is not installed, or when you saved a custom endpoint in an earlier version. On Linux, Captain uses the system `dockerd`.
 
 ## Project layout
 
@@ -42,6 +47,7 @@ Captain checks these in order and uses the first one it finds:
 |-------|---------|
 | `captain-core` | Domain models, the `Engine` trait, and state stores. No UI or Docker dependencies. |
 | `captain-docker` | The `Engine` implementation for the Docker API, built on `bollard`. |
+| `captain-host` | Captain Engine: the Lima VM on macOS, behind the `EngineHost` trait. |
 | `captain-ui` | GPUI views. |
 | `captain-app` | The binary. Opens the window and wires everything together. |
 

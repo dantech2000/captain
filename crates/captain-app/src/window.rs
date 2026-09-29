@@ -4,6 +4,7 @@ use captain_ui::{AppShell, Page, Workspace};
 use gpui_kit::*;
 
 use crate::connect;
+use crate::engine::EngineSetup;
 
 /// The app owns the workspace, not the window. Closing the window keeps the engine
 /// connection, so the menu bar icon still works and a new window starts where the
@@ -16,14 +17,19 @@ struct MainWindow {
 
 impl Global for MainWindow {}
 
-/// Connects the workspace and opens the main window. `endpoint` is the engine saved
-/// in the settings; `None` means discovery.
-pub fn init(endpoint: Option<String>, cx: &mut App) {
+/// Sets up Captain Engine, connects the workspace, and opens the main window.
+/// `endpoint` is the other engine saved in the settings; `None` means discovery.
+/// With Captain Engine, the workspace connects once the engine runs.
+pub fn init(endpoint: Option<String>, engine: EngineSetup, cx: &mut App) {
+    let connect_now = engine.connects_elsewhere();
     let workspace = cx.new(|cx| {
         let mut workspace = Workspace::new();
-        workspace.connect(connect::docker(endpoint), cx);
+        if connect_now {
+            workspace.connect(connect::docker(endpoint), cx);
+        }
         workspace
     });
+    engine.install(&workspace, cx);
     cx.set_global(MainWindow {
         workspace,
         handle: None,
@@ -50,7 +56,9 @@ pub fn show(cx: &mut App) {
     cx.activate(true);
 }
 
-/// Shows the main window on the Settings page.
+/// Shows the main window on the Settings page. Only the menu bar uses it, and Linux has
+/// no menu bar icon (ADR 0006).
+#[cfg(any(target_os = "macos", target_os = "windows"))]
 pub fn show_settings(cx: &mut App) {
     show(cx);
     workspace(cx).update(cx, |workspace, cx| workspace.set_page(Page::Settings, cx));

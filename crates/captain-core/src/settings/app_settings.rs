@@ -1,6 +1,7 @@
 use serde::{Deserialize, Deserializer, Serialize};
 
-use super::{Accent, Appearance};
+use super::{Accent, Appearance, EngineChoice};
+use crate::HostResources;
 
 /// The settings file format that this build writes. See ADR 0004.
 pub const SETTINGS_VERSION: u32 = 1;
@@ -24,6 +25,17 @@ pub struct Settings {
     /// `unix:///var/run/docker.sock` or `tcp://10.0.0.5:2375`.
     #[serde(deserialize_with = "lenient")]
     pub engine_endpoint: Option<String>,
+    /// Captain Engine or another engine. `None` until the user picks one; see
+    /// [`Settings::engine_choice`].
+    #[serde(deserialize_with = "lenient")]
+    pub engine: Option<EngineChoice>,
+    /// Stop Captain Engine when Captain quits.
+    #[serde(deserialize_with = "lenient_true")]
+    pub stop_engine_on_quit: bool,
+    /// The CPUs, memory, and disk for Captain Engine. `None` means the defaults for
+    /// this computer.
+    #[serde(deserialize_with = "lenient")]
+    pub engine_resources: Option<HostResources>,
 }
 
 impl Default for Settings {
@@ -33,6 +45,9 @@ impl Default for Settings {
             appearance: Appearance::default(),
             accent: Accent::default(),
             engine_endpoint: None,
+            engine: None,
+            stop_engine_on_quit: true,
+            engine_resources: None,
         }
     }
 }
@@ -46,6 +61,14 @@ impl Settings {
             .map(|host| host.trim().to_string())
             .filter(|host| !host.is_empty());
         Ok(settings)
+    }
+
+    /// The engine to use: the saved choice, or the default when there is none.
+    /// `captain_available` says whether Captain Engine can run on this computer.
+    pub fn engine_choice(&self, captain_available: bool) -> EngineChoice {
+        self.engine.unwrap_or_else(|| {
+            EngineChoice::default_for(captain_available, self.engine_endpoint.is_some())
+        })
     }
 
     /// The file contents, stamped with the current [`SETTINGS_VERSION`].
@@ -68,6 +91,15 @@ where
 {
     let value = serde_json::Value::deserialize(deserializer)?;
     Ok(T::deserialize(value).unwrap_or_default())
+}
+
+/// Reads a flag that defaults to `true`, also when the value has the wrong type.
+fn lenient_true<'de, D>(deserializer: D) -> Result<bool, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let value = serde_json::Value::deserialize(deserializer)?;
+    Ok(value.as_bool().unwrap_or(true))
 }
 
 #[cfg(test)]

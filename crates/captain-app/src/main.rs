@@ -2,6 +2,8 @@
 
 mod actions;
 mod connect;
+mod engine;
+mod quit;
 #[cfg(any(target_os = "macos", target_os = "windows"))]
 mod tray;
 mod window;
@@ -15,13 +17,14 @@ fn main() {
     tracing_subscriber::fmt()
         .with_env_filter(
             tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| "captain=info,captain_docker=info".into()),
+                .unwrap_or_else(|_| "captain=info,captain_docker=info,captain_host=info".into()),
         )
         .init();
 
     let path = settings_path();
     let settings = load_settings(path.as_deref());
     let endpoint = settings.engine_endpoint.clone();
+    let engine = engine::EngineSetup::new(&settings);
 
     let app = gpui_kit::application().with_assets(gpui_kit::assets::AllAssets);
     // Clicking the Dock icon with no window open brings the window back.
@@ -30,9 +33,13 @@ fn main() {
         gpui_kit::init(cx);
         captain_ui::settings_init(cx, settings, path);
         captain_ui::engine_source_init(cx, Rc::new(connect::DockerSource));
+        captain_ui::OpenMigrationAssistant::set_backend(
+            cx,
+            std::sync::Arc::new(captain_docker::DockerMigrator),
+        );
         captain_ui::palette_init(cx);
         actions::register(cx);
-        window::init(endpoint, cx);
+        window::init(endpoint, engine, cx);
         // The app has launched, so the platform run loop is up; see ADR 0006.
         #[cfg(any(target_os = "macos", target_os = "windows"))]
         tray::start(cx);

@@ -1,0 +1,21 @@
+[package]
+name = "captain-terminal"
+description = "Terminal emulation for Captain's exec terminal, behind a swappable Emulator trait"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[features]
+default = ["alacritty"]
+# The emulator Captain ships today. See docs/adr/0007-terminal-emulator.md.
+alacritty = ["dep:alacritty_terminal"]
+# Reserved for libghostty-vt. It needs Zig in the toolchain, so it has no code yet.
+ghostty = []
+
+[dependencies]
+alacritty_terminal = { workspace = true, optional = true }
+
+[lints]
+workspace = true

@@ -1,5 +1,6 @@
 use super::{SETTINGS_VERSION, Settings};
-use crate::settings::{Accent, Appearance};
+use crate::settings::{Accent, Appearance, EngineChoice};
+use crate::{GIB, HostResources};
 
 #[test]
 fn round_trips() {
@@ -71,4 +72,64 @@ fn writes_lowercase_names() {
     .to_json();
     assert!(json.contains(r#""accent": "graphite""#), "{json}");
     assert!(json.contains(r#""appearance": "system""#), "{json}");
+}
+
+#[test]
+fn old_files_get_the_engine_defaults() {
+    let settings = Settings::from_json(r#"{"version": 1, "accent": "teal"}"#).unwrap();
+    assert_eq!(settings.engine, None);
+    assert!(settings.stop_engine_on_quit);
+    assert_eq!(settings.engine_resources, None);
+}
+
+#[test]
+fn engine_fields_round_trip() {
+    let settings = Settings {
+        engine: Some(EngineChoice::External),
+        stop_engine_on_quit: false,
+        engine_resources: Some(HostResources {
+            cpus: 6,
+            memory_bytes: 8 * GIB,
+            disk_bytes: 100 * GIB,
+        }),
+        ..Settings::default()
+    };
+    let json = settings.to_json();
+    assert!(json.contains(r#""engine": "external""#), "{json}");
+    assert_eq!(Settings::from_json(&json).unwrap(), settings);
+}
+
+#[test]
+fn bad_engine_values_fall_back() {
+    let json = r#"{"engine": "podman", "stop_engine_on_quit": "yes", "engine_resources": 3}"#;
+    let settings = Settings::from_json(json).unwrap();
+    assert_eq!(settings.engine, None);
+    assert!(settings.stop_engine_on_quit);
+    assert_eq!(settings.engine_resources, None);
+}
+
+#[test]
+fn engine_choice_defaults_to_captain_when_it_can_run() {
+    let settings = Settings::default();
+    assert_eq!(settings.engine_choice(true), EngineChoice::Captain);
+    assert_eq!(settings.engine_choice(false), EngineChoice::External);
+}
+
+#[test]
+fn a_saved_endpoint_keeps_the_other_engine() {
+    let settings = Settings {
+        engine_endpoint: Some("unix:///var/run/docker.sock".into()),
+        ..Settings::default()
+    };
+    assert_eq!(settings.engine_choice(true), EngineChoice::External);
+}
+
+#[test]
+fn a_saved_choice_wins() {
+    let settings = Settings {
+        engine: Some(EngineChoice::Captain),
+        engine_endpoint: Some("tcp://10.0.0.5:2375".into()),
+        ..Settings::default()
+    };
+    assert_eq!(settings.engine_choice(false), EngineChoice::Captain);
 }

@@ -7,7 +7,7 @@ use muda::{MenuEvent, MenuId};
 use tray_icon::TrayIconEvent;
 
 use super::menu_model::TrayCommand;
-use crate::window;
+use crate::{quit, window};
 
 /// Forwards menu clicks to a GPUI task on the main thread. `command` looks up what
 /// a clicked item does in the current menu.
@@ -38,7 +38,17 @@ fn run(command: TrayCommand, cx: &mut App) {
     match command {
         TrayCommand::OpenCaptain => window::show(cx),
         TrayCommand::Settings => window::show_settings(cx),
-        TrayCommand::Quit => cx.quit(),
+        TrayCommand::Quit => quit::quit(cx),
+        TrayCommand::StartEngine => {
+            if let Some(host) = captain_ui::host_model(cx) {
+                host.update(cx, |host, cx| host.start(cx));
+            }
+        }
+        TrayCommand::StopEngine => {
+            if let Some(host) = captain_ui::host_model(cx) {
+                host.update(cx, |host, cx| host.stop(cx)).detach();
+            }
+        }
         TrayCommand::Container { id, action } => {
             window::workspace(cx).update(cx, |workspace, cx| {
                 workspace.run_action(id, action, cx);
