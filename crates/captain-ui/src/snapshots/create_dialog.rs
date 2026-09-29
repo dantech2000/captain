@@ -1,6 +1,6 @@
 //! The Create dialog: a name, the date and time by default, and a description.
 
-use captain_core::snapshot::check_name;
+use captain_core::snapshot::{check_name, space_warning};
 use gpui_kit::component::Sizable;
 use gpui_kit::component::WindowExt;
 use gpui_kit::component::input::{Input, InputEvent, InputState};
@@ -17,6 +17,8 @@ struct CreateDialog {
     description: Entity<InputState>,
     /// The engine runs, so the dialog says it stops meanwhile.
     running: bool,
+    /// Less space is free than the engine's disk uses.
+    warning: Option<String>,
     error: Option<String>,
     _subscriptions: Vec<Subscription>,
 }
@@ -41,11 +43,14 @@ impl CreateDialog {
                 })
             })
             .collect();
+        let list = model.read(cx).list();
+        let warning = space_warning(list.free_bytes, list.engine_disk_bytes);
         Self {
             model,
             name,
             description,
             running,
+            warning,
             error: None,
             _subscriptions: subscriptions,
         }
@@ -119,6 +124,12 @@ impl Render for CreateDialog {
                     .text_color(palette.text2)
                     .child(note),
             )
+            .children(self.warning.clone().map(|warning| {
+                div()
+                    .text_size(px(12.))
+                    .text_color(palette.orange)
+                    .child(warning)
+            }))
             .children(self.error.clone().map(|e| inline_error(e, &palette)))
             .child(
                 div()

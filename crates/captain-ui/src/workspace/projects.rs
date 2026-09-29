@@ -100,9 +100,9 @@ impl Workspace {
 
     /// The cards the Containers page shows: the state filter, then the project filter.
     pub fn visible_groups(&self) -> Vec<ContainerGroup> {
-        let mut groups = self.store.groups(self.filter);
+        let mut groups = self.store.groups(self.filter, self.show_kubernetes);
         if let Some(project) = &self.project_filter {
-            groups.retain(|group| group.project.as_ref() == Some(project));
+            groups.retain(|group| group.project() == Some(project.as_str()));
         }
         groups
     }

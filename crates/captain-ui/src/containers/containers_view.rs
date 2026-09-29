@@ -83,7 +83,7 @@ impl ContainersView {
                 .children(groups.into_iter().map(|group| {
                     let project = projects
                         .iter()
-                        .find(|p| group.project.as_ref() == Some(&p.name));
+                        .find(|p| group.project() == Some(p.name.as_str()));
                     project_card::render(group, project, &self.workspace, workspace, palette)
                 }))
                 .into_any_element()

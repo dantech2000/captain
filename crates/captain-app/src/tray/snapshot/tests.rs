@@ -18,6 +18,7 @@ fn container(name: &str, state: ContainerState, project: Option<&str>) -> Contai
         created: 0,
         compose_project: project.map(Into::into),
         health: None,
+        kube_namespace: None,
         compose: Default::default(),
     }
 }

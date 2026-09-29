@@ -3,8 +3,9 @@
 
 use std::path::{Path, PathBuf};
 
+use captain_core::docker_context::{config_dir, current_host};
+
 use crate::Endpoint;
-use crate::docker_context::current_context_host;
 use crate::endpoint::UnsupportedHost;
 
 /// Unix sockets to try, relative to the home directory, in order.
@@ -23,6 +24,8 @@ const WINDOWS_PIPE: &str = "//./pipe/docker_engine";
 pub struct DiscoveryInput {
     pub docker_host: Option<String>,
     pub docker_context: Option<String>,
+    /// `DOCKER_CONFIG`, the Docker CLI config dir when it is not `~/.docker`.
+    pub docker_config: Option<PathBuf>,
     pub home: Option<PathBuf>,
 }
 
@@ -32,8 +35,19 @@ impl DiscoveryInput {
         Self {
             docker_host: var("DOCKER_HOST"),
             docker_context: var("DOCKER_CONTEXT"),
+            docker_config: var("DOCKER_CONFIG").map(PathBuf::from),
             home: std::env::home_dir(),
         }
+    }
+
+    /// The Docker CLI config dir: `DOCKER_CONFIG`, else `~/.docker`.
+    pub fn docker_dir(&self) -> Option<PathBuf> {
+        config_dir(self.docker_config.clone(), self.home.as_deref())
+    }
+
+    /// The engine host of the current Docker CLI context, if it has one.
+    fn context_host(&self) -> Option<String> {
+        current_host(&self.docker_dir()?, self.docker_context.as_deref())
     }
 }
 
@@ -50,25 +64,24 @@ pub fn discover(
     input: &DiscoveryInput,
     exists: impl Fn(&Path) -> bool,
 ) -> Result<Endpoint, DiscoveryError> {
-    if let Some(host) = &input.docker_host {
-        return Ok(Endpoint::parse(host)?);
-    }
+    Ok(Endpoint::parse(&discover_host(input, exists)?)?)
+}
 
-    let docker_dir = input.home.as_ref().map(|home| home.join(".docker"));
-    let context_host = docker_dir
-        .as_deref()
-        .and_then(|dir| current_context_host(dir, input.docker_context.as_deref()));
-    if let Some(host) = context_host {
-        return Ok(Endpoint::parse(&host)?);
+/// Like [`discover`], but returns the host string unparsed, so that the caller can
+/// handle `ssh://` hosts, which [`Endpoint`] does not cover.
+pub fn discover_host(
+    input: &DiscoveryInput,
+    exists: impl Fn(&Path) -> bool,
+) -> Result<String, DiscoveryError> {
+    if let Some(host) = input.docker_host.clone().or_else(|| input.context_host()) {
+        return Ok(host);
     }
-
     if cfg!(windows) {
-        return Ok(Endpoint::NamedPipe(WINDOWS_PIPE.into()));
+        return Ok(Endpoint::NamedPipe(WINDOWS_PIPE.into()).to_string());
     }
-
     socket_paths(input)
         .find(|path| exists(path))
-        .map(Endpoint::Unix)
+        .map(|path| Endpoint::Unix(path).to_string())
         .ok_or(DiscoveryError::NotFound)
 }
 
@@ -114,10 +127,8 @@ pub fn candidates(input: &DiscoveryInput, exists: impl Fn(&Path) -> bool) -> Vec
     {
         push(candidate);
     }
-    let docker_dir = input.home.as_ref().map(|home| home.join(".docker"));
-    if let Some(candidate) = docker_dir
-        .as_deref()
-        .and_then(|dir| current_context_host(dir, input.docker_context.as_deref()))
+    if let Some(candidate) = input
+        .context_host()
         .and_then(|host| parsed(&host, CandidateSource::Context))
     {
         push(candidate);

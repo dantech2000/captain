@@ -23,6 +23,7 @@ fn member(name: &str, project: Option<&str>, service: Option<&str>, running: boo
                 .unwrap_or_default(),
         },
         health: None,
+        kube_namespace: None,
     }
 }
 

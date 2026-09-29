@@ -26,7 +26,7 @@ pub fn render(store: &ContainerStore, palette: &Palette) -> impl IntoElement {
             )
         })
         .children(projects.into_iter().map(|group| {
-            let name = group.project.clone().unwrap_or_default();
+            let name = group.project().unwrap_or_default().to_string();
             let color = palette.project_color(&name);
             let running = group.running_count();
             let state = if running == 0 {

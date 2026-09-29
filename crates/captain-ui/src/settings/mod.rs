@@ -5,6 +5,8 @@ mod admin_access_section;
 mod appearance_section;
 mod behavior_section;
 mod captain_engine_section;
+mod context_actions;
+mod context_rows;
 mod daemon_form;
 mod daemon_section;
 mod endpoint_picker;
@@ -20,7 +22,8 @@ mod store;
 mod system;
 
 pub use engine_source::{
-    DetectedEndpoint, EngineSource, engine_source, init_engine_source, reconnect_to, retry,
+    ContextJob, DetectedEndpoint, EngineSource, engine_source, init_engine_source, reconnect_to,
+    retry,
 };
 pub use settings_view::SettingsView;
 pub use store::{SettingsStore, accent, apply_appearance, current, init, observe, update};

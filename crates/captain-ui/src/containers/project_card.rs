@@ -1,5 +1,5 @@
 use captain_core::model::ComposeProject;
-use captain_core::store::ContainerGroup;
+use captain_core::store::{ContainerGroup, GroupKey};
 use gpui_kit::assets::IconName;
 use gpui_kit::component::Icon;
 use gpui_kit::prelude::FluentBuilder;
@@ -10,9 +10,9 @@ use crate::shell::project_badge;
 use crate::theme::Palette;
 use crate::workspace::Workspace;
 
-/// One Compose project, or the standalone containers, as a rounded card. A click on
-/// the header folds the card. A Compose card also shows the project's folder and
-/// service count, and has project actions. `project` is the Compose model of the
+/// One Compose project, one Kubernetes namespace, or the standalone containers, as a
+/// rounded card. A click on the header folds the card. A Compose card also shows the
+/// project's folder and service count, and has project actions. `project` is the Compose model of the
 /// card's project, rebuilt from all its containers, not only the visible ones.
 pub fn render(
     group: ContainerGroup,
@@ -21,33 +21,39 @@ pub fn render(
     workspace: &Workspace,
     palette: &Palette,
 ) -> impl IntoElement {
-    let (name, color) = match &group.project {
-        Some(name) => (name.clone(), palette.project_color(name)),
-        None => ("Standalone".to_string(), palette.gray),
+    let (name, color) = match &group.key {
+        GroupKey::Project(name) => (name.clone(), palette.project_color(name)),
+        GroupKey::Namespace(name) => (name.clone(), palette.project_color(name)),
+        GroupKey::Standalone => ("Standalone".to_string(), palette.gray),
     };
-    let summary = match (&group.project, project) {
-        (Some(_), Some(project)) => format!(
+    let summary = match (&group.key, project) {
+        (GroupKey::Project(_), Some(project)) => format!(
             "{} · {} of {} running",
             project.services_label(),
             project.active_count(),
             project.container_count()
         ),
-        (Some(_), None) => format!(
+        (GroupKey::Project(_), None) => format!(
             "{} of {} running",
             group.running_count(),
             group.containers.len()
         ),
-        (None, _) if group.containers.len() == 1 => "1 container".to_string(),
-        (None, _) => format!("{} containers", group.containers.len()),
+        (GroupKey::Namespace(_), _) => format!(
+            "Kubernetes namespace · {} of {} running",
+            group.running_count(),
+            group.containers.len()
+        ),
+        (GroupKey::Standalone, _) if group.containers.len() == 1 => "1 container".to_string(),
+        (GroupKey::Standalone, _) => format!("{} containers", group.containers.len()),
     };
 
-    let collapsed = workspace.is_collapsed(&group.project);
+    let collapsed = workspace.is_collapsed(&group.key);
     let toggle = {
         let handle = handle.clone();
-        let project = group.project.clone();
+        let key = group.key.clone();
         move |_: &ClickEvent, _: &mut Window, cx: &mut App| {
             handle.update(cx, |workspace, cx| {
-                workspace.toggle_collapsed(project.clone(), cx)
+                workspace.toggle_collapsed(key.clone(), cx)
             });
         }
     };
@@ -94,7 +100,7 @@ pub fn render(
                 .text_color(palette.text2)
                 .child(summary),
         )
-        .when(group.project.is_some(), |this| {
+        .when(group.project().is_some(), |this| {
             this.child(project_actions::render(
                 &name, &group, handle, workspace, palette,
             ))

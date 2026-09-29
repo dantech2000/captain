@@ -1,7 +1,7 @@
 # Feature 0020: Engine configuration
 
 - Milestone: M18
-- Status: Implemented; needs a manual check in the running app
+- Status: Implemented; the live test passes on a test VM. The card needs a check by hand in the app.
 - Design: [ADR 0008](../adr/0008-captain-engine.md), [feature 0013](0013-captain-engine.md)
 
 ## Goal
@@ -88,6 +88,14 @@ Why this and not the Lima template:
 ## Verification
 
 Unit tests cover the merge rules, the checks for each field, the guest file parser, and the script arguments.
+
+Live, on a test VM (`captain-agent-daemon` in `~/.clo/lima`, a short path for Lima's sockets):
+
+```sh
+PATH=~/.rd/bin:$PATH cargo test -p captain-host --test live_daemon -- --ignored --nocapture
+```
+
+It starts the VM through `LimaHost` with a registry mirror, `{"log-level": "warn"}`, and TCP on port 23750. It checks that `docker info` lists the mirror and that `DOCKER_HOST=tcp://127.0.0.1:23750 docker version` works from the Mac. A second start with the same settings shows no "Applying" line. It then adds an unknown key: the start fails with `dockerd`'s message, the running settings stay the old ones, and Docker still answers. Last, it reverts to the defaults: the mirror is gone and the TCP port is closed. It deletes the VM and `~/.clo` at the end, unless `CAPTAIN_KEEP_VM` is set. It passed in 106 seconds with a new VM, and in 60 seconds with an existing one. The apply code needed no fix.
 
 By hand (on a test VM, not a VM with data you need):
 

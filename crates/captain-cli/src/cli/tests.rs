@@ -70,6 +70,16 @@ fn snapshot_commands_take_a_name_and_the_overrides() {
     );
     assert_eq!(cli.instance.as_deref(), Some("captain-agent-test"));
     assert!(parse(&["snapshot", "restore"]).is_err());
+    assert_eq!(
+        parse(&["snapshot", "rename", "base", "clean"])
+            .unwrap()
+            .command,
+        Command::Snapshot(SnapshotCommand::Rename {
+            name: "base".into(),
+            new_name: "clean".into(),
+            description: None
+        })
+    );
     assert!(parse(&["status", "--instance", "x"]).is_err());
 }
 

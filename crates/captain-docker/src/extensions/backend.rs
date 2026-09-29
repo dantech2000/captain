@@ -61,18 +61,20 @@ pub async fn up(
     run(command).await.map(drop)
 }
 
-/// Stops the project and removes its containers and volumes. Compose finds them by
-/// the project label, so the file is not needed.
-pub async fn down(context: &Context, id: &str) -> Result<(), EngineError> {
+/// Stops the project and removes its containers, and its volumes too with
+/// `volumes`. Compose finds them by the project label, so the file is not needed.
+pub async fn down(context: &Context, id: &str, volumes: bool) -> Result<(), EngineError> {
     let mut command = context.docker_command()?;
     command.args([
         "compose",
         "-p",
         &project_name(id),
         "down",
-        "--volumes",
         "--remove-orphans",
     ]);
+    if volumes {
+        command.arg("--volumes");
+    }
     run(command).await.map(drop)
 }
 

@@ -1,12 +1,12 @@
 use bollard::Docker;
 use captain_core::extension::{
     BridgeRequest, BridgeStream, ExtensionCandidate, ExtensionManager, ExtensionPaths,
-    InstalledExtension,
+    InstalledExtension, UpdateCheck,
 };
 use captain_core::{EngineError, EngineFuture};
 use tokio::runtime::Runtime;
 
-use super::{bridge, install};
+use super::{bridge, install, update};
 use crate::compose::{DockerCli, docker_host};
 use crate::{Endpoint, engine, runtime};
 
@@ -83,6 +83,28 @@ impl ExtensionManager for DockerExtensions {
         let context = self.context.clone();
         runtime::spawn(self.runtime.handle(), async move {
             install::install(&context, candidate).await
+        })
+    }
+
+    fn check_update(
+        &self,
+        extension: InstalledExtension,
+        tag: String,
+    ) -> EngineFuture<UpdateCheck> {
+        let context = self.context.clone();
+        runtime::spawn(self.runtime.handle(), async move {
+            update::check(&context, extension, &tag).await
+        })
+    }
+
+    fn update(
+        &self,
+        extension: InstalledExtension,
+        candidate: ExtensionCandidate,
+    ) -> EngineFuture<InstalledExtension> {
+        let context = self.context.clone();
+        runtime::spawn(self.runtime.handle(), async move {
+            update::apply(&context, extension, candidate).await
         })
     }
 

@@ -1,6 +1,8 @@
 use futures::stream::BoxStream;
 
-use super::{BridgeEvent, BridgeRequest, ExtensionCandidate, ExtensionPaths, InstalledExtension};
+use super::{
+    BridgeEvent, BridgeRequest, ExtensionCandidate, ExtensionPaths, InstalledExtension, UpdateCheck,
+};
 use crate::EngineFuture;
 
 /// The answers to one bridge call. It ends after the last event.
@@ -20,6 +22,21 @@ pub trait ExtensionManager: Send + Sync + 'static {
     /// Copies the UI and the host binaries for this platform out of the image, starts
     /// the backend, and records the extension. A failed install removes what it made.
     fn install(&self, candidate: ExtensionCandidate) -> EngineFuture<InstalledExtension>;
+
+    /// Pulls the extension's repository with `tag` (`latest` when empty) and compares
+    /// the image with the installed one. A failed pull uses the engine's copy of that
+    /// image, if it has one, so a locally built extension can update too.
+    fn check_update(&self, extension: InstalledExtension, tag: String)
+    -> EngineFuture<UpdateCheck>;
+
+    /// Replaces the extension's files with the new image's, and restarts its backend
+    /// on the new image. The backend's volumes and other files in the extension's
+    /// folder stay.
+    fn update(
+        &self,
+        extension: InstalledExtension,
+        candidate: ExtensionCandidate,
+    ) -> EngineFuture<InstalledExtension>;
 
     /// Removes the backend with its volumes, the extension's folder, and its image.
     fn remove(&self, extension: InstalledExtension) -> EngineFuture<()>;

@@ -1,10 +1,11 @@
-//! `captain snapshot create|list|restore|delete`. The work is in `captain-host`, the
+//! `captain snapshot create|list|restore|rename|delete`. The work is in `captain-host`, the
 //! same code the Snapshots page uses. See docs/features/0023-snapshots.md.
 
 mod create;
 mod delete;
 mod engine_cycle;
 mod list;
+mod rename;
 mod restore;
 
 use std::io::{BufRead, IsTerminal, Write};
@@ -33,6 +34,11 @@ pub fn run(context: &Context, command: SnapshotCommand) -> Result<()> {
         SnapshotCommand::Restore { name, yes } => {
             restore::run(context, &host, &snapshots, &name, yes)
         }
+        SnapshotCommand::Rename {
+            name,
+            new_name,
+            description,
+        } => rename::run(&snapshots, &name, new_name, description),
         SnapshotCommand::Delete { name, yes } => delete::run(&snapshots, &name, yes),
     }
 }

@@ -35,6 +35,7 @@ pub async fn prepare(
         .inspect_image(&image)
         .await
         .map_err(mapping::engine_error)?;
+    let image_id = inspect.id.unwrap_or_default();
     let labels = inspect
         .config
         .and_then(|config| config.labels)
@@ -49,12 +50,13 @@ pub async fn prepare(
     Ok(ExtensionCandidate {
         id,
         image,
+        image_id,
         labels,
         metadata,
     })
 }
 
-async fn pull(docker: &Docker, reference: &ImageReference) -> Result<(), EngineError> {
+pub(super) async fn pull(docker: &Docker, reference: &ImageReference) -> Result<(), EngineError> {
     let mut options = CreateImageOptionsBuilder::default().from_image(&reference.name);
     if !reference.tag.is_empty() {
         options = options.tag(&reference.tag);
@@ -83,7 +85,7 @@ pub async fn install(
     let result = install_steps(context, &extension).await;
     if let Err(error) = &result {
         tracing::warn!(%error, id = %extension.id, "extension install failed; cleaning up");
-        backend::down(context, &extension.id).await.ok();
+        backend::down(context, &extension.id, true).await.ok();
         std::fs::remove_dir_all(&dir).ok();
     }
     result.map(|()| extension)
@@ -104,7 +106,7 @@ async fn install_steps(
     std::fs::write(paths.manifest(id), extension.to_json()).map_err(files::io_error)
 }
 
-async fn copy_files(
+pub(super) async fn copy_files(
     docker: &Docker,
     container: &str,
     paths: &ExtensionPaths,
@@ -139,7 +141,7 @@ async fn copy_files(
 /// image. A missing backend or image is not an error.
 pub async fn remove(context: &Context, extension: &InstalledExtension) -> Result<(), EngineError> {
     if extension.metadata.vm.is_some() {
-        backend::down(context, &extension.id).await?;
+        backend::down(context, &extension.id, true).await?;
     }
     let dir = context.paths.dir(&extension.id);
     if dir.exists() {

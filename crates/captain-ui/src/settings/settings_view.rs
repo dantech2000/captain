@@ -1,7 +1,9 @@
+use captain_core::docker_context::ContextList;
 use gpui_kit::component::input::{InputEvent, InputState};
 use gpui_kit::*;
 
 use super::admin_access_section::{self, AdminAccess};
+use super::context_actions::ContextChange;
 use super::daemon_form::DaemonForm;
 use super::engine_source::{self, DetectedEndpoint};
 use super::kube_form::KubeForm;
@@ -33,6 +35,9 @@ pub struct SettingsView {
     pub(super) hint: Option<SharedString>,
     /// Engines found on this machine. A rescan or a switch refreshes them.
     pub(super) detected: Vec<DetectedEndpoint>,
+    /// The Docker CLI contexts. A rescan or a context change refreshes them.
+    pub(super) contexts: ContextList,
+    pub(super) context_change: ContextChange,
     /// Why the last change to the login item failed.
     pub(super) login_error: Option<SharedString>,
     pub(super) admin_access: AdminAccess,
@@ -64,6 +69,8 @@ impl SettingsView {
             input: None,
             hint: None,
             detected: Vec::new(),
+            contexts: ContextList::default(),
+            context_change: ContextChange::default(),
             login_error: None,
             admin_access: AdminAccess::default(),
             subscriptions,
@@ -74,9 +81,12 @@ impl SettingsView {
 
     /// Looks for engines on this machine again.
     pub(super) fn rescan(&mut self, cx: &mut Context<Self>) {
-        self.detected = engine_source::engine_source(cx)
+        let source = engine_source::engine_source(cx);
+        self.detected = source
+            .as_ref()
             .map(|source| source.detected())
             .unwrap_or_default();
+        self.contexts = source.map(|source| source.contexts()).unwrap_or_default();
         cx.notify();
     }
 
@@ -119,7 +129,7 @@ impl SettingsView {
         }
         let input = cx.new(|cx| {
             InputState::new(window, cx)
-                .placeholder("unix:///path/to/engine.sock or tcp://host:2375")
+                .placeholder("unix:///path/to/engine.sock or ssh://user@host")
         });
         let events = cx.subscribe_in(&input, window, |this, _, event, window, cx| match event {
             InputEvent::PressEnter { .. } => this.use_custom(window, cx),

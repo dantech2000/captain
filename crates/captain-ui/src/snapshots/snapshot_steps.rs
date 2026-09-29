@@ -1,4 +1,4 @@
-//! Create, restore, and delete. Create and restore stop Captain Engine first, block
+//! Create, restore, edit, and delete. Create and restore stop Captain Engine first, block
 //! its controls meanwhile, and start it again if it ran.
 
 use captain_core::HostError;
@@ -89,6 +89,31 @@ impl SnapshotsModel {
         self.task = Some(cx.spawn(async move |this, cx| {
             let done = delete.await.map(|()| format!("Deleted \"{name}\""));
             this.update(cx, |model, cx| model.finish("Delete", done, cx))
+                .ok();
+        }));
+    }
+
+    /// Renames the snapshot and sets its description. The engine keeps running.
+    pub fn edit(
+        &mut self,
+        snapshot: Snapshot,
+        name: String,
+        description: String,
+        cx: &mut Context<Self>,
+    ) {
+        let Some(store) = self.store.clone() else {
+            return;
+        };
+        if self.task.is_some() {
+            return;
+        }
+        self.set_step("Saving the snapshot...", cx);
+        let edit = store.edit(snapshot.id, name, description);
+        self.task = Some(cx.spawn(async move |this, cx| {
+            let done = edit
+                .await
+                .map(|edited| format!("Saved \"{}\"", edited.metadata.name));
+            this.update(cx, |model, cx| model.finish("Edit", done, cx))
                 .ok();
         }));
     }

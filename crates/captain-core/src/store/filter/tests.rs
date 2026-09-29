@@ -13,6 +13,7 @@ fn container(state: ContainerState) -> Container {
         compose_project: None,
         compose: Default::default(),
         health: None,
+        kube_namespace: None,
     }
 }
 

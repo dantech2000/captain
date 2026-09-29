@@ -24,11 +24,11 @@ use crate::{mapping, runtime};
 impl ContainerApi for DockerEngine {
     fn info(&self) -> EngineFuture<EngineInfo> {
         let docker = self.docker.clone();
-        let endpoint = self.endpoint.clone();
+        let label = self.label.clone();
         runtime::spawn(self.runtime.handle(), async move {
             let (version, info) = futures::try_join!(docker.version(), docker.info())
                 .map_err(mapping::engine_error)?;
-            Ok(mapping::engine_info(version, info, &endpoint))
+            Ok(mapping::engine_info(version, info, label))
         })
     }
 

@@ -7,15 +7,15 @@ use crate::workspace::Workspace;
 
 /// Running count, and total CPU, memory, and network over all containers.
 pub fn render(workspace: &Workspace, palette: &Palette) -> impl IntoElement {
-    let store = workspace.store();
+    let (running, total) = workspace.shown_counts();
     let stats = workspace.stats();
     let (memory, memory_unit) = split_unit(bytes_label(stats.total_memory()));
     let (net, net_unit) = split_unit(rate_label(stats.total_net_rate()));
     let tiles = [
         StatTile {
             label: "Running",
-            value: store.active_count().to_string(),
-            unit: format!(" / {}", store.len()),
+            value: running.to_string(),
+            unit: format!(" / {total}"),
             color: palette.green,
             series: Vec::new(),
             scale: scales::COUNT,

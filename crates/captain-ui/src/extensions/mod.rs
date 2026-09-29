@@ -1,5 +1,5 @@
 //! The Extensions page: install Docker Desktop extensions by image reference, list,
-//! open, and remove them. Each extension opens in its own window with a web view,
+//! open, update, and remove them. Each extension opens in its own window with a web view,
 //! on macOS. See docs/features/0025-extensions.md and ADR 0011.
 
 mod extension_event;
@@ -8,6 +8,7 @@ mod extensions_model;
 mod extensions_view;
 mod install_dialog;
 mod remove_dialog;
+mod update_dialog;
 #[cfg(target_os = "macos")]
 mod window;
 

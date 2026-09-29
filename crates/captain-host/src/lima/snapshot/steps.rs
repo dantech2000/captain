@@ -20,6 +20,9 @@ pub fn list(host: &LimaHost) -> SnapshotList {
     SnapshotList {
         snapshots: folder::read_all(&root),
         free_bytes: free_space(existing_parent(&root)),
+        engine_disk_bytes: Some(host.paths().instance_dir().join(DISK))
+            .filter(|disk| disk.exists())
+            .map(|disk| allocated(&source_of(&disk))),
     }
 }
 
@@ -109,6 +112,19 @@ pub fn delete(host: &LimaHost, id: &str) -> Result<(), HostError> {
     folder::remove_incomplete(&root);
     tracing::info!(id, "deleted a snapshot");
     Ok(())
+}
+
+pub fn edit(
+    host: &LimaHost,
+    id: &str,
+    name: &str,
+    description: &str,
+) -> Result<Snapshot, HostError> {
+    let _lock = host.lock_for_snapshot()?;
+    let snapshot =
+        folder::edit(&host.paths().snapshots_dir(), id, name, description).map_err(HostError)?;
+    tracing::info!(id, name, "edited a snapshot");
+    Ok(snapshot)
 }
 
 fn copy_files(paths: &crate::LimaPaths, dir: &Path) -> Result<(), HostError> {

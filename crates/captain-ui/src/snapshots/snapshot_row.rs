@@ -3,11 +3,11 @@ use captain_core::snapshot::Snapshot;
 use chrono::TimeZone;
 use gpui_kit::*;
 
-use super::{SnapshotsModel, delete_dialog, restore_dialog};
+use super::{SnapshotsModel, delete_dialog, edit_dialog, restore_dialog};
 use crate::theme::Palette;
 use crate::widgets::{ButtonTone, text_button};
 
-/// One snapshot: name, description, date and size, and Restore and Delete.
+/// One snapshot: name, description, date and size, and Restore, Edit, and Delete.
 pub fn render(
     model: &Entity<SnapshotsModel>,
     snapshot: &Snapshot,
@@ -29,6 +29,17 @@ pub fn render(
             enabled,
             palette,
             move |_, window, cx| restore_dialog::open(model.clone(), snapshot.clone(), window, cx),
+        )
+    };
+    let edit = {
+        let (model, snapshot) = (model.clone(), snapshot.clone());
+        text_button(
+            SharedString::from(format!("snapshot-edit-{}", snapshot.id)),
+            "Edit…",
+            ButtonTone::Accent,
+            enabled,
+            palette,
+            move |_, window, cx| edit_dialog::open(model.clone(), snapshot.clone(), window, cx),
         )
     };
     let delete = {
@@ -76,6 +87,7 @@ pub fn render(
                 ),
         )
         .child(restore)
+        .child(edit)
         .child(delete)
         .into_any_element()
 }

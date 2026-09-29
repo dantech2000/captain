@@ -1,8 +1,9 @@
-//! The Snapshots page: save, restore, and delete named copies of Captain Engine.
+//! The Snapshots page: save, restore, rename, and delete named copies of Captain Engine.
 //! The files are handled by `captain-host`. See docs/features/0023-snapshots.md.
 
 mod create_dialog;
 mod delete_dialog;
+mod edit_dialog;
 mod restore_dialog;
 mod snapshot_event;
 mod snapshot_row;

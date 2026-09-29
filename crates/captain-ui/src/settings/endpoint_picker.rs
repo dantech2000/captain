@@ -2,8 +2,8 @@ use gpui_kit::component::Sizable;
 use gpui_kit::component::input::{Input, InputState};
 use gpui_kit::*;
 
-use super::SettingsView;
 use super::engine_source::DetectedEndpoint;
+use super::{SettingsView, context_rows};
 use crate::theme::Palette;
 use crate::widgets::{ButtonTone, settings_card, settings_row, text_button};
 use crate::workspace::Connection;
@@ -40,6 +40,7 @@ pub fn render(
             .into_any_element(),
         );
     }
+    rows.extend(context_rows::rows(view, in_use.as_deref(), palette, cx));
     rows.push(rescan_row(palette, cx));
     rows.push(custom_row(view, input, palette, cx));
     settings_card("Switch engine", rows, palette)
@@ -77,7 +78,7 @@ fn detected_row(
 fn rescan_row(palette: &Palette, cx: &mut Context<SettingsView>) -> AnyElement {
     settings_row(
         "Look again",
-        Some("Captain checks DOCKER_HOST, the current context, and known sockets.".into()),
+        Some("Captain checks DOCKER_HOST, the Docker contexts, and known sockets.".into()),
         text_button(
             "engine-rescan",
             "Rescan",
@@ -123,7 +124,7 @@ fn custom_row(
         );
     settings_row(
         "Custom endpoint",
-        Some("A unix://, npipe://, tcp://, or http:// URL.".into()),
+        Some("A unix://, npipe://, tcp://, http://, or ssh://user@host URL.".into()),
         control,
         palette,
     )

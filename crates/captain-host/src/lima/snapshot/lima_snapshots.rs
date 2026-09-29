@@ -38,4 +38,9 @@ impl EngineSnapshots for LimaSnapshots {
         let host = self.host.clone();
         blocking(move || steps::delete(&host, &id))
     }
+
+    fn edit(&self, id: String, name: String, description: String) -> HostFuture<Snapshot> {
+        let host = self.host.clone();
+        blocking(move || steps::edit(&host, &id, &name, &description))
+    }
 }

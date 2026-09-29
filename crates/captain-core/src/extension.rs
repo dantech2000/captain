@@ -11,6 +11,7 @@ mod labels;
 mod manager;
 mod metadata;
 mod paths;
+mod update;
 
 pub use bridge::*;
 pub use compose::{
@@ -26,6 +27,9 @@ pub use metadata::{
     PLUGIN_IMAGE_VARIABLE, PlatformBinaries, UiSection, VmSection, host_platform,
 };
 pub use paths::{ExtensionPaths, MANIFEST_FILE, mime_type, ui_file};
+pub use update::{
+    DEFAULT_UPDATE_TAG, ExtensionUpdate, UpdateCheck, compare_versions, update_reference,
+};
 
 /// The URL scheme that serves each extension's UI files: `captain-ext://<id>/`.
 pub const SCHEME: &str = "captain-ext";

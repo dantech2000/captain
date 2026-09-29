@@ -5,21 +5,24 @@ mod build;
 mod compose;
 mod credentials;
 mod discovery;
-mod docker_context;
+mod docker_contexts;
 mod endpoint;
 mod engine;
 mod extensions;
 mod mapping;
 mod process;
 mod runtime;
+mod ssh_tunnel;
 mod transfer;
 
 pub use build::BuildCli;
 pub use compose::{ComposeCli, docker_tools};
 pub use discovery::{
-    Candidate, CandidateSource, DiscoveryError, DiscoveryInput, candidates, discover,
+    Candidate, CandidateSource, DiscoveryError, DiscoveryInput, candidates, discover, discover_host,
 };
+pub use docker_contexts::{save_context, use_context};
 pub use endpoint::{Endpoint, UnsupportedHost};
 pub use engine::DockerEngine;
 pub use extensions::DockerExtensions;
+pub use ssh_tunnel::{close_ssh_tunnel, open_ssh_tunnel};
 pub use transfer::{DockerMigrator, DockerSession};

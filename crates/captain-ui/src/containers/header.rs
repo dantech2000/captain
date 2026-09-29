@@ -1,6 +1,7 @@
 use captain_core::store::ContainerFilter;
 use gpui_kit::assets::IconName;
 use gpui_kit::component::Icon;
+use gpui_kit::component::checkbox::Checkbox;
 use gpui_kit::*;
 
 use crate::theme::Palette;
@@ -15,8 +16,8 @@ pub fn render(
     palette: &Palette,
 ) -> impl IntoElement {
     let store = workspace.store();
-    let running = store.active_count();
-    let stopped = store.len() - running;
+    let (running, total) = workspace.shown_counts();
+    let stopped = total - running;
     let projects = store.projects().len();
     let summary = match projects {
         0 => format!("{running} running · {stopped} stopped"),
@@ -65,6 +66,7 @@ pub fn render(
                         .child(summary),
                 ),
         )
+        .children((store.kubernetes_count() > 0).then(|| kubernetes_toggle(handle, workspace)))
         .children(
             workspace
                 .project_filter()
@@ -73,6 +75,23 @@ pub fn render(
         .child(
             segmented("filter", segments, palette)
                 .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation()),
+        )
+}
+
+/// "Show Kubernetes containers". It shows only while the engine has pod containers.
+fn kubernetes_toggle(handle: &Entity<Workspace>, workspace: &Workspace) -> impl IntoElement {
+    let handle = handle.clone();
+    div()
+        .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
+        .child(
+            Checkbox::new("show-kubernetes")
+                .label("Show Kubernetes containers")
+                .checked(workspace.show_kubernetes())
+                .on_click(move |checked, _, cx| {
+                    handle.update(cx, |workspace, cx| {
+                        workspace.set_show_kubernetes(*checked, cx)
+                    });
+                }),
         )
 }
 

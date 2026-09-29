@@ -1,7 +1,7 @@
 use captain_core::snapshot::SnapshotMetadata;
 use captain_core::{GIB, HostResources};
 
-use super::{finish, new_id, read_all, remove_incomplete};
+use super::{edit, finish, new_id, read_all, remove_incomplete};
 
 fn metadata(name: &str, created: u64) -> SnapshotMetadata {
     SnapshotMetadata {
@@ -46,4 +46,25 @@ fn ids_are_distinct_version_4_uuids() {
     assert_ne!(a, b);
     assert_eq!(a.len(), 36);
     assert_eq!(a.as_bytes()[14], b'4');
+}
+
+#[test]
+fn edit_renames_and_describes_but_refuses_a_taken_name() {
+    let root = std::env::temp_dir().join(format!("captain-snapedit-{}", std::process::id()));
+    std::fs::remove_dir_all(&root).ok();
+    for (id, name) in [("a", "first"), ("b", "second")] {
+        std::fs::create_dir_all(root.join(id)).unwrap();
+        finish(&root.join(id), &metadata(name, 1)).unwrap();
+    }
+
+    assert!(edit(&root, "a", "second", "").is_err());
+    let edited = edit(&root, "a", "base", " clean install ").unwrap();
+    assert_eq!(edited.metadata.description, "clean install");
+    let names: Vec<_> = read_all(&root)
+        .into_iter()
+        .map(|s| s.metadata.name)
+        .collect();
+    assert!(names.contains(&"base".to_string()));
+    assert!(edit(&root, "a", "base", "same name").is_ok());
+    std::fs::remove_dir_all(&root).ok();
 }

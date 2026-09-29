@@ -10,6 +10,7 @@ pub const API_VERSION_LABEL: &str = "com.docker.desktop.extension.api.version";
 const TITLE_LABEL: &str = "org.opencontainers.image.title";
 const DESCRIPTION_LABEL: &str = "org.opencontainers.image.description";
 const VENDOR_LABEL: &str = "org.opencontainers.image.vendor";
+const VERSION_LABEL: &str = "org.opencontainers.image.version";
 const PUBLISHER_URL_LABEL: &str = "com.docker.extension.publisher-url";
 
 /// The labels Captain shows.
@@ -21,6 +22,9 @@ pub struct ExtensionLabels {
     /// The publisher: a person or an organization.
     pub vendor: String,
     pub publisher_url: String,
+    /// The image's version, if it names one. Updates compare it.
+    #[serde(default)]
+    pub version: String,
 }
 
 impl ExtensionLabels {
@@ -38,6 +42,7 @@ impl ExtensionLabels {
             description: get(DESCRIPTION_LABEL).unwrap_or_default(),
             vendor: get(VENDOR_LABEL).unwrap_or_default(),
             publisher_url: get(PUBLISHER_URL_LABEL).unwrap_or_default(),
+            version: get(VERSION_LABEL).unwrap_or_default(),
         })
     }
 

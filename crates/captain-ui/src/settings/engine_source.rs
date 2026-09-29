@@ -1,5 +1,6 @@
 use std::rc::Rc;
 
+use captain_core::docker_context::ContextList;
 use captain_core::settings::EngineChoice;
 use gpui_kit::*;
 
@@ -16,6 +17,10 @@ pub struct DetectedEndpoint {
     pub host: SharedString,
 }
 
+/// A change to the Docker CLI contexts. It may block, so the UI runs it on a
+/// background thread. The error is a message for the user.
+pub type ContextJob = Box<dyn FnOnce() -> Result<(), String> + Send>;
+
 /// How the UI finds and reaches engines. The app implements it, because only the app
 /// knows the engine crate; `captain-ui` sees only the [`captain_core::Engine`] trait.
 pub trait EngineSource {
@@ -25,6 +30,12 @@ pub trait EngineSource {
     fn check_endpoint(&self, host: &str) -> Result<(), String>;
     /// The endpoints that exist on this machine, in discovery order.
     fn detected(&self) -> Vec<DetectedEndpoint>;
+    /// The Docker CLI contexts and the default one.
+    fn contexts(&self) -> ContextList;
+    /// Creates the context `name`, or updates it, to point at `host`.
+    fn save_context(&self, name: &str, description: &str, host: &str) -> ContextJob;
+    /// Makes `name` the Docker CLI's default context.
+    fn use_context(&self, name: &str) -> ContextJob;
 }
 
 struct EngineSourceGlobal(Rc<dyn EngineSource>);

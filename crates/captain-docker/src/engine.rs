@@ -19,7 +19,8 @@ const CONNECT_TIMEOUT: Duration = Duration::from_secs(5);
 /// An [`Engine`] backed by the Docker Engine API.
 pub struct DockerEngine {
     docker: Docker,
-    endpoint: Endpoint,
+    /// The endpoint the Engine card shows: an `ssh://` URL for a tunnel.
+    label: String,
     runtime: Runtime,
 }
 
@@ -33,9 +34,16 @@ impl DockerEngine {
         tracing::info!(%endpoint, "connected to Docker engine");
         Ok(Self {
             docker,
-            endpoint,
+            label: endpoint.to_string(),
             runtime,
         })
+    }
+
+    /// Shows `label` as the endpoint instead, for example the `ssh://` URL of a
+    /// tunnel's local socket.
+    pub fn with_label(mut self, label: impl Into<String>) -> Self {
+        self.label = label.into();
+        self
     }
 }
 

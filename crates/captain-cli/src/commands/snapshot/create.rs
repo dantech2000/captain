@@ -5,7 +5,7 @@ use std::sync::Arc;
 use anyhow::Result;
 use captain_core::EngineHost;
 use captain_core::format::bytes_label;
-use captain_core::snapshot::EngineSnapshots;
+use captain_core::snapshot::{EngineSnapshots, space_warning};
 use futures::executor::block_on;
 
 use super::engine_cycle::with_engine_stopped;
@@ -19,6 +19,11 @@ pub fn run(
     yes: bool,
 ) -> Result<()> {
     let name = name.unwrap_or_else(default_name);
+    let list = block_on(snapshots.list())?;
+    if let Some(warning) = space_warning(list.free_bytes, list.engine_disk_bytes) {
+        eprintln!("captain: {warning}");
+        confirm("Save the snapshot anyway?", yes)?;
+    }
     let was_running = running(host)?;
     if was_running {
         confirm("Captain Engine will stop and start again. Continue?", yes)?;

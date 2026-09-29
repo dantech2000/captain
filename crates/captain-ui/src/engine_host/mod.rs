@@ -15,7 +15,7 @@ mod starting_screen;
 mod stopped_screen;
 
 pub use host_event::HostEvent;
-pub use host_model::{HostModel, captain_endpoint, host_model, init, uses_captain};
+pub use host_model::{HostModel, captain_endpoint, captain_socket, host_model, init, uses_captain};
 pub use host_screen::render as host_screen;
 pub use host_summary::{HostSummary, summary};
 pub use progress_log::ProgressLog;

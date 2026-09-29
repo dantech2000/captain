@@ -100,7 +100,7 @@ impl Workspace {
     fn row_order(&self) -> Vec<String> {
         self.visible_groups()
             .into_iter()
-            .filter(|group| !self.is_collapsed(&group.project))
+            .filter(|group| !self.is_collapsed(&group.key))
             .flat_map(|group| group.containers.into_iter().map(|c| c.id))
             .collect()
     }

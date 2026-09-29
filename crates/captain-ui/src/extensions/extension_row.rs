@@ -1,11 +1,11 @@
 use captain_core::extension::InstalledExtension;
 use gpui_kit::*;
 
-use super::{ExtensionsModel, remove_dialog};
+use super::{ExtensionsModel, remove_dialog, update_dialog};
 use crate::theme::Palette;
 use crate::widgets::{ButtonTone, text_button};
 
-/// One extension: title, image and publisher, and Open and Remove. Open is off for
+/// One extension: title, image and publisher, and Open, Update, and Remove. Open is off for
 /// an extension without a page, and where Captain has no web view.
 pub fn render(
     model: &Entity<ExtensionsModel>,
@@ -28,6 +28,17 @@ pub fn render(
                     super::open_window(extension.clone(), manager, cx);
                 }
             },
+        )
+    };
+    let update = {
+        let (model, extension) = (model.clone(), extension.clone());
+        text_button(
+            SharedString::from(format!("extension-update-{}", extension.id)),
+            "Update…",
+            ButtonTone::Accent,
+            enabled,
+            palette,
+            move |_, window, cx| update_dialog::open(model.clone(), extension.clone(), window, cx),
         )
     };
     let remove = {
@@ -77,6 +88,7 @@ pub fn render(
                 ),
         )
         .child(open)
+        .child(update)
         .child(remove)
         .into_any_element()
 }

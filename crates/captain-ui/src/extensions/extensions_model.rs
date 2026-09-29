@@ -1,14 +1,16 @@
 use std::sync::Arc;
 
 use captain_core::EngineError;
-use captain_core::extension::{ExtensionCandidate, ExtensionManager, InstalledExtension};
+use captain_core::extension::{
+    ExtensionCandidate, ExtensionManager, ExtensionUpdate, InstalledExtension, UpdateCheck,
+};
 use gpui_kit::*;
 
 use super::ExtensionEvent;
 use crate::workspace::Workspace;
 
-/// The installed extensions and the step that runs now: a pull, an install, or a
-/// removal. The engine work is in `captain-docker`.
+/// The installed extensions and the step that runs now: a pull, an install, an
+/// update, or a removal. The engine work is in `captain-docker`.
 pub struct ExtensionsModel {
     workspace: Entity<Workspace>,
     list: Vec<InstalledExtension>,
@@ -144,6 +146,72 @@ impl ExtensionsModel {
                         extension.title()
                     ))),
                     Err(error) => model.fail("Install", error, cx),
+                }
+                model.reload(cx);
+            })
+            .ok();
+        }));
+        cx.notify();
+    }
+
+    /// Pulls the extension's repository with `tag` and compares it with the installed
+    /// image. The page then asks the user to confirm the update.
+    pub fn check_update(
+        &mut self,
+        extension: InstalledExtension,
+        tag: String,
+        cx: &mut Context<Self>,
+    ) {
+        let Some(manager) = self.manager(cx) else {
+            return;
+        };
+        if self.task.is_some() {
+            return;
+        }
+        let title = extension.title().to_string();
+        self.step = Some(format!("Checking {title} for an update...").into());
+        let check = manager.check_update(extension, tag);
+        self.task = Some(cx.spawn(async move |this, cx| {
+            let result = check.await;
+            this.update(cx, |model, cx| {
+                model.end_step(cx);
+                match result {
+                    Ok(UpdateCheck::Available(update)) => {
+                        cx.emit(ExtensionEvent::ConfirmUpdate(update))
+                    }
+                    Ok(UpdateCheck::UpToDate { image }) => cx.emit(ExtensionEvent::Done(format!(
+                        "{title} is up to date with {image}"
+                    ))),
+                    Err(error) => model.fail("Update", error, cx),
+                }
+            })
+            .ok();
+        }));
+        cx.notify();
+    }
+
+    /// Closes the extension's window and reinstalls it from the new image.
+    pub fn update(&mut self, update: ExtensionUpdate, cx: &mut Context<Self>) {
+        let Some(manager) = self.manager(cx) else {
+            return;
+        };
+        if self.task.is_some() {
+            return;
+        }
+        self.step = Some(format!("Updating {}...", update.extension.title()).into());
+        super::close_window(&update.extension.id, cx);
+        let apply = manager.update(update.extension, update.candidate);
+        self.task = Some(cx.spawn(async move |this, cx| {
+            let result = apply.await;
+            this.update(cx, |model, cx| {
+                model.end_step(cx);
+                match result {
+                    Ok(extension) => cx.emit(ExtensionEvent::Done(format!(
+                        "Updated {} to {}",
+                        extension.title(),
+                        extension.image
+                    ))),
+                    Err(error) => model.fail("Update", error, cx),
                 }
                 model.reload(cx);
             })

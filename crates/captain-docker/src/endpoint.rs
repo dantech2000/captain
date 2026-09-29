@@ -1,6 +1,10 @@
 use std::fmt;
 use std::path::PathBuf;
 
+use captain_core::ssh::{SshTarget, is_ssh};
+
+use crate::ssh_tunnel::{close_ssh_tunnel, open_ssh_tunnel};
+
 /// Where the Docker engine listens.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Endpoint {
@@ -29,6 +33,18 @@ impl Endpoint {
         } else {
             Err(UnsupportedHost(host.to_string()))
         }
+    }
+
+    /// The local endpoint for `host`. An `ssh://` host opens the SSH tunnel and gives
+    /// its local socket; any other host stops the tunnel and parses as it is. This
+    /// blocks while `ssh` logs in. The error is a message for the user.
+    pub fn resolve(host: &str) -> Result<Self, String> {
+        if is_ssh(host) {
+            let target = SshTarget::parse(host).map_err(|err| err.to_string())?;
+            return open_ssh_tunnel(&target).map(Self::Unix);
+        }
+        close_ssh_tunnel();
+        Self::parse(host).map_err(|err| err.to_string())
     }
 }
 

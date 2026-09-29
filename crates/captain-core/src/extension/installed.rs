@@ -10,6 +10,8 @@ pub struct ExtensionCandidate {
     pub id: String,
     /// The image reference, for example `docker/disk-usage-extension:0.2.9`.
     pub image: String,
+    /// The image ID, `sha256:…`. An update compares it.
+    pub image_id: String,
     pub labels: ExtensionLabels,
     pub metadata: ExtensionMetadata,
 }
@@ -30,6 +32,9 @@ impl ExtensionCandidate {
 pub struct InstalledExtension {
     pub id: String,
     pub image: String,
+    /// The image ID when Captain installed it. Empty for older installs.
+    #[serde(default)]
+    pub image_id: String,
     pub labels: ExtensionLabels,
     pub metadata: ExtensionMetadata,
     /// The file names in the extension's `bin` folder. `host.cli.exec` runs only these.
@@ -46,6 +51,7 @@ impl InstalledExtension {
         Self {
             id: candidate.id,
             image: candidate.image,
+            image_id: candidate.image_id,
             labels: candidate.labels,
             metadata: candidate.metadata,
             binaries,

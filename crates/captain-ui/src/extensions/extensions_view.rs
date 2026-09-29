@@ -37,6 +37,14 @@ impl ExtensionsView {
                     if let ExtensionEvent::Confirm(candidate) = event {
                         install_dialog::open(this.model.clone(), (**candidate).clone(), window, cx);
                     }
+                    if let ExtensionEvent::ConfirmUpdate(update) = event {
+                        install_dialog::open_update(
+                            this.model.clone(),
+                            (**update).clone(),
+                            window,
+                            cx,
+                        );
+                    }
                     if let ExtensionEvent::Installed(_) = event {
                         this.reference
                             .update(cx, |input, cx| input.set_value("", window, cx));
@@ -94,11 +102,6 @@ impl Render for ExtensionsView {
         let connected = model.manager(cx).is_some();
         let enabled = connected && !model.is_busy();
         let this = cx.entity().downgrade();
-        let label = if model.is_busy() {
-            "Installing..."
-        } else {
-            "Install"
-        };
         let field = div()
             .flex()
             .items_center()
@@ -106,7 +109,7 @@ impl Render for ExtensionsView {
             .child(div().flex_1().child(Input::new(&self.reference).small()))
             .child(text_button(
                 "extension-install",
-                label,
+                "Install",
                 ButtonTone::Accent,
                 enabled,
                 &palette,

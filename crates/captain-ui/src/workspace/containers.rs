@@ -57,7 +57,7 @@ impl Workspace {
         if !valid {
             self.selected = self
                 .store
-                .groups(ContainerFilter::All)
+                .groups(ContainerFilter::All, self.show_kubernetes)
                 .first()
                 .and_then(|g| g.containers.first())
                 .map(|c| c.id.clone());

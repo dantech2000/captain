@@ -9,6 +9,7 @@ fn input(docker_host: Option<&str>) -> DiscoveryInput {
     DiscoveryInput {
         docker_host: docker_host.map(Into::into),
         docker_context: None,
+        docker_config: None,
         home: Some(PathBuf::from("/nonexistent-home")),
     }
 }

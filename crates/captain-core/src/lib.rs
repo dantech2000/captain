@@ -3,6 +3,7 @@
 pub mod behavior;
 pub mod daemon;
 pub mod diagnostics;
+pub mod docker_context;
 mod engine;
 mod error;
 pub mod extension;
@@ -16,6 +17,7 @@ pub mod registry;
 pub mod search;
 pub mod settings;
 pub mod snapshot;
+pub mod ssh;
 pub mod store;
 pub mod tools;
 

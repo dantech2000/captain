@@ -42,3 +42,17 @@ fn a_plain_container_has_no_compose_labels() {
     assert_eq!(c.compose_project, None);
     assert_eq!(c.compose, Default::default());
 }
+
+#[test]
+fn reads_the_kubernetes_namespace() {
+    let summary = ContainerSummary {
+        labels: Some(HashMap::from([(
+            "io.kubernetes.pod.namespace".to_string(),
+            "kube-system".to_string(),
+        )])),
+        ..Default::default()
+    };
+    let c = container(summary);
+    assert_eq!(c.kube_namespace.as_deref(), Some("kube-system"));
+    assert!(c.is_kubernetes());
+}

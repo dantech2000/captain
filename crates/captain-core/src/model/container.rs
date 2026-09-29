@@ -19,9 +19,17 @@ pub struct Container {
     pub compose: ComposeLabels,
     /// `None` if the container has no health check.
     pub health: Option<Health>,
+    /// The Kubernetes namespace of a pod container, from the
+    /// `io.kubernetes.pod.namespace` label that cri-dockerd sets.
+    pub kube_namespace: Option<String>,
 }
 
 impl Container {
+    /// True for a container that Kubernetes runs for a pod.
+    pub fn is_kubernetes(&self) -> bool {
+        self.kube_namespace.is_some()
+    }
+
     /// The first 12 characters of the ID, as the Docker CLI shows it.
     pub fn short_id(&self) -> &str {
         &self.id[..self.id.len().min(12)]

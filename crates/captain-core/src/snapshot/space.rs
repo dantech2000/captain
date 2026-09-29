@@ -21,5 +21,21 @@ pub fn check_space(free: Option<u64>, allocated: u64, clone: bool) -> Result<(),
     Ok(())
 }
 
+/// A warning when less space is free than the engine's disk uses. A clone costs
+/// almost nothing at first, but each block the engine changes afterwards takes new
+/// space, up to the whole disk. `None` when there is enough space, or when a value is
+/// unknown.
+pub fn space_warning(free: Option<u64>, engine_disk: Option<u64>) -> Option<String> {
+    let (free, used) = (free?, engine_disk?);
+    (free < used).then(|| {
+        format!(
+            "Only {} is free, and the engine's disk uses {}. The snapshot grows as the \
+             engine changes files, so the disk may fill up.",
+            bytes_label(free),
+            bytes_label(used)
+        )
+    })
+}
+
 #[cfg(test)]
 mod tests;

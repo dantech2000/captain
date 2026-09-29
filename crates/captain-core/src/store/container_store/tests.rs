@@ -1,6 +1,6 @@
 use super::ContainerStore;
 use crate::model::{Container, ContainerState};
-use crate::store::ContainerFilter;
+use crate::store::{ContainerFilter, GroupKey};
 
 fn container(name: &str, state: ContainerState) -> Container {
     Container {
@@ -14,6 +14,7 @@ fn container(name: &str, state: ContainerState) -> Container {
         compose_project: None,
         compose: Default::default(),
         health: None,
+        kube_namespace: None,
     }
 }
 
@@ -63,8 +64,8 @@ fn groups_put_projects_first_and_standalone_last() {
         in_project("db", Some("shop"), ContainerState::Running),
     ]);
 
-    let groups = store.groups(ContainerFilter::All);
-    let names: Vec<Option<&str>> = groups.iter().map(|g| g.project.as_deref()).collect();
+    let groups = store.groups(ContainerFilter::All, false);
+    let names: Vec<Option<&str>> = groups.iter().map(|g| g.project()).collect();
     assert_eq!(names, [Some("blog"), Some("shop"), None]);
     assert_eq!(groups[1].containers.len(), 2);
     assert_eq!(groups[1].running_count(), 2);
@@ -78,9 +79,9 @@ fn groups_apply_the_filter_and_drop_empty_groups() {
         in_project("post", Some("blog"), ContainerState::Exited),
     ]);
 
-    let groups = store.groups(ContainerFilter::Running);
+    let groups = store.groups(ContainerFilter::Running, false);
     assert_eq!(groups.len(), 1);
-    assert_eq!(groups[0].project.as_deref(), Some("shop"));
+    assert_eq!(groups[0].project(), Some("shop"));
 }
 
 #[test]
@@ -93,4 +94,45 @@ fn projects_skip_standalone_containers() {
 
     assert_eq!(store.projects().len(), 1);
     assert!(store.find(&store.containers()[0].id).is_some());
+}
+
+fn in_namespace(name: &str, namespace: &str) -> Container {
+    Container {
+        kube_namespace: Some(namespace.into()),
+        ..container(name, ContainerState::Running)
+    }
+}
+
+#[test]
+fn kubernetes_containers_hide_or_group_by_namespace() {
+    let mut store = ContainerStore::default();
+    store.replace(vec![
+        in_namespace("k8s_coredns", "kube-system"),
+        in_project("web", Some("shop"), ContainerState::Running),
+        in_namespace("k8s_app", "default"),
+        in_project("solo", None, ContainerState::Running),
+        in_namespace("k8s_traefik", "kube-system"),
+    ]);
+
+    let hidden = store.groups(ContainerFilter::All, false);
+    let keys: Vec<&GroupKey> = hidden.iter().map(|g| &g.key).collect();
+    assert_eq!(
+        keys,
+        [&GroupKey::Project("shop".into()), &GroupKey::Standalone]
+    );
+    assert_eq!(store.shown(false).count(), 2);
+    assert_eq!(store.kubernetes_count(), 3);
+
+    let shown = store.groups(ContainerFilter::All, true);
+    let keys: Vec<&GroupKey> = shown.iter().map(|g| &g.key).collect();
+    assert_eq!(
+        keys,
+        [
+            &GroupKey::Project("shop".into()),
+            &GroupKey::Namespace("default".into()),
+            &GroupKey::Namespace("kube-system".into()),
+            &GroupKey::Standalone,
+        ]
+    );
+    assert_eq!(shown[2].containers.len(), 2);
 }

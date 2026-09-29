@@ -9,5 +9,5 @@ mod store;
 
 pub use metadata::{COMPLETE_FILE, METADATA_FILE, Snapshot, SnapshotMetadata, find, newest_first};
 pub use name::{MAX_NAME_CHARS, check_name};
-pub use space::{STEP_SPACE, check_space};
+pub use space::{STEP_SPACE, check_space, space_warning};
 pub use store::{EngineSnapshots, SnapshotList};

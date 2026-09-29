@@ -4,7 +4,7 @@ use std::sync::Arc;
 use captain_core::extension::ExtensionManager;
 use captain_core::model::{Container, EngineInfo, ProjectAction};
 use captain_core::store::{
-    ContainerFilter, ContainerStore, MultiSelection, SelectMode, StatsBoard,
+    ContainerFilter, ContainerStore, GroupKey, MultiSelection, SelectMode, StatsBoard,
 };
 use captain_core::{Engine, EngineError, ImageBuilder, ProjectRunner};
 use gpui_kit::*;
@@ -36,8 +36,10 @@ pub struct Workspace {
     pub(super) events_task: Option<Task<()>>,
     pub(super) stats_tasks: HashMap<String, Task<()>>,
     pub(super) pending: HashSet<String>,
-    /// Project cards the user folded. `None` is the standalone card.
-    pub(super) collapsed: HashSet<Option<String>>,
+    /// Cards the user folded.
+    pub(super) collapsed: HashSet<GroupKey>,
+    /// Show Kubernetes pod containers, one card per namespace.
+    pub(super) show_kubernetes: bool,
     /// Runs `docker compose`. `None` when the CLI is missing.
     pub(super) projects: Option<Arc<dyn ProjectRunner>>,
     /// Runs `docker buildx build`. `None` when the CLI or the plugin is missing.
@@ -70,6 +72,7 @@ impl Workspace {
             stats_tasks: HashMap::new(),
             pending: HashSet::new(),
             collapsed: HashSet::new(),
+            show_kubernetes: false,
             projects: None,
             builder: None,
             extensions: None,
@@ -121,7 +124,9 @@ impl Workspace {
     /// The item count for a page's sidebar entry, once the page has loaded.
     pub fn page_count(&self, page: Page) -> Option<usize> {
         match page {
-            Page::Containers => self.loaded.then(|| self.store.len()),
+            Page::Containers => self
+                .loaded
+                .then(|| self.store.shown(self.show_kubernetes).count()),
             _ => self.page_counts.get(&page).copied(),
         }
     }
@@ -152,16 +157,34 @@ impl Workspace {
         cx.notify();
     }
 
-    /// True if the card for `project` shows only its header.
-    pub fn is_collapsed(&self, project: &Option<String>) -> bool {
-        self.collapsed.contains(project)
+    /// True if the card `key` shows only its header.
+    pub fn is_collapsed(&self, key: &GroupKey) -> bool {
+        self.collapsed.contains(key)
     }
 
-    /// Folds or unfolds the card for `project`.
-    pub fn toggle_collapsed(&mut self, project: Option<String>, cx: &mut Context<Self>) {
-        if !self.collapsed.remove(&project) {
-            self.collapsed.insert(project);
+    /// Folds or unfolds the card `key`.
+    pub fn toggle_collapsed(&mut self, key: GroupKey, cx: &mut Context<Self>) {
+        if !self.collapsed.remove(&key) {
+            self.collapsed.insert(key);
         }
+        cx.notify();
+    }
+
+    /// True if the list shows Kubernetes pod containers.
+    pub fn show_kubernetes(&self) -> bool {
+        self.show_kubernetes
+    }
+
+    /// The active and total counts of the containers the list shows.
+    pub fn shown_counts(&self) -> (usize, usize) {
+        let shown = self.store.shown(self.show_kubernetes);
+        shown.fold((0, 0), |(active, total), c| {
+            (active + usize::from(c.state.is_active()), total + 1)
+        })
+    }
+
+    pub fn set_show_kubernetes(&mut self, show: bool, cx: &mut Context<Self>) {
+        self.show_kubernetes = show;
         cx.notify();
     }
 

@@ -7,7 +7,7 @@ use std::io;
 use std::path::{Path, PathBuf};
 
 use captain_core::snapshot::{
-    COMPLETE_FILE, METADATA_FILE, Snapshot, SnapshotMetadata, newest_first,
+    COMPLETE_FILE, METADATA_FILE, Snapshot, SnapshotMetadata, check_name, newest_first,
 };
 
 /// The complete snapshots in `root`, newest first. Folders without `complete.txt`
@@ -39,6 +39,27 @@ pub fn remove_incomplete(root: &Path) {
 pub fn finish(dir: &Path, metadata: &SnapshotMetadata) -> io::Result<()> {
     std::fs::write(dir.join(METADATA_FILE), metadata.to_json())?;
     std::fs::write(dir.join(COMPLETE_FILE), "")
+}
+
+/// Renames the snapshot `id` in `root` and sets its description. The new
+/// `metadata.json` replaces the old one with a rename, so a crash leaves one of them.
+pub fn edit(root: &Path, id: &str, name: &str, description: &str) -> Result<Snapshot, String> {
+    let all = read_all(root);
+    let mut snapshot = all
+        .iter()
+        .find(|snapshot| snapshot.id == id)
+        .cloned()
+        .ok_or("The snapshot does not exist.")?;
+    let others = all.iter().filter(|other| other.id != id);
+    check_name(name, others.map(|other| other.metadata.name.as_str()))?;
+    snapshot.metadata.name = name.into();
+    snapshot.metadata.description = description.trim().into();
+    let dir = root.join(id);
+    let staged = dir.join(format!(".{METADATA_FILE}"));
+    std::fs::write(&staged, snapshot.metadata.to_json())
+        .and_then(|()| std::fs::rename(&staged, dir.join(METADATA_FILE)))
+        .map_err(|error| format!("{}: {error}", dir.display()))?;
+    Ok(snapshot)
 }
 
 /// A random version 4 UUID, from the standard library's random hash keys.

@@ -1,7 +1,7 @@
 # Feature 0025: Extensions
 
 - Milestone: M21
-- Status: Implemented on macOS; the page needs a check by hand in the app
+- Status: Implemented on macOS; the page and Update need a check by hand in the app
 - Parity: Docker Desktop [extensions](https://docs.docker.com/extensions/extensions-sdk/) and the Rancher Desktop [Extensions](https://docs.rancherdesktop.io/ui/extensions) page
 - Decision: [ADR 0011](../adr/0011-extensions.md)
 
@@ -22,13 +22,16 @@ A user can install a Docker Desktop extension by its image reference, open its p
      - copies the `darwin` host binaries to `~/.captain/extensions/<id>/bin` and marks them executable (`linux` or `windows` on those platforms),
      - starts the backend, if any,
      - writes `extension.json` last. A failed install removes the backend and the folder.
+- **Update…** on a row asks for a tag, `latest` by default. **Check** pulls the extension's repository with that tag and compares the image ID with the installed one (`extension.json` records it; for older installs Captain reads it from the installed image before the pull). If the pull fails but the engine has that image, Captain uses it, so a locally built extension can update too.
+  - The same image: a toast says the extension is up to date.
+  - Another image: the install dialog asks again, titled "Update <title>?". It shows the installed and the new image with their `org.opencontainers.image.version` labels, in orange with "an older version" when the new version number is lower. It also lists the new image's backend and host binaries, since they may change.
+  - **Update** closes the extension's window, copies the new UI, host binaries, and Compose files to `~/.captain/extensions/.update/<id>`, stops the old backend without `--volumes`, swaps the `ui`, `bin`, and `compose` folders, writes `extension.json`, and starts the new backend. The backend's volumes and any other files in the extension's folder stay. Captain then removes the old image: its old tag, or its ID when the pull moved the tag. A failure there only logs.
 - **Remove…** asks first. It closes the extension's window, runs `compose down --volumes` on the backend, deletes the folder, and removes the image.
 - **Open** opens the extension in its own window, or brings the open one forward. The window has a GPUI title bar, a toast strip, and a `gpui-wry` web view. Open is off on Linux and Windows, and the page says why.
 - The bridge answers the first SDK subset of ADR 0011: `extension.vm.service.get|post|put|patch|delete|head|request`, `extension.vm.cli.exec`, `extension.host.cli.exec`, `docker.cli.exec` (all three with `stream`), `docker.listContainers`, `docker.listImages`, `desktopUI.toast.success|warning|error`, `desktopUI.dialog.showOpenDialog`, `host.openExternal`, and `host.platform|arch|hostname`.
 
 ## Out of scope
 
-- Update. Installing the same image again replaces the extension.
 - `desktopUI.navigate.*` (an empty object, as in Rancher Desktop), and the deprecated v0 calls. Any other method rejects with "`<method>` is not supported by Captain".
 - The marketplace, extension icons, and an allow list of images.
 - Opening extension pages on Linux and Windows.
@@ -56,11 +59,14 @@ Automated (`cargo test -p captain-core -p captain-docker`):
 - Metadata parsing, labels, IDs, the UI path mapping and content types, and the Compose project.
 - Bridge routing: each method's route, exec scopes and quote removal, service paths, unknown methods, list filters, the open panel options, and that Captain accepts every method the shim posts.
 - Replies, the host binary check, HTTP requests and responses (chunked and bare LF), and tar unpacking.
+- The update reference (same repository, new tag) and the version comparison.
 
 Live: `cargo test -p captain-docker --test live_extensions -- --ignored` on Captain Engine.
 
 - Docker's Disk Usage extension (`docker/disk-usage-extension:0.2.9`, UI only), re-tagged `captain-agent-ext-ui`: install, `docker.cli.exec` plain and streaming, `docker.listImages`, a refused host binary, and remove.
 - A backend extension built in the test, `captain-agent-ext-vm`: socat answers HTTP on `/run/guest-services/backend.sock`. It checks `vm.service` through the proxy and `vm.cli.exec`, then removes it.
+
+`cargo test -p captain-docker --test live_extension_host -- --ignored` (macOS) builds `captain-agent-ext-host:test` from scratch: a page and a `darwin` shell script `captain-agent-hello`. It installs it, checks that `bin/captain-agent-hello` is executable, runs it through `extension.host.cli.exec` in the bridge, and checks that a full path is refused. A check with the tag `test` says it is up to date. It then builds `captain-agent-ext-host:latest` (version 2.0.0), which exists only in the engine, checks for an update with the default tag, updates, runs the new script, checks that a file in the extension's folder stays and that the old image is gone, and removes the extension. Both live tests passed on a test VM.
 
 A throwaway example opened the Disk Usage window with the web view on macOS: the page loaded from `captain-ext://`, ran `docker system df` through the bridge, and drew its chart.
 
@@ -69,6 +75,7 @@ By hand in the app, on macOS with Captain Engine:
 1. Open **Extensions**. The page is empty and shows the trust note.
 2. Type `docker/disk-usage-extension:0.2.9` and press Enter. The header shows the pull. The dialog names Docker Inc. and says the extension has a page. Click **Install**. The row appears.
 3. Click **Open**. A window titled "Disk usage" shows the chart. Click **Open** again; the same window comes forward.
-4. Click **Remove…** and confirm. The window closes, the row goes away, and `docker images` no longer lists the extension.
+4. Click **Update…**, keep `latest`, and click **Check**. If Docker Hub has a newer image, the dialog shows both versions; click **Update**. Otherwise a toast says the extension is up to date.
+5. Click **Remove…** and confirm. The window closes, the row goes away, and `docker images` no longer lists the extension.
 
-Still open: a check against a public extension with host binaries, the third extension of the ADR's test set.
+Still open: a check against a public extension with host binaries, the third extension of the ADR's test set, and a live update of an extension with a backend.

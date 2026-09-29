@@ -23,8 +23,7 @@ Let the user pick light or dark mode and an accent color, see which engine Capta
 
 ## Out of scope
 
-- Remote hosts over SSH (`ssh://` endpoints).
-- Creating, editing, or switching Docker CLI contexts. Captain only reads the current context.
+- Remote hosts over SSH (`ssh://` endpoints), and listing, creating, and switching Docker CLI contexts. [0026](0026-contexts-and-remote-hosts.md) adds them.
 - More settings, for example the stats history length, which stays fixed.
 - A settings window separate from the main window.
 
@@ -36,7 +35,7 @@ Let the user pick light or dark mode and an accent color, see which engine Capta
 4. Click Dark, then Light, then System. The window changes mode at once. System follows the OS appearance again.
 5. Click each accent swatch. Buttons and links change color at once, in light and in dark mode.
 6. Quit and start Captain. The appearance and accent stay. `settings.json` holds them.
-7. In the custom endpoint field, type `ssh://host` and click "Use this engine". A red hint shows, and nothing changes.
+7. In the custom endpoint field, type `ftp://host` and click "Use this engine". A red hint shows, and nothing changes.
 8. Type the path of a socket that exists, for example `unix:///var/run/docker.sock`, and click "Use this engine". The state goes to Connecting, then Connected, and the Endpoint row shows the custom endpoint.
 9. Type `unix:///nonexistent.sock` and use it. The Containers page shows the error state. Click "Use automatic" in Settings. Captain connects again.
 10. Stop the engine. The Containers page shows the error state. Start the engine and click Retry. The containers come back.

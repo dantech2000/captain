@@ -7,6 +7,8 @@ const COMPOSE_PROJECT_LABEL: &str = "com.docker.compose.project";
 const COMPOSE_SERVICE_LABEL: &str = "com.docker.compose.service";
 const COMPOSE_WORKING_DIR_LABEL: &str = "com.docker.compose.project.working_dir";
 const COMPOSE_CONFIG_FILES_LABEL: &str = "com.docker.compose.project.config_files";
+/// Set by cri-dockerd on the containers of a Kubernetes pod.
+const KUBE_NAMESPACE_LABEL: &str = "io.kubernetes.pod.namespace";
 
 pub fn container(summary: ContainerSummary) -> Container {
     let name = summary
@@ -44,6 +46,7 @@ pub fn container(summary: ContainerSummary) -> Container {
         compose_project: labels.remove(COMPOSE_PROJECT_LABEL),
         compose: compose_labels(&mut labels),
         health,
+        kube_namespace: labels.remove(KUBE_NAMESPACE_LABEL),
     }
 }
 

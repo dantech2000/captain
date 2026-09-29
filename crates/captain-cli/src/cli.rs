@@ -112,6 +112,14 @@ pub enum SnapshotCommand {
         #[arg(long, short)]
         yes: bool,
     },
+    /// Rename a snapshot, or change its description. The engine keeps running.
+    Rename {
+        name: String,
+        new_name: String,
+        /// The new description. Without it, the description stays.
+        #[arg(long, short)]
+        description: Option<String>,
+    },
     /// Delete a snapshot.
     Delete {
         name: String,

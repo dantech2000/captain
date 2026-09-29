@@ -24,7 +24,7 @@ mod volume_store;
 
 pub use build_form::{BuildForm, BuildFormError, DEFAULT_DOCKERFILE};
 pub use compose_projects::{compose_project, compose_projects};
-pub use container_group::ContainerGroup;
+pub use container_group::{ContainerGroup, GroupKey};
 pub use container_store::ContainerStore;
 pub use filter::ContainerFilter;
 pub use image_events::changes_image_list;

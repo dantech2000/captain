@@ -7,5 +7,6 @@ mod files;
 mod install;
 mod manager;
 mod process;
+mod update;
 
 pub use manager::DockerExtensions;

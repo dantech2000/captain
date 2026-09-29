@@ -22,6 +22,7 @@ use captain_core::process_lock::{ProcessLock, app_lock_path};
 use captain_core::settings::Settings;
 
 fn main() {
+    refuse_cli_arguments();
     let logging = logging::init();
     let path = settings_path();
     // Held until Captain exits; `captain set` refuses while it is held.
@@ -48,6 +49,12 @@ fn main() {
         captain_ui::system_init(cx, Arc::new(system::System));
         captain_ui::palette_init(cx);
         actions::register(cx);
+        // A tunnel to an ssh:// engine must not outlive Captain; see feature 0026.
+        cx.on_app_quit(|_| {
+            captain_docker::close_ssh_tunnel();
+            async {}
+        })
+        .detach();
         window::init(endpoint, engine, diagnostics, cx);
         // The app has launched, so the platform run loop is up; see ADR 0006.
         #[cfg(any(target_os = "macos", target_os = "windows"))]
@@ -59,6 +66,22 @@ fn main() {
             tracing::info!("starting in the background");
         }
     });
+}
+
+/// Exits if Captain was started with command-line arguments. The app binary is
+/// named `captain` like the CLI, and running it with CLI arguments by mistake would
+/// start the full app on the real engine. macOS may pass `-psn_…` and `-NS…`.
+fn refuse_cli_arguments() {
+    let unexpected = std::env::args()
+        .skip(1)
+        .find(|arg| !arg.starts_with("-psn_") && !arg.starts_with("-NS"));
+    if let Some(arg) = unexpected {
+        eprintln!(
+            "This is the Captain app, which takes no arguments (got {arg:?}). \
+             For the command line, run captain-cli, or Captain.app/Contents/Resources/bin/captain."
+        );
+        std::process::exit(2);
+    }
 }
 
 /// `Captain/settings.json` in the user's config directory, for example

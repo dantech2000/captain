@@ -101,6 +101,11 @@ pub fn captain_endpoint(cx: &App) -> Option<String> {
         .flatten()
 }
 
+/// Captain Engine's endpoint, whether or not the settings choose it.
+pub fn captain_socket(cx: &App) -> Option<String> {
+    host_model(cx)?.read(cx).host.endpoint()
+}
+
 impl HostModel {
     pub fn status(&self) -> &HostStatus {
         &self.status

@@ -29,7 +29,7 @@ pub use migration::OpenMigrationAssistant;
 pub use palette::{ToggleCommandPalette, init as palette_init};
 pub use port_forwarding::init as port_forwarding_init;
 pub use settings::{
-    DetectedEndpoint, EngineSource, SystemIntegration, current as current_settings,
+    ContextJob, DetectedEndpoint, EngineSource, SystemIntegration, current as current_settings,
     init as settings_init, init_engine_source as engine_source_init, init_system as system_init,
     observe as observe_settings,
 };

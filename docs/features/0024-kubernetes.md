@@ -38,6 +38,7 @@ A user turns on a switch and gets a one-node Kubernetes cluster in Captain Engin
 - **Reset Kubernetes** stops k3s, removes the pod containers (label `io.kubernetes.pod.namespace`), unmounts and deletes `/var/lib/kubelet`, `/var/lib/rancher/k3s/{data,server,storage}`, `/etc/rancher/k3s`, and `/run/k3s` (the list Rancher Desktop deletes), and starts k3s again if it is on. Images, volumes, and containers started with Docker stay.
 - **Turning Kubernetes off** disables the unit and stops the pod containers, because they are Docker containers and outlive k3s. The state stays for the next start. The `captain` context stays in the kubeconfig. **Reset Captain Engine** in the app removes it.
 - **A Port Forwarding page.** Its sidebar entry sits above Diagnostics and shows only while the cluster runs. The page lists the Services with TCP ports, one card per namespace. **Forward** asks for a local port above 1024, or takes a free one. The row then shows `127.0.0.1:<port>` and **Stop**. Each connection finds a running pod behind the Service, resolves `targetPort` (a number, a container port name, or unset), and relays through the Kubernetes port-forward API with kube-rs `Api::portforward`. Forwards end when Captain quits.
+- **Pod containers in the container list.** With `--docker`, cri-dockerd runs each pod container as a Docker container named `k8s_<container>_<pod>_<namespace>_…` with `io.kubernetes.*` labels. The Containers page hides the containers with the `io.kubernetes.pod.namespace` label by default, as Rancher Desktop's Containers page does ([docs](https://docs.rancherdesktop.io/ui/containers)). While the engine has any, the header shows a **Show Kubernetes containers** checkbox. When it is on, the list shows one card per namespace ("Kubernetes namespace · 3 of 4 running") after the Compose projects and before the standalone containers. The header counts, the Running tile, and the sidebar count follow the checkbox. The checkbox is not saved; each launch starts with it off.
 - **Menu bar: a Kubernetes Contexts submenu** with every context in the user's kubeconfig files and a check mark on the current one. Picking one makes it current in the first file that sets a current context, or the first file, as `kubectl config use-context` does. The tray reads the files every 5 seconds, so changes from `kubectl` show up.
 - **CLI:**
 
@@ -52,7 +53,7 @@ A user turns on a switch and gets a one-node Kubernetes cluster in Captain Engin
 
 ## Out of scope
 
-- Hiding pod containers in the container list behind a "Show Kubernetes containers" filter (ADR 0010). The container model has no labels yet; this is the next step.
+- A namespace picker like Rancher Desktop's. The namespace cards fold instead.
 - Rancher's "Expose Traefik on ports 80 and 443" rule with `hostIP: 0.0.0.0`.
 - Privileged local ports (1024 and below) on the Port Forwarding page.
 - UDP Service ports, pod ports without a Service, and forwards that survive a restart of Captain.
@@ -69,7 +70,7 @@ A user turns on a switch and gets a one-node Kubernetes cluster in Captain Engin
 - **Engine lock.** Apply, Reset, and the CLI commands take the engine lock with the note `kubernetes`, and need a running engine that no start or stop is changing.
 - **YAML.** Kubeconfig files are parsed and written with `serde-saphyr` as JSON values, so only the `captain` entries change. Comments in a merged file are lost, as with `kubectl config`. The backup keeps the original.
 - **kube-rs.** `kube` 4.2 with `rustls-tls`, `ring`, and `ws`, and `k8s-openapi` 0.28 with `latest` ([docs.rs Portforwarder](https://docs.rs/kube/latest/kube/api/struct.Portforwarder.html), [pod_portforward_bind example](https://github.com/kube-rs/kube/blob/main/examples/pod_portforward_bind.rs)). It lives in the new `captain-kube` crate on its own tokio runtime, as bollard lives in `captain-docker` (ADR 0002).
-- **Code layout.** `captain_core::kubernetes`: settings, versions, channel and release parsing, asset names, checksums, the kubeconfig merge and files, the `KubernetesHost` and `PortForwarding` traits, and target port resolution. `captain-host/src/k3s`: `curl`, the checked download, and the version list with its cache. `captain-host/src/lima/kubernetes`: the guest scripts, the install steps, and `LimaKubernetes`. `captain-kube`: the kube client, Services, pod lookup, and `KubeForwarder`. `captain-ui/src/kubernetes` and `settings/kube*.rs`: the model and the card. `captain-ui/src/port_forwarding`: the page. `captain-app/src/tray/contexts.rs`: the submenu. `captain-cli/src/commands/kubernetes`: the four commands.
+- **Code layout.** `Container::kube_namespace` comes from the label in `captain-docker/src/mapping/container.rs`. `captain_core::store::GroupKey` orders the cards (project, namespace, standalone), and `ContainerStore::groups(filter, kubernetes)` hides or groups the pod containers. `captain_core::kubernetes`: settings, versions, channel and release parsing, asset names, checksums, the kubeconfig merge and files, the `KubernetesHost` and `PortForwarding` traits, and target port resolution. `captain-host/src/k3s`: `curl`, the checked download, and the version list with its cache. `captain-host/src/lima/kubernetes`: the guest scripts, the install steps, and `LimaKubernetes`. `captain-kube`: the kube client, Services, pod lookup, and `KubeForwarder`. `captain-ui/src/kubernetes` and `settings/kube*.rs`: the model and the card. `captain-ui/src/port_forwarding`: the page. `captain-app/src/tray/contexts.rs`: the submenu. `captain-cli/src/commands/kubernetes`: the four commands.
 
 ## Verification
 
@@ -79,6 +80,7 @@ Automated (`cargo test -p captain-core -p captain-host -p captain-cli -p captain
 - Checksum lookup, the download URL, file hashing, and a complete cache folder that needs no download.
 - The `captain` kubeconfig from `k3s.yaml`, the merge that keeps other entries and the current context, removal, the target file in a `KUBECONFIG` list, the backup, and `use-context`.
 - The install arguments, the unit state parsing, `targetPort` resolution, the local port rule, the CLI arguments, and the contexts submenu.
+- Pod containers: the namespace label mapping, hidden by default, and one card per namespace when shown.
 
 Live: with a kubeconfig of its own, never the real one:
 
@@ -98,4 +100,7 @@ By hand in the app:
 5. Expose it with `kubectl expose pod app --port 80 --target-port <port>`. Open **Port Forwarding**, click **Forward** on `app:80`, and leave the port empty. Open `http://127.0.0.1:<port>`.
 6. In the menu bar, open **Kubernetes Contexts** and pick another context. `kubectl config current-context` shows it.
 7. Click **Reset Kubernetes…** and confirm. The pod is gone and the image stays.
-8. Turn Kubernetes off and click **Apply**. The state is Off and the Port Forwarding entry leaves the sidebar.
+8. Open **Containers**. No `k8s_` containers show. Turn on **Show Kubernetes containers**. A `kube-system` card and a `default` card (with `app`) appear, and the counts grow.
+9. Turn Kubernetes off and click **Apply**. The state is Off and the Port Forwarding entry leaves the sidebar.
+
+On a test VM (`captain-agent-daemon` in `~/.clo/lima`, with a temporary `KUBECONFIG`), `captain kubernetes enable` started `v1.36.4+k3s1`, and `docker ps -a` listed ten `k8s_*` containers, each with `io.kubernetes.pod.namespace=kube-system`.
