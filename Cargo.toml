@@ -1,0 +1,31 @@
+[workspace]
+resolver = "3"
+members = ["crates/*"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/dantech2000/captain"
+rust-version = "1.98"
+
+[workspace.dependencies]
+captain-core = { path = "crates/captain-core" }
+captain-docker = { path = "crates/captain-docker" }
+captain-ui = { path = "crates/captain-ui" }
+
+anyhow = "1"
+bollard = "0.21"
+futures = "0.3"
+gpui-kit = "0.7"
+serde_json = "1"
+thiserror = "2"
+tokio = { version = "1", features = ["rt-multi-thread", "time"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+
+[workspace.lints.clippy]
+all = { level = "warn", priority = -1 }

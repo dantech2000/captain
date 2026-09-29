@@ -1,0 +1,15 @@
+[package]
+name = "captain-core"
+description = "Domain models, the Engine trait, and state stores for Captain"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+futures.workspace = true
+thiserror.workspace = true
+
+[lints]
+workspace = true

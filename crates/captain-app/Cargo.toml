@@ -1,0 +1,23 @@
+[package]
+name = "captain-app"
+description = "A native desktop client for Docker"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[[bin]]
+name = "captain"
+path = "src/main.rs"
+
+[dependencies]
+captain-core.workspace = true
+captain-docker.workspace = true
+captain-ui.workspace = true
+gpui-kit.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+
+[lints]
+workspace = true
