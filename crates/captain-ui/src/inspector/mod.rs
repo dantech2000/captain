@@ -1,7 +1,8 @@
 mod actions;
+mod delete_dialog;
 mod header;
 mod inspector_view;
-mod logs_tab;
+mod logs;
 mod overview;
 mod placeholder;
 mod section;

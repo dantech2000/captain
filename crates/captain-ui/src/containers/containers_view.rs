@@ -50,21 +50,25 @@ impl Render for ContainersView {
 
 impl ContainersView {
     fn list(&self, workspace: &Workspace, palette: &Palette) -> impl IntoElement {
-        let groups = workspace.store().groups(workspace.filter());
-        let content =
-            if groups.is_empty() {
-                empty_state::render(workspace.filter() != ContainerFilter::All, palette)
-                    .into_any_element()
-            } else {
-                div()
-                    .flex()
-                    .flex_col()
-                    .gap(px(10.))
-                    .children(groups.into_iter().map(|group| {
-                        project_card::render(group, &self.workspace, workspace, palette)
-                    }))
-                    .into_any_element()
-            };
+        let groups = workspace.visible_groups();
+        let projects = workspace.compose_projects();
+        let filtered =
+            workspace.filter() != ContainerFilter::All || workspace.project_filter().is_some();
+        let content = if groups.is_empty() {
+            empty_state::render(filtered, palette).into_any_element()
+        } else {
+            div()
+                .flex()
+                .flex_col()
+                .gap(px(10.))
+                .children(groups.into_iter().map(|group| {
+                    let project = projects
+                        .iter()
+                        .find(|p| group.project.as_ref() == Some(&p.name));
+                    project_card::render(group, project, &self.workspace, workspace, palette)
+                }))
+                .into_any_element()
+        };
 
         div()
             .size_full()

@@ -1,4 +1,4 @@
-use super::{Health, PortMapping};
+use super::{ComposeLabels, Health, PortMapping};
 
 /// A container as Captain shows it in lists.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -15,6 +15,8 @@ pub struct Container {
     pub created: i64,
     /// The Compose project, from the `com.docker.compose.project` label.
     pub compose_project: Option<String>,
+    /// The other Compose labels: service, working directory, and config files.
+    pub compose: ComposeLabels,
     /// `None` if the container has no health check.
     pub health: Option<Health>,
 }

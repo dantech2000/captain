@@ -1,6 +1,10 @@
 /// A coarse relative age like the Docker CLI prints, for example "3 hours ago".
-/// Both arguments are Unix timestamps in seconds.
+/// Both arguments are Unix timestamps in seconds. A time of zero or less means the
+/// engine did not report one (some images do this), so it shows as a dash.
 pub fn age_label(created: i64, now: i64) -> String {
+    if created <= 0 {
+        return "—".into();
+    }
     const MINUTE: i64 = 60;
     const HOUR: i64 = 60 * MINUTE;
     const DAY: i64 = 24 * HOUR;

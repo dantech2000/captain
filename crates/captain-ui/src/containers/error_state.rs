@@ -3,7 +3,9 @@ use gpui_kit::assets::IconName;
 use gpui_kit::component::Icon;
 use gpui_kit::*;
 
+use crate::settings;
 use crate::theme::Palette;
+use crate::widgets::{ButtonTone, text_button};
 
 /// Shown when Captain cannot reach its engine.
 pub fn render(error: &EngineError, palette: &Palette) -> impl IntoElement {
@@ -43,8 +45,16 @@ pub fn render(error: &EngineError, palette: &Palette) -> impl IntoElement {
                 .child(
                     div()
                         .text_color(palette.text2)
-                        .child("Start the engine, then restart Captain."),
+                        .child("Start the engine, then click Retry. Settings can switch engines."),
                 )
+                .child(text_button(
+                    "engine-retry",
+                    "Retry",
+                    ButtonTone::Accent,
+                    true,
+                    palette,
+                    |_, _, cx| settings::retry(cx),
+                ))
                 .child(
                     div()
                         .w_full()

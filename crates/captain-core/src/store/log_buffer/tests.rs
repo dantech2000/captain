@@ -1,3 +1,6 @@
+// The expected values are byte ranges, not a vector of numbers.
+#![allow(clippy::single_range_in_vec_init)]
+
 use super::{LOG_BUFFER_LEN, LevelFilter, LogBuffer};
 use crate::model::{LogLevel, LogLine, LogStream};
 
@@ -26,4 +29,24 @@ fn filters_by_level() {
     let errors = buffer.filtered(LevelFilter::Only(LogLevel::Error));
     assert_eq!(errors.len(), 1);
     assert_eq!(errors[0].text, "error: boom");
+}
+
+#[test]
+fn search_combines_the_level_filter_and_the_query() {
+    let mut buffer = LogBuffer::default();
+    buffer.push(line("GET /api 200"));
+    buffer.push(line("WARN slow GET /api"));
+    buffer.push(line("error: boom"));
+
+    let all = buffer.search(LevelFilter::All, "get /API");
+    assert_eq!(all.len(), 2);
+    assert_eq!(all[1].ranges, vec![10..18]);
+
+    let warnings = buffer.search(LevelFilter::Only(LogLevel::Warn), "get");
+    assert_eq!(warnings.len(), 1);
+    assert_eq!(warnings[0].line.text, "WARN slow GET /api");
+
+    let everything = buffer.search(LevelFilter::All, "");
+    assert_eq!(everything.len(), 3);
+    assert!(everything.iter().all(|m| m.ranges.is_empty()));
 }

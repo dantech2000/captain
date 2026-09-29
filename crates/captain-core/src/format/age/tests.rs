@@ -20,3 +20,8 @@ fn picks_the_largest_whole_unit() {
     assert_eq!(age_label(NOW - 14 * 86_400, NOW), "2 weeks ago");
     assert_eq!(age_label(NOW - 400 * 86_400, NOW), "1 year ago");
 }
+
+#[test]
+fn missing_time_shows_a_dash() {
+    assert_eq!(age_label(0, NOW), "—");
+}

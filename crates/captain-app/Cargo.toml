@@ -15,9 +15,16 @@ path = "src/main.rs"
 captain-core.workspace = true
 captain-docker.workspace = true
 captain-ui.workspace = true
+dirs.workspace = true
 gpui-kit.workspace = true
 tracing.workspace = true
 tracing-subscriber.workspace = true
+
+# The tray icon. Linux is left out until its GTK dependency works in CI; see ADR 0006.
+[target.'cfg(any(target_os = "macos", target_os = "windows"))'.dependencies]
+futures.workspace = true
+muda.workspace = true
+tray-icon.workspace = true
 
 [lints]
 workspace = true

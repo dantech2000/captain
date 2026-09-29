@@ -6,7 +6,10 @@ use tokio::runtime::Runtime;
 
 use crate::{Endpoint, mapping, runtime};
 
-mod api;
+mod containers;
+mod images;
+mod networks;
+mod volumes;
 
 /// Seconds bollard waits for a single request.
 const REQUEST_TIMEOUT_SECS: u64 = 120;

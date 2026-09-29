@@ -1,7 +1,7 @@
 //! Runs against the real engine that discovery finds. Ignored by default:
 //! `cargo test -p captain-docker -- --ignored`.
 
-use captain_core::Engine;
+use captain_core::ContainerApi;
 use captain_docker::{DiscoveryInput, DockerEngine, discover};
 use futures::executor::block_on;
 

@@ -29,7 +29,7 @@ Replace the M1 table with the v2 design: a branded sidebar, live stat tiles, con
 
 - The ⌘K command palette (its own feature).
 - Images, Volumes, and Networks pages.
-- Project-level stop and restart.
+- Project-level stop and restart (built later, in [0006](0006-container-actions.md)).
 - The Captain Engine VM.
 
 ## Verification

@@ -1,13 +1,15 @@
-use captain_core::model::{Container, ContainerAction};
+use captain_core::model::{Container, ContainerAction, ContainerState};
 use gpui_kit::assets::IconName;
 use gpui_kit::component::Icon;
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::*;
 
+use super::delete_dialog;
 use crate::theme::Palette;
 use crate::workspace::Workspace;
 
-/// Start or Stop, Restart, Browser, and Delete. Delete works only on a stopped container.
+/// Start or Stop, Pause or Resume, Restart, Browser, and Delete, as five equal buttons.
+/// Delete asks first, and offers "Stop and delete" for a live container.
 pub fn render(
     container: &Container,
     handle: &Entity<Workspace>,
@@ -17,22 +19,19 @@ pub fn render(
     let active = container.state.is_active();
     let pending = workspace.is_pending(&container.id);
     let port = container.published_ports().first().copied();
-    let toggle = if active {
-        ContainerAction::Stop
-    } else {
-        ContainerAction::Start
-    };
+    let toggle = ContainerAction::toggle_for(container.state);
+    let pause = ContainerAction::pause_toggle_for(container.state);
 
-    let action = |action: ContainerAction, icon: IconName, color: Hsla, enabled: bool| {
+    let action = |action: ContainerAction, icon: IconName, enabled: bool| {
         let handle = handle.clone();
         let id = container.id.clone();
         button(
             action.label(),
             icon,
-            color,
+            palette.text,
             enabled && !pending,
             palette,
-            move |cx| {
+            move |_, cx| {
                 handle.update(cx, |workspace, cx| {
                     workspace.run_action(id.clone(), action, cx)
                 });
@@ -45,51 +44,50 @@ pub fn render(
         palette.accent,
         port.is_some(),
         palette,
-        move |cx| {
+        move |_, cx| {
             if let Some(port) = port {
                 cx.open_url(&format!("http://localhost:{port}"));
             }
         },
     );
+    let delete = {
+        let handle = handle.clone();
+        let container = container.clone();
+        button(
+            ContainerAction::Remove.label(),
+            IconName::Trash,
+            palette.red,
+            !pending,
+            palette,
+            move |window, cx| delete_dialog::open(&container, handle.clone(), window, cx),
+        )
+    };
 
     div()
         .flex()
-        .flex_col()
         .gap(px(8.))
-        .child(
-            div()
-                .flex()
-                .gap(px(8.))
-                .child(action(
-                    toggle,
-                    if active {
-                        IconName::Square
-                    } else {
-                        IconName::Play
-                    },
-                    palette.text,
-                    true,
-                ))
-                .child(action(
-                    ContainerAction::Restart,
-                    IconName::RotateCw,
-                    palette.text,
-                    active,
-                ))
-                .child(browser)
-                .child(action(
-                    ContainerAction::Remove,
-                    IconName::Trash,
-                    palette.red,
-                    !active,
-                )),
-        )
-        .children(workspace.action_error().map(|error| {
-            div()
-                .text_size(px(11.))
-                .text_color(palette.red)
-                .child(error.to_string())
-        }))
+        .child(action(
+            toggle,
+            if active {
+                IconName::Square
+            } else {
+                IconName::Play
+            },
+            true,
+        ))
+        .child(match pause {
+            Some(ContainerAction::Unpause) => {
+                action(ContainerAction::Unpause, IconName::Play, true)
+            }
+            _ => action(ContainerAction::Pause, IconName::Pause, pause.is_some()),
+        })
+        .child(action(
+            ContainerAction::Restart,
+            IconName::RotateCw,
+            container.state == ContainerState::Running,
+        ))
+        .child(browser)
+        .child(delete)
 }
 
 fn button(
@@ -98,12 +96,13 @@ fn button(
     color: Hsla,
     enabled: bool,
     palette: &Palette,
-    on_click: impl Fn(&mut App) + 'static,
+    on_click: impl Fn(&mut Window, &mut App) + 'static,
 ) -> Stateful<Div> {
     let hover = palette.nav_selected;
     div()
         .id(label)
         .flex_1()
+        .min_w_0()
         .flex()
         .flex_col()
         .items_center()
@@ -121,7 +120,7 @@ fn button(
             this.cursor_pointer()
                 .hover(move |style| style.bg(hover))
                 .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
-                .on_click(move |_, _, cx| on_click(cx))
+                .on_click(move |_, window, cx| on_click(window, cx))
         })
         .child(Icon::new(icon).size(px(16.)))
         .child(label)

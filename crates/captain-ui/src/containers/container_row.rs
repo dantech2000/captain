@@ -113,6 +113,12 @@ fn name_cell(container: &Container, palette: &Palette) -> Div {
         };
         pill(health.label(), color, palette.tint(color))
     });
+    // The Compose service, when the container name does not already say it.
+    let service = container
+        .compose
+        .service
+        .clone()
+        .filter(|service| *service != container.name);
 
     div()
         .flex_1()
@@ -138,6 +144,13 @@ fn name_cell(container: &Container, palette: &Palette) -> Div {
                                 .truncate()
                                 .child(container.name.clone()),
                         )
+                        .children(service.map(|service| {
+                            div()
+                                .flex_shrink_0()
+                                .text_size(px(11.))
+                                .text_color(palette.text3)
+                                .child(service)
+                        }))
                         .children(health),
                 )
                 .child(
@@ -228,11 +241,15 @@ fn trailing_cell(
         );
     }
 
-    let (toggle, icon) = if container.state.is_active() {
-        (ContainerAction::Stop, IconName::Square)
-    } else {
-        (ContainerAction::Start, IconName::Play)
+    let toggle = ContainerAction::toggle_for(container.state);
+    let toggle_icon = match toggle {
+        ContainerAction::Stop => IconName::Square,
+        _ => IconName::Play,
     };
+    let pause = ContainerAction::pause_toggle_for(container.state).map(|action| match action {
+        ContainerAction::Pause => (action, IconName::Pause),
+        _ => (action, IconName::Play),
+    });
     let action_button = |action: ContainerAction, icon: IconName| {
         let handle = handle.clone();
         let id = container.id.clone();
@@ -248,6 +265,7 @@ fn trailing_cell(
             },
         )
     };
-    cell.child(action_button(toggle, icon))
+    cell.child(action_button(toggle, toggle_icon))
+        .children(pause.map(|(action, icon)| action_button(action, icon)))
         .child(action_button(ContainerAction::Restart, IconName::RotateCw))
 }

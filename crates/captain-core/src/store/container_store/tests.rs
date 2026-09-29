@@ -12,6 +12,7 @@ fn container(name: &str, state: ContainerState) -> Container {
         ports: Vec::new(),
         created: 0,
         compose_project: None,
+        compose: Default::default(),
         health: None,
     }
 }
@@ -65,6 +66,7 @@ fn active_count_counts_running_paused_and_restarting() {
 fn in_project(name: &str, project: Option<&str>, state: ContainerState) -> Container {
     Container {
         compose_project: project.map(Into::into),
+        compose: Default::default(),
         ..container(name, state)
     }
 }

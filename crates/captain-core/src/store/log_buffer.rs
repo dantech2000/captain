@@ -1,5 +1,6 @@
 use std::collections::VecDeque;
 
+use super::log_search::{LogMatch, find_matches};
 use crate::model::{LogLevel, LogLine};
 
 /// How many lines a buffer keeps before it drops the oldest.
@@ -70,6 +71,21 @@ impl LogBuffer {
             .iter()
             .filter(|l| filter.matches(l))
             .cloned()
+            .collect()
+    }
+
+    /// The lines that pass `filter` and contain `query`, oldest first, with where
+    /// `query` matched. See [`find_matches`].
+    pub fn search(&self, filter: LevelFilter, query: &str) -> Vec<LogMatch> {
+        self.lines
+            .iter()
+            .filter(|line| filter.matches(line))
+            .filter_map(|line| {
+                find_matches(&line.text, query).map(|ranges| LogMatch {
+                    line: line.clone(),
+                    ranges,
+                })
+            })
             .collect()
     }
 }

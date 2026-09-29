@@ -36,6 +36,7 @@ fn short_id_and_ports_label() {
         ports: vec![tcp(8080), tcp(8080), tcp(8081)],
         created: 0,
         compose_project: None,
+        compose: Default::default(),
         health: None,
     };
 
@@ -63,6 +64,7 @@ fn published_ports_skip_unpublished_and_duplicates() {
         ports: vec![port(80, Some(8080)), port(80, Some(8080)), port(443, None)],
         created: 0,
         compose_project: None,
+        compose: Default::default(),
         health: None,
     };
 
@@ -79,6 +81,7 @@ fn with_image(image: &str) -> Container {
         ports: Vec::new(),
         created: 0,
         compose_project: None,
+        compose: Default::default(),
         health: None,
     }
 }

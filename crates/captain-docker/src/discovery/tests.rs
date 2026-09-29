@@ -2,7 +2,7 @@
 use std::path::Path;
 use std::path::PathBuf;
 
-use super::{DiscoveryError, DiscoveryInput, discover};
+use super::{CandidateSource, DiscoveryError, DiscoveryInput, candidates, discover};
 use crate::Endpoint;
 
 fn input(docker_host: Option<&str>) -> DiscoveryInput {
@@ -58,4 +58,61 @@ fn windows_falls_back_to_named_pipe() {
         endpoint,
         Ok(Endpoint::NamedPipe("//./pipe/docker_engine".into()))
     );
+}
+
+#[cfg(unix)]
+#[test]
+fn candidates_list_host_then_existing_sockets() {
+    use super::Candidate;
+
+    let colima = Path::new("/nonexistent-home/.colima/default/docker.sock");
+    let system = Path::new("/var/run/docker.sock");
+    let found = candidates(&input(Some("tcp://1.2.3.4:2375")), |path| {
+        path == colima || path == system
+    });
+    assert_eq!(
+        found,
+        [
+            Candidate {
+                source: CandidateSource::DockerHost,
+                endpoint: Endpoint::Tcp("tcp://1.2.3.4:2375".into()),
+            },
+            Candidate {
+                source: CandidateSource::Socket,
+                endpoint: Endpoint::Unix(colima.into()),
+            },
+            Candidate {
+                source: CandidateSource::Socket,
+                endpoint: Endpoint::Unix(system.into()),
+            },
+        ]
+    );
+}
+
+#[test]
+fn candidates_skip_unsupported_hosts() {
+    let found = candidates(&input(Some("ssh://me@host")), |_| false);
+    assert!(
+        found
+            .iter()
+            .all(|candidate| candidate.source != CandidateSource::DockerHost)
+    );
+}
+
+#[cfg(unix)]
+#[test]
+fn candidates_drop_duplicates() {
+    let found = candidates(&input(Some("unix:///var/run/docker.sock")), |_| false);
+    assert_eq!(found.len(), 1);
+    let found = candidates(&input(Some("unix:///var/run/docker.sock")), |path| {
+        path == Path::new("/var/run/docker.sock")
+    });
+    assert_eq!(found.len(), 1);
+    assert_eq!(found[0].source, CandidateSource::DockerHost);
+}
+
+#[cfg(unix)]
+#[test]
+fn candidates_empty_when_nothing_exists() {
+    assert!(candidates(&input(None), |_| false).is_empty());
 }

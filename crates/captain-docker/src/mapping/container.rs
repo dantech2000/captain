@@ -1,7 +1,12 @@
 use bollard::models::{ContainerSummary, PortSummary};
-use captain_core::model::{Container, ContainerState, Health, PortMapping};
+use std::collections::HashMap;
+
+use captain_core::model::{ComposeLabels, Container, ContainerState, Health, PortMapping};
 
 const COMPOSE_PROJECT_LABEL: &str = "com.docker.compose.project";
+const COMPOSE_SERVICE_LABEL: &str = "com.docker.compose.service";
+const COMPOSE_WORKING_DIR_LABEL: &str = "com.docker.compose.project.working_dir";
+const COMPOSE_CONFIG_FILES_LABEL: &str = "com.docker.compose.project.config_files";
 
 pub fn container(summary: ContainerSummary) -> Container {
     let name = summary
@@ -27,6 +32,7 @@ pub fn container(summary: ContainerSummary) -> Container {
         .and_then(|h| h.status)
         .and_then(|status| Health::parse(status.as_ref()));
 
+    let mut labels = summary.labels.unwrap_or_default();
     Container {
         id: summary.id.unwrap_or_default(),
         name,
@@ -35,10 +41,20 @@ pub fn container(summary: ContainerSummary) -> Container {
         status: summary.status.unwrap_or_default(),
         ports,
         created: summary.created.unwrap_or_default(),
-        compose_project: summary
-            .labels
-            .and_then(|mut labels| labels.remove(COMPOSE_PROJECT_LABEL)),
+        compose_project: labels.remove(COMPOSE_PROJECT_LABEL),
+        compose: compose_labels(&mut labels),
         health,
+    }
+}
+
+fn compose_labels(labels: &mut HashMap<String, String>) -> ComposeLabels {
+    ComposeLabels {
+        service: labels.remove(COMPOSE_SERVICE_LABEL),
+        working_dir: labels.remove(COMPOSE_WORKING_DIR_LABEL),
+        config_files: labels
+            .remove(COMPOSE_CONFIG_FILES_LABEL)
+            .map(|files| ComposeLabels::split_config_files(&files))
+            .unwrap_or_default(),
     }
 }
 
@@ -55,3 +71,6 @@ fn port(port: PortSummary) -> PortMapping {
         },
     }
 }
+
+#[cfg(test)]
+mod tests;

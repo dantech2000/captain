@@ -4,6 +4,9 @@ pub struct LogLine {
     pub stream: LogStream,
     pub text: String,
     pub level: LogLevel,
+    /// When the engine received the line, in Unix seconds. `None` when the engine
+    /// sent no time.
+    pub timestamp: Option<i64>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -29,6 +32,33 @@ impl LogLine {
             stream,
             text,
             level,
+            timestamp: None,
+        }
+    }
+
+    /// Reads a line that Docker sent with timestamps: an RFC 3339 time, a space, then
+    /// the text. A line that does not start with a time keeps all of its text.
+    pub fn with_docker_time(stream: LogStream, raw: &str) -> Self {
+        match timestamp::split(raw) {
+            Some((time, text)) => Self {
+                timestamp: Some(time),
+                ..Self::new(stream, text)
+            },
+            None => Self::new(stream, raw),
+        }
+    }
+
+    /// The time as `HH:MM:SS` in a zone `offset` seconds east of UTC.
+    pub fn clock(&self, offset: i32) -> Option<String> {
+        self.timestamp.map(|time| timestamp::clock(time, offset))
+    }
+
+    /// The line as plain text for the clipboard. With a zone offset, the clock goes
+    /// in front of the text.
+    pub fn copy_text(&self, offset: Option<i32>) -> String {
+        match offset.and_then(|offset| self.clock(offset)) {
+            Some(clock) => format!("{clock} {}", self.text),
+            None => self.text.clone(),
         }
     }
 }
@@ -56,6 +86,8 @@ impl LogLevel {
         }
     }
 }
+
+mod timestamp;
 
 #[cfg(test)]
 mod tests;

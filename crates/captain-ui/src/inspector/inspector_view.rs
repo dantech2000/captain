@@ -1,11 +1,10 @@
 use captain_core::model::{ContainerDetail, ContainerState};
-use captain_core::store::{LevelFilter, LogBuffer};
-use futures::StreamExt;
 use gpui_kit::assets::IconName;
 use gpui_kit::*;
 
+use super::logs::LogsPane;
 use super::tabs::{self, Tab};
-use super::{actions, header, logs_tab, overview, placeholder, stats_tab};
+use super::{actions, header, overview, placeholder, stats_tab};
 use crate::theme::Palette;
 use crate::widgets::drag_region;
 use crate::workspace::Workspace;
@@ -17,14 +16,11 @@ const LOG_TAIL: usize = 500;
 pub struct InspectorView {
     workspace: Entity<Workspace>,
     tab: Tab,
-    level: LevelFilter,
     /// The container and state the detail and logs belong to.
     shown: Option<(String, ContainerState)>,
     detail: Option<ContainerDetail>,
-    logs: LogBuffer,
-    log_scroll: UniformListScrollHandle,
+    logs: Entity<LogsPane>,
     detail_task: Option<Task<()>>,
-    logs_task: Option<Task<()>>,
     _observe: Subscription,
 }
 
@@ -37,13 +33,10 @@ impl InspectorView {
         let mut view = Self {
             workspace,
             tab: Tab::default(),
-            level: LevelFilter::default(),
             shown: None,
             detail: None,
-            logs: LogBuffer::default(),
-            log_scroll: UniformListScrollHandle::new(),
+            logs: cx.new(|_| LogsPane::default()),
             detail_task: None,
-            logs_task: None,
             _observe: observe,
         };
         view.follow_selection(cx);
@@ -65,7 +58,6 @@ impl InspectorView {
         if !same_container {
             self.detail = None;
         }
-        self.logs.clear();
 
         let inspect = engine.inspect_container(&id);
         self.detail_task = Some(cx.spawn(async move |this, cx| {
@@ -78,20 +70,8 @@ impl InspectorView {
             }
         }));
 
-        let mut lines = engine.logs(&id, LOG_TAIL);
-        self.logs_task = Some(cx.spawn(async move |this, cx| {
-            while let Some(Ok(line)) = lines.next().await {
-                let pushed = this.update(cx, |this, cx| {
-                    this.logs.push(line);
-                    let last = this.logs.filtered(this.level).len().saturating_sub(1);
-                    this.log_scroll.scroll_to_item(last, ScrollStrategy::Bottom);
-                    cx.notify();
-                });
-                if pushed.is_err() {
-                    break;
-                }
-            }
-        }));
+        let lines = engine.logs(&id, LOG_TAIL);
+        self.logs.update(cx, |logs, cx| logs.load(lines, cx));
     }
 }
 
@@ -112,7 +92,7 @@ impl Render for InspectorView {
         };
 
         let body = match self.tab {
-            Tab::Logs => logs_tab::render(self, &palette, cx).into_any_element(),
+            Tab::Logs => self.logs.clone().into_any_element(),
             Tab::Overview => {
                 let workspace = self.workspace.read(cx);
                 overview::render(&container, self.detail.as_ref(), workspace, &palette)
@@ -165,26 +145,5 @@ impl Render for InspectorView {
                     .child(tabs::render(self.tab, &palette, on_tab)),
             )
             .child(div().flex_1().min_h_0().flex().flex_col().child(body))
-    }
-}
-
-impl InspectorView {
-    pub(super) fn logs(&self) -> &LogBuffer {
-        &self.logs
-    }
-
-    pub(super) fn level(&self) -> LevelFilter {
-        self.level
-    }
-
-    pub(super) fn log_scroll(&self) -> &UniformListScrollHandle {
-        &self.log_scroll
-    }
-
-    pub(super) fn set_level(&mut self, level: LevelFilter, cx: &mut Context<Self>) {
-        self.level = level;
-        let last = self.logs.filtered(level).len().saturating_sub(1);
-        self.log_scroll.scroll_to_item(last, ScrollStrategy::Bottom);
-        cx.notify();
     }
 }

@@ -1,7 +1,11 @@
 //! Captain's colors for dark and light mode. See the v2 design canvas.
 
+use captain_core::settings::Accent;
 use gpui_kit::component::ActiveTheme;
 use gpui_kit::*;
+
+use super::accent_color;
+use crate::settings;
 
 /// Every color the Captain views use. Build it with [`Palette::of`].
 #[derive(Debug, Clone, Copy)]
@@ -40,13 +44,15 @@ fn ca(hex: u32) -> Hsla {
 }
 
 impl Palette {
-    /// The palette for the current appearance.
+    /// The palette for the current appearance, with the accent from the settings.
     pub fn of(cx: &App) -> Self {
-        if cx.theme().is_dark() {
+        let mut palette = if cx.theme().is_dark() {
             Self::dark_mode()
         } else {
             Self::light_mode()
-        }
+        };
+        palette.accent = accent_color(settings::accent(cx), palette.dark);
+        palette
     }
 
     fn dark_mode() -> Self {
@@ -110,9 +116,11 @@ impl Palette {
         color.alpha(if self.dark { 0.16 } else { 0.11 })
     }
 
-    /// A stable color for a Compose project, picked from its name.
+    /// A stable color for a Compose project, picked from its name. It uses the default
+    /// blue, not the accent, so a project keeps its color when the accent changes.
     pub fn project_color(&self, name: &str) -> Hsla {
-        let choices = [self.indigo, self.teal, self.orange, self.green, self.accent];
+        let blue = accent_color(Accent::Blue, self.dark);
+        let choices = [self.indigo, self.teal, self.orange, self.green, blue];
         let sum: usize = name.bytes().map(usize::from).sum();
         choices[sum % choices.len()]
     }

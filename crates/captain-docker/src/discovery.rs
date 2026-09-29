@@ -66,15 +66,84 @@ pub fn discover(
         return Ok(Endpoint::NamedPipe(WINDOWS_PIPE.into()));
     }
 
-    let home_sockets = input
-        .home
-        .iter()
-        .flat_map(|home| HOME_SOCKETS.iter().map(move |socket| home.join(socket)));
-    home_sockets
-        .chain(std::iter::once(PathBuf::from(SYSTEM_SOCKET)))
+    socket_paths(input)
         .find(|path| exists(path))
         .map(Endpoint::Unix)
         .ok_or(DiscoveryError::NotFound)
+}
+
+/// Where a [`Candidate`] came from.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CandidateSource {
+    /// The `DOCKER_HOST` variable.
+    DockerHost,
+    /// The current Docker CLI context.
+    Context,
+    /// A known socket path, or the Windows named pipe.
+    Socket,
+}
+
+/// An endpoint that discovery could use.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Candidate {
+    pub source: CandidateSource,
+    pub endpoint: Endpoint,
+}
+
+/// Lists every endpoint that discovery could pick, in discovery order and without
+/// duplicates. Hosts that do not parse are left out, and so are sockets that do not
+/// exist. [`discover`] picks the first one, except that an unsupported `DOCKER_HOST`
+/// is an error there.
+pub fn candidates(input: &DiscoveryInput, exists: impl Fn(&Path) -> bool) -> Vec<Candidate> {
+    let parsed = |host: &str, source| {
+        Endpoint::parse(host)
+            .ok()
+            .map(|endpoint| Candidate { source, endpoint })
+    };
+    let mut found: Vec<Candidate> = Vec::new();
+    let mut push = |candidate: Candidate| {
+        if !found.iter().any(|c| c.endpoint == candidate.endpoint) {
+            found.push(candidate);
+        }
+    };
+
+    if let Some(candidate) = input
+        .docker_host
+        .as_deref()
+        .and_then(|host| parsed(host, CandidateSource::DockerHost))
+    {
+        push(candidate);
+    }
+    let docker_dir = input.home.as_ref().map(|home| home.join(".docker"));
+    if let Some(candidate) = docker_dir
+        .as_deref()
+        .and_then(|dir| current_context_host(dir, input.docker_context.as_deref()))
+        .and_then(|host| parsed(&host, CandidateSource::Context))
+    {
+        push(candidate);
+    }
+
+    let socket = |endpoint| Candidate {
+        source: CandidateSource::Socket,
+        endpoint,
+    };
+    if cfg!(windows) {
+        push(socket(Endpoint::NamedPipe(WINDOWS_PIPE.into())));
+    } else {
+        for path in socket_paths(input).filter(|path| exists(path)) {
+            push(socket(Endpoint::Unix(path)));
+        }
+    }
+    found
+}
+
+/// The known Unix socket paths, in the order discovery tries them.
+fn socket_paths(input: &DiscoveryInput) -> impl Iterator<Item = PathBuf> + '_ {
+    input
+        .home
+        .iter()
+        .flat_map(|home| HOME_SOCKETS.iter().map(move |socket| home.join(socket)))
+        .chain(std::iter::once(PathBuf::from(SYSTEM_SOCKET)))
 }
 
 #[cfg(test)]

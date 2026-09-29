@@ -1,11 +1,14 @@
 use captain_core::store::ContainerFilter;
+use gpui_kit::assets::IconName;
+use gpui_kit::component::Icon;
 use gpui_kit::*;
 
 use crate::theme::Palette;
 use crate::widgets::{Segment, drag_region, segmented};
 use crate::workspace::Workspace;
 
-/// The page title, counts, and the filter. The empty parts drag the window.
+/// The page title, counts, the project chip, and the filter. The empty parts drag
+/// the window.
 pub fn render(
     handle: &Entity<Workspace>,
     workspace: &Workspace,
@@ -62,8 +65,39 @@ pub fn render(
                         .child(summary),
                 ),
         )
+        .children(
+            workspace
+                .project_filter()
+                .map(|project| project_chip(project, handle, palette)),
+        )
         .child(
             segmented("filter", segments, palette)
                 .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation()),
         )
+}
+
+/// "Project: shop ✕". A click clears the project filter.
+fn project_chip(project: &str, handle: &Entity<Workspace>, palette: &Palette) -> Stateful<Div> {
+    let handle = handle.clone();
+    let hover = palette.accent.alpha(if palette.dark { 0.26 } else { 0.18 });
+    div()
+        .id("project-filter")
+        .h(px(26.))
+        .px(px(10.))
+        .flex()
+        .items_center()
+        .gap(px(6.))
+        .rounded(px(7.))
+        .bg(palette.tint(palette.accent))
+        .text_color(palette.accent)
+        .text_size(px(12.))
+        .font_weight(FontWeight::MEDIUM)
+        .cursor_pointer()
+        .hover(move |style| style.bg(hover))
+        .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
+        .on_click(move |_, _, cx| {
+            handle.update(cx, |workspace, cx| workspace.clear_project_filter(cx));
+        })
+        .child(format!("Project: {project}"))
+        .child(Icon::new(IconName::Close).size(px(11.)))
 }

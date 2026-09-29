@@ -11,6 +11,7 @@ fn container(state: ContainerState) -> Container {
         ports: Vec::new(),
         created: 0,
         compose_project: None,
+        compose: Default::default(),
         health: None,
     }
 }

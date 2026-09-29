@@ -3,8 +3,10 @@ use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::*;
 
 use crate::theme::Palette;
+use crate::workspace::{Page, active_workspace};
 
-/// The Compose projects on the engine, with running counts.
+/// The Compose projects on the engine, with running counts. A click shows the
+/// Containers page with only that project.
 pub fn render(store: &ContainerStore, palette: &Palette) -> impl IntoElement {
     let projects = store.projects();
     div()
@@ -32,13 +34,27 @@ pub fn render(store: &ContainerStore, palette: &Palette) -> impl IntoElement {
             } else {
                 format!("{running}/{}", group.containers.len())
             };
+            let hover = palette.nav_selected;
+            let project = name.clone();
             div()
+                .id(SharedString::from(format!("sidebar-project-{name}")))
                 .h(px(30.))
                 .px(px(10.))
                 .flex()
                 .items_center()
                 .gap(px(10.))
                 .rounded(px(8.))
+                .cursor_pointer()
+                .hover(move |style| style.bg(hover))
+                .on_click(move |_, _, cx| {
+                    // The sidebar gets only the store, so find the workspace here.
+                    if let Some(workspace) = active_workspace(cx) {
+                        workspace.update(cx, |workspace, cx| {
+                            workspace.set_project_filter(project.clone(), cx);
+                            workspace.set_page(Page::Containers, cx);
+                        });
+                    }
+                })
                 .child(project_badge(&name, color, px(16.), palette))
                 .child(div().flex_1().truncate().child(name))
                 .child(

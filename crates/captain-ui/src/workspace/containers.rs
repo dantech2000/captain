@@ -64,10 +64,12 @@ impl Workspace {
         self.events_task = Some(cx.spawn(async move |this, cx| {
             while let Some(event) = events.next().await {
                 let updated = match event {
-                    Ok(event) if event.changes_container_list() => {
-                        this.update(cx, |this, cx| this.reload(RELOAD_DEBOUNCE, cx))
-                    }
-                    Ok(_) => continue,
+                    Ok(event) => this.update(cx, |this, cx| {
+                        if event.changes_container_list() {
+                            this.reload(RELOAD_DEBOUNCE, cx);
+                        }
+                        cx.emit(event);
+                    }),
                     Err(error) => this.update(cx, |this, cx| this.fail(error, cx)),
                 };
                 if updated.is_err() {
