@@ -18,3 +18,9 @@ fn percents_drop_decimals_above_ten() {
     assert_eq!(percent_label(3.06), "3.1%");
     assert_eq!(percent_label(42.4), "42%");
 }
+
+#[test]
+fn negative_and_negative_zero_show_as_zero() {
+    assert_eq!(percent_label(-0.0), "0.0%");
+    assert_eq!(percent_label(-0.3), "0.0%");
+}

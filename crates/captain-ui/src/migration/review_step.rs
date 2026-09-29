@@ -29,7 +29,8 @@ pub fn body(
         .flex_col()
         .gap(px(16.))
         .child(estimate(plan, view.free, palette))
-        .children(lost_changes(plan, palette));
+        .children(lost_changes(plan, palette))
+        .children(live_volumes(plan, palette));
     let mut ix = 0;
     for step in Step::ALL {
         let entries: Vec<_> = plan.step(step).collect();
@@ -143,6 +144,33 @@ fn lost_changes(plan: &MigrationPlan, palette: &Palette) -> Option<Div> {
          Turn on Snapshot for a container to keep them. A snapshot writes a temporary \
          captain-migrate image in the old engine, which Captain removes after the copy.",
         names.join(", ")
+    );
+    Some(
+        div()
+            .p(px(10.))
+            .rounded(px(8.))
+            .bg(palette.tint(palette.orange))
+            .text_size(px(12.))
+            .text_color(palette.text)
+            .child(text),
+    )
+}
+
+/// The warning about volumes that running containers are writing to.
+fn live_volumes(plan: &MigrationPlan, palette: &Palette) -> Option<Div> {
+    let volumes = plan.live_volumes();
+    if volumes.is_empty() {
+        return None;
+    }
+    let list: Vec<String> = volumes
+        .iter()
+        .map(|(name, users)| format!("{name} (used by {})", users.join(", ")))
+        .collect();
+    let text = format!(
+        "These volumes belong to running containers: {}. A copy made while a program \
+         writes (a database, for example) may not be clean. For a clean copy, stop those \
+         containers in the old engine first. Captain does not stop them for you.",
+        list.join("; ")
     );
     Some(
         div()

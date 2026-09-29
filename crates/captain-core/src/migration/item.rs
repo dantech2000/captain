@@ -6,7 +6,13 @@ pub enum MigrationItem {
     /// A user-defined network. The built-in `bridge`, `host`, and `none` are left out.
     Network { name: String, driver: String },
     /// A named volume. `size` is `None` when the engine did not report it.
-    Volume { name: String, size: Option<u64> },
+    Volume {
+        name: String,
+        size: Option<u64>,
+        /// Running containers that mount the volume. Copying files that a running
+        /// program writes (a database, for example) may not give a clean copy.
+        used_by_running: Vec<String>,
+    },
     /// An image with its tags. An untagged image has no tags and copies by ID.
     Image {
         id: String,

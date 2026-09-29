@@ -1,10 +1,10 @@
 use std::collections::HashMap;
 use std::path::Path;
 
-use bollard::models::{ContainerSummary, Network};
+use bollard::models::{ContainerSummary, ContainerSummaryStateEnum, MountPoint, Network};
 use captain_core::migration::MigrationItem;
 
-use super::{containers, networks};
+use super::{containers, networks, volumes};
 
 fn network(name: &str, driver: &str, scope: &str) -> Network {
     Network {
@@ -101,4 +101,38 @@ fn project_files_must_exist() {
             ..
         }
     ));
+}
+
+#[test]
+fn volumes_list_the_running_containers_that_use_them() {
+    let with_mount = |name: &str, state, volume: &str| ContainerSummary {
+        names: Some(vec![format!("/{name}")]),
+        state: Some(state),
+        mounts: Some(vec![MountPoint {
+            name: Some(volume.to_string()),
+            ..Default::default()
+        }]),
+        ..Default::default()
+    };
+    let containers = [
+        with_mount("db", ContainerSummaryStateEnum::RUNNING, "pgdata"),
+        with_mount("old-db", ContainerSummaryStateEnum::EXITED, "pgdata"),
+        with_mount("cache", ContainerSummaryStateEnum::RUNNING, "redis"),
+    ];
+    let volume = |name: &str| captain_core::model::Volume {
+        name: name.into(),
+        ..Default::default()
+    };
+    let items = volumes(vec![volume("pgdata"), volume("empty")], &containers);
+
+    let users: Vec<Vec<String>> = items
+        .iter()
+        .map(|item| match item {
+            MigrationItem::Volume {
+                used_by_running, ..
+            } => used_by_running.clone(),
+            _ => unreachable!(),
+        })
+        .collect();
+    assert_eq!(users, [vec!["db".to_string()], Vec::<String>::new()]);
 }

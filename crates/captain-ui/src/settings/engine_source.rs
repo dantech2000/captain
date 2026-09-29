@@ -45,11 +45,22 @@ pub fn engine_source(cx: &App) -> Option<Rc<dyn EngineSource>> {
 /// Drops the current connection and connects again: to Captain Engine when the
 /// settings choose it, else to the endpoint in the settings or by discovery.
 pub fn reconnect(workspace: &Entity<Workspace>, cx: &mut App) {
+    let captain = engine_host::captain_endpoint(cx);
+    reconnect_to(workspace, captain, cx);
+}
+
+/// Reconnects to `captain` (the Captain Engine endpoint, when the settings choose it),
+/// or else to the saved or discovered engine.
+///
+/// The engine host model calls this from inside its own update with the endpoint it
+/// already knows, because reading the model again there would panic (GPUI does not
+/// allow reading an entity while it is being updated).
+pub fn reconnect_to(workspace: &Entity<Workspace>, captain: Option<String>, cx: &mut App) {
     let Some(source) = engine_source(cx) else {
         tracing::warn!("no engine source, so Captain cannot reconnect");
         return;
     };
-    let endpoint = engine_host::captain_endpoint(cx).or_else(|| store::current(cx).engine_endpoint);
+    let endpoint = captain.or_else(|| store::current(cx).engine_endpoint);
     let connector = source.connector(endpoint.as_deref());
     workspace.update(cx, |workspace, cx| workspace.reconnect(connector, cx));
 }

@@ -1,6 +1,6 @@
 /// The folder that holds Captain Engine's Lima instance. See
 /// docs/adr/0008-captain-engine.md.
-const CAPTAIN_LIMA_DIR: &str = "/Captain/lima/";
+const CAPTAIN_LIMA_DIR: &str = "/.captain/lima/";
 
 /// True if `endpoint` is Captain Engine's own socket. The assistant copies into any
 /// engine, but it says so when the target is not Captain Engine.

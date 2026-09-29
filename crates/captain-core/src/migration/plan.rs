@@ -109,6 +109,22 @@ impl MigrationPlan {
             .collect()
     }
 
+    /// Selected volumes that running containers use, with those containers' names.
+    pub fn live_volumes(&self) -> Vec<(&str, &[String])> {
+        self.selected()
+            .filter_map(|e| match &e.item {
+                MigrationItem::Volume {
+                    name,
+                    used_by_running,
+                    ..
+                } if !used_by_running.is_empty() => {
+                    Some((name.as_str(), used_by_running.as_slice()))
+                }
+                _ => None,
+            })
+            .collect()
+    }
+
     pub fn is_empty(&self) -> bool {
         self.entries.is_empty()
     }

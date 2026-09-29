@@ -22,6 +22,8 @@ pub fn rate_label(bytes_per_second: u64) -> String {
 
 /// A percent with one decimal below 10 and none above, for example `3.1%` or `42%`.
 pub fn percent_label(percent: f64) -> String {
+    // Rounding can produce -0.0, and CPU counters can step backwards by a hair.
+    let percent = percent.max(0.0);
     if percent < 10.0 {
         format!("{percent:.1}%")
     } else {

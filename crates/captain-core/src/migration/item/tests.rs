@@ -16,6 +16,7 @@ fn keys_are_unique_per_kind() {
     let volume = MigrationItem::Volume {
         name: "web".into(),
         size: None,
+        used_by_running: Vec::new(),
     };
     assert_eq!(volume.key(), "volume:web");
     assert_eq!(container(0).key(), "container:abc");

@@ -37,7 +37,7 @@ pub async fn scan(source: &SourceEngine, label: &str) -> Result<MigrationPlan, E
         .collect();
 
     let mut all = items::networks(networks?);
-    all.extend(items::volumes(volumes));
+    all.extend(items::volumes(volumes, &containers));
     all.extend(items::images(images));
     all.extend(items::containers(containers, Path::exists));
     Ok(MigrationPlan::new(label, all))

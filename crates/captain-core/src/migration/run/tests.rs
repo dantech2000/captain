@@ -5,6 +5,7 @@ fn volume(name: &str) -> MigrationItem {
     MigrationItem::Volume {
         name: name.into(),
         size: Some(10),
+        used_by_running: Vec::new(),
     }
 }
 

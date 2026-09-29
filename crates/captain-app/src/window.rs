@@ -1,6 +1,6 @@
 //! The main window, and the workspace that outlives it.
 
-use captain_ui::{AppShell, Page, Workspace};
+use captain_ui::{AppShell, Workspace};
 use gpui_kit::*;
 
 use crate::connect;
@@ -61,7 +61,9 @@ pub fn show(cx: &mut App) {
 #[cfg(any(target_os = "macos", target_os = "windows"))]
 pub fn show_settings(cx: &mut App) {
     show(cx);
-    workspace(cx).update(cx, |workspace, cx| workspace.set_page(Page::Settings, cx));
+    workspace(cx).update(cx, |workspace, cx| {
+        workspace.set_page(captain_ui::Page::Settings, cx)
+    });
 }
 
 fn open(cx: &mut App) {

@@ -227,9 +227,15 @@ impl HostModel {
     }
 
     /// Reconnects the workspace to the engine the settings choose.
+    /// Runs inside this model's update, so it must not call anything that reads the
+    /// model again (see `settings::reconnect_to`).
     fn connect_workspace(&self, cx: &mut Context<Self>) {
         if let Some(workspace) = self.workspace.upgrade() {
-            settings::reconnect(&workspace, cx);
+            let captain = self
+                .uses_captain(cx)
+                .then(|| self.host.endpoint())
+                .flatten();
+            settings::reconnect_to(&workspace, captain, cx);
         }
     }
 }

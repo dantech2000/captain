@@ -29,6 +29,7 @@ fn plan() -> MigrationPlan {
             MigrationItem::Volume {
                 name: "data".into(),
                 size: Some(500),
+                used_by_running: Vec::new(),
             },
             image("app", 2000, true),
             MigrationItem::Network {
@@ -90,4 +91,28 @@ fn snapshot_adds_changes_and_clears_the_warning() {
         plan.selected()
             .all(|e| e.snapshot == (e.item.key() == "container:web"))
     );
+}
+
+#[test]
+fn live_volumes_lists_selected_volumes_with_running_users() {
+    let plan = MigrationPlan::new(
+        "test",
+        vec![
+            MigrationItem::Volume {
+                name: "pgdata".into(),
+                size: None,
+                used_by_running: vec!["db".into()],
+            },
+            MigrationItem::Volume {
+                name: "cache".into(),
+                size: None,
+                used_by_running: Vec::new(),
+            },
+        ],
+    );
+
+    let live = plan.live_volumes();
+    assert_eq!(live.len(), 1);
+    assert_eq!(live[0].0, "pgdata");
+    assert_eq!(live[0].1, ["db".to_string()]);
 }

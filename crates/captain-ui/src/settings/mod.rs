@@ -12,7 +12,7 @@ mod settings_view;
 mod store;
 
 pub use engine_source::{
-    DetectedEndpoint, EngineSource, engine_source, init_engine_source, reconnect, retry,
+    DetectedEndpoint, EngineSource, engine_source, init_engine_source, reconnect_to, retry,
 };
 pub use settings_view::SettingsView;
 pub use store::{accent, apply_appearance, current, init, update};

@@ -29,12 +29,33 @@ pub fn networks(networks: Vec<Network>) -> Vec<MigrationItem> {
         .collect()
 }
 
-pub fn volumes(volumes: Vec<Volume>) -> Vec<MigrationItem> {
+/// Volumes, each with the running containers that mount it.
+pub fn volumes(volumes: Vec<Volume>, containers: &[ContainerSummary]) -> Vec<MigrationItem> {
     volumes
         .into_iter()
         .map(|volume| MigrationItem::Volume {
+            used_by_running: running_users(&volume.name, containers),
             name: volume.name,
             size: volume.size_bytes,
+        })
+        .collect()
+}
+
+fn running_users(volume: &str, containers: &[ContainerSummary]) -> Vec<String> {
+    containers
+        .iter()
+        .filter(|c| c.state.is_some_and(|s| s.as_ref() == "running"))
+        .filter(|c| {
+            c.mounts
+                .iter()
+                .flatten()
+                .any(|m| m.name.as_deref() == Some(volume))
+        })
+        .filter_map(|c| {
+            c.names
+                .as_ref()?
+                .first()
+                .map(|n| n.trim_start_matches('/').to_string())
         })
         .collect()
 }
