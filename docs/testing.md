@@ -131,7 +131,7 @@ Use `target/debug/Captain.app/Contents/Resources/bin/captain`.
 | 3.6 Kubernetes Contexts menu | Pass. Switching to `captain` and back changed `kubectl config current-context`. |
 | 3.7 Stop during the k3s step of a start | Pass. The engine stopped 4 s after Stop. |
 | 3.8 Turn Kubernetes off | Pass. No pod containers left; engine memory back to about 57 MB. |
-| 4. Administrative access | Pass for link: after the password prompt, `/var/run/docker.sock` is a root-owned link to Captain Engine's socket, `docker -H unix:///var/run/docker.sock ps` reaches it, and the card shows the link with Remove link…. Remove link was not run. |
+| 4. Administrative access | Pass. Link: after the password prompt, `/var/run/docker.sock` is a root-owned link to Captain Engine's socket, `docker -H unix:///var/run/docker.sock ps` reaches it, and the card shows the link. Remove link: after a second password prompt the link is gone and the card offers Link to Captain Engine… again. |
 | 5. Extensions | Pass, in the app. |
 | 6. Contexts list | Pass after a fix: "No engines found" no longer shows above listed contexts. |
 | 7. Command line | Pass. |
