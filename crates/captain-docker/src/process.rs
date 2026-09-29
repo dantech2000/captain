@@ -5,6 +5,8 @@ use std::process::{Child, Command, Output, Stdio};
 use std::thread::JoinHandle;
 use std::time::{Duration, Instant};
 
+use crate::process_group::{self, own_group};
+
 /// How often to look whether the command has exited.
 const POLL: Duration = Duration::from_millis(10);
 
@@ -26,7 +28,7 @@ pub fn input_output_within(
     } else {
         Stdio::null()
     };
-    let mut child = command
+    let mut child = own_group(&mut command)
         .stdin(stdin)
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
@@ -60,7 +62,7 @@ fn wait_within(child: &mut Child, timeout: Duration) -> Result<std::process::Exi
             Ok(None) => "did not answer".to_string(),
             Err(err) => format!("failed: {err}"),
         };
-        child.kill().ok();
+        process_group::kill(child);
         child.wait().ok();
         return Err(why);
     }

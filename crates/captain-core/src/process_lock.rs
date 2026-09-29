@@ -6,9 +6,13 @@ use std::fs::{File, OpenOptions, TryLockError};
 use std::io::{self, Read, Seek, Write};
 use std::path::{Path, PathBuf};
 
-/// The lock file next to `settings.json` that the app holds while it runs.
+use crate::link_target::link_target;
+
+/// The lock file next to `settings.json` that the app holds while it runs. A
+/// symlinked settings file counts by its target, where saves go, so the app and
+/// the CLI find one lock whichever path each got.
 pub fn app_lock_path(settings: &Path) -> PathBuf {
-    settings.with_file_name("app.lock")
+    link_target(settings).with_file_name("app.lock")
 }
 
 /// The note in `app.lock` while a `captain snapshot restore` holds it, so the app
@@ -18,7 +22,7 @@ pub const CLI_RESTORE_NOTE: &str = "cli-restore";
 /// The lock file next to `settings.json` that guards each read, change, and write
 /// of the settings, so two writers never lose each other's change.
 pub fn settings_lock_path(settings: &Path) -> PathBuf {
-    settings.with_file_name("settings.lock")
+    link_target(settings).with_file_name("settings.lock")
 }
 
 /// An exclusive lock on a file. Dropping it releases the lock.

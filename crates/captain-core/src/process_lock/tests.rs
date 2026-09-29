@@ -42,3 +42,18 @@ fn a_lock_that_cannot_be_checked_counts_as_held() {
     }
     std::fs::remove_dir_all(&dir).ok();
 }
+
+#[cfg(unix)]
+#[test]
+fn a_symlinked_settings_file_shares_the_locks_of_its_target() {
+    use super::settings_lock_path;
+    let dir = std::env::temp_dir().join(format!("captain-lock-link-{}", std::process::id()));
+    std::fs::create_dir_all(dir.join("dotfiles")).unwrap();
+    std::fs::create_dir_all(dir.join("Captain")).unwrap();
+    let target = dir.join("dotfiles/settings.json");
+    let link = dir.join("Captain/settings.json");
+    std::os::unix::fs::symlink(&target, &link).unwrap();
+    assert_eq!(app_lock_path(&link), dir.join("dotfiles/app.lock"));
+    assert_eq!(settings_lock_path(&link), settings_lock_path(&target));
+    std::fs::remove_dir_all(&dir).ok();
+}

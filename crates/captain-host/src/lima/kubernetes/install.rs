@@ -2,13 +2,15 @@
 //! on its own thread. See ADR 0010.
 
 use std::net::TcpListener;
+use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
 use captain_core::HostError;
 use captain_core::kubernetes::{
-    K3sAssets, K3sVersion, KubernetesSettings, KubernetesStatus, captain_config, install_captain,
-    user_kubeconfig_paths, write_config,
+    K3sAssets, K3sVersion, KubernetesSettings, KubernetesStatus, captain_config, cluster_ca,
+    install_captain, user_kubeconfig_paths, write_config,
 };
+use serde_json::Value;
 
 use super::guest;
 use crate::cancel::Cancel;
@@ -32,7 +34,7 @@ pub fn install(
     cancel: &Cancel,
     sink: &mut dyn FnMut(String),
 ) -> Result<K3sVersion, HostError> {
-    let version = wanted_version(paths, settings)?;
+    let version = wanted_version(paths, settings, cancel)?;
     let assets = K3sAssets::for_arch(std::env::consts::ARCH)
         .ok_or_else(|| HostError("Kubernetes needs an Arm or Intel Mac.".into()))?;
     let instance = &paths.instance;
@@ -64,14 +66,16 @@ pub fn install(
     ))?;
     sink("Waiting for the Kubernetes API.".into());
     wait_ready(limactl, instance, cancel)?;
-    wait_host_port(settings.port, cancel)?;
+    let captain = captain_config(&run(guest::kubeconfig_args(instance))?, settings.port)
+        .map_err(HostError)?;
+    wait_host_port(settings.port, &trust(paths, &captain)?, cancel)?;
     if !settings.traefik
         && let Err(error) = run(guest::remove_traefik_args(instance))
     {
         tracing::warn!(%error, "cannot remove Traefik");
     }
     cancel.check()?;
-    write_kubeconfig(limactl, paths, settings.port, cancel)?;
+    write_kubeconfig(paths, &captain)?;
     sink(format!("Kubernetes {version} is running."));
     Ok(version)
 }
@@ -80,14 +84,24 @@ pub fn install(
 fn wanted_version(
     paths: &LimaPaths,
     settings: &KubernetesSettings,
+    cancel: &Cancel,
 ) -> Result<K3sVersion, HostError> {
     if let Some(version) = &settings.version {
         return version.parse().map_err(HostError);
     }
-    k3s::list(&paths.k3s_versions_file(), &paths.k3s_cache(), false)
-        .stable()
-        .cloned()
-        .ok_or_else(|| HostError("Captain cannot find the stable Kubernetes version. Check the network, then try again.".into()))
+    let list = k3s::list(
+        &paths.k3s_versions_file(),
+        &paths.k3s_cache(),
+        false,
+        cancel,
+    );
+    cancel.check()?;
+    list.stable().cloned().ok_or_else(|| {
+        HostError(
+            "Captain cannot find the stable Kubernetes version. Check the network, then try again."
+                .into(),
+        )
+    })
 }
 
 /// Fails when another program listens on `port` on this Mac, because Lima could
@@ -122,34 +136,37 @@ fn wait_ready(limactl: &Limactl, instance: &str, cancel: &Cancel) -> Result<(), 
     ))
 }
 
+/// Saves k3s's certificate authority for the host port check, and returns its file.
+fn trust(paths: &LimaPaths, captain: &Value) -> Result<PathBuf, HostError> {
+    let file = paths.kubernetes_ca();
+    let ca = cluster_ca(captain).map_err(HostError)?;
+    std::fs::write(&file, ca)
+        .map_err(|error| HostError(format!("Cannot write {}: {error}", file.display())))?;
+    Ok(file)
+}
+
 /// Waits until k3s answers on `127.0.0.1:port` on this Mac, through Lima's port
-/// forward, so the kubeconfig does not point at another program.
-fn wait_host_port(port: u16, cancel: &Cancel) -> Result<(), HostError> {
+/// forward, with the certificate of its own authority `ca`, so the kubeconfig
+/// does not point at another program or cluster.
+fn wait_host_port(port: u16, ca: &Path, cancel: &Cancel) -> Result<(), HostError> {
     let deadline = Instant::now() + HOST_PORT_TIMEOUT;
     while Instant::now() < deadline {
-        if k3s::ping(port, cancel) {
+        if k3s::ping(port, ca, cancel) {
             return Ok(());
         }
         cancel.check()?;
         std::thread::sleep(Duration::from_secs(1));
     }
     Err(HostError(format!(
-        "Kubernetes runs in the VM, but it does not answer on port {port} on this Mac. Pick another Kubernetes port in Settings."
+        "Kubernetes runs in the VM, but port {port} on this Mac does not reach it. Another program may use that port. Pick another Kubernetes port in Settings."
     )))
 }
 
 /// Writes `~/.captain/kubeconfig` and merges the `captain` context into the user's
 /// kubeconfig, with a backup first.
-fn write_kubeconfig(
-    limactl: &Limactl,
-    paths: &LimaPaths,
-    port: u16,
-    cancel: &Cancel,
-) -> Result<(), HostError> {
-    let yaml = limactl.run(&guest::kubeconfig_args(&paths.instance), None, cancel)?;
-    let captain = captain_config(&yaml, port).map_err(HostError)?;
-    write_config(&paths.kubeconfig(), &captain).map_err(HostError)?;
-    let target = install_captain(&user_kubeconfig_paths(), &captain).map_err(HostError)?;
+fn write_kubeconfig(paths: &LimaPaths, captain: &Value) -> Result<(), HostError> {
+    write_config(&paths.kubeconfig(), captain).map_err(HostError)?;
+    let target = install_captain(&user_kubeconfig_paths(), captain).map_err(HostError)?;
     tracing::info!(file = %target.display(), "merged the captain context");
     Ok(())
 }

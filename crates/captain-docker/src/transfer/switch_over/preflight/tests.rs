@@ -19,7 +19,7 @@ fn refuses_a_container_started_with_rm() {
 }
 
 #[test]
-fn refuses_a_running_writer_that_the_switch_over_does_not_stop() {
+fn refuses_an_active_writer_that_the_switch_over_does_not_stop() {
     let container = |name: &str, state, rw| ContainerSummary {
         names: Some(vec![format!("/{name}")]),
         state: Some(state),
@@ -39,9 +39,10 @@ fn refuses_a_running_writer_that_the_switch_over_does_not_stop() {
         container("old", ContainerSummaryStateEnum::EXITED, true),
     ];
     assert!(other_writers(&["pgdata"], &stop, &fine).is_ok());
+    // A restarting writer counts: it can write again at any moment.
     let shared = [
         container("db", running, true),
-        container("worker", running, true),
+        container("worker", ContainerSummaryStateEnum::RESTARTING, true),
     ];
     let refused = other_writers(&["pgdata"], &stop, &shared).expect_err("refused");
     assert!(

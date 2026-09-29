@@ -3,6 +3,7 @@
 
 use std::path::PathBuf;
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use anyhow::{Context as _, Result, bail};
 use captain_core::EngineHost;
@@ -20,6 +21,9 @@ pub struct Context {
     pub machine: Machine,
     /// `--lima-home` and `--instance`: another instance, for tests.
     pub engine_paths: Option<LimaPaths>,
+    /// True while this command holds `app.lock` itself. Windows cannot read the
+    /// note of a held lock, so the note alone cannot tell.
+    pub(crate) holds_app: AtomicBool,
 }
 
 impl Context {
@@ -46,6 +50,7 @@ impl Context {
                 lima_home,
                 instance: instance.unwrap_or_else(|| captain_host::INSTANCE.into()),
             }),
+            holds_app: AtomicBool::new(false),
         })
     }
 
@@ -88,16 +93,25 @@ impl Context {
     /// True while the Captain app runs with this settings file, or when that
     /// cannot be checked. A restore's own hold on `app.lock` does not count.
     pub fn app_running(&self) -> bool {
+        if self.holds_app.load(Ordering::SeqCst) {
+            return false;
+        }
         ProcessLock::holder(&app_lock_path(&self.settings_path))
             .is_some_and(|note| note != CLI_RESTORE_NOTE)
     }
 
     /// Holds `app.lock`, so the app cannot start until the lock drops. Fails with
     /// `refusal` while the app runs.
-    pub fn exclude_app(&self, refusal: &str) -> Result<ProcessLock> {
+    pub fn exclude_app(&self, refusal: &str) -> Result<AppHold<'_>> {
         let path = app_lock_path(&self.settings_path);
         match ProcessLock::try_acquire(&path, CLI_RESTORE_NOTE) {
-            Ok(Some(lock)) => Ok(lock),
+            Ok(Some(lock)) => {
+                self.holds_app.store(true, Ordering::SeqCst);
+                Ok(AppHold {
+                    _lock: lock,
+                    held: &self.holds_app,
+                })
+            }
             Ok(None) => bail!("{refusal}"),
             Err(error) => Err(error).with_context(|| format!("cannot lock {}", path.display())),
         }
@@ -122,6 +136,18 @@ impl Context {
             Some(paths) => LimaHost::with_paths(paths.clone(), resources),
             None => LimaHost::new(resources),
         }
+    }
+}
+
+/// `app.lock` while this command holds it. Dropping it releases the lock.
+pub struct AppHold<'a> {
+    _lock: ProcessLock,
+    held: &'a AtomicBool,
+}
+
+impl Drop for AppHold<'_> {
+    fn drop(&mut self) {
+        self.held.store(false, Ordering::SeqCst);
     }
 }
 

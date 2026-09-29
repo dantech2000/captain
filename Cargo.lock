@@ -1013,6 +1013,7 @@ dependencies = [
  "bollard",
  "captain-core",
  "futures",
+ "rustix",
  "serde",
  "serde_json",
  "tar",

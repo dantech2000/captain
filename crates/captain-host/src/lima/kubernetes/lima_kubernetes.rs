@@ -37,6 +37,7 @@ impl KubernetesHost for LimaKubernetes {
                 &paths.k3s_versions_file(),
                 &paths.k3s_cache(),
                 refresh,
+                &Cancel::default(),
             ))
         })
     }

@@ -51,6 +51,8 @@ impl VolumesView {
         self.users_task = None;
         self.error = None;
         self.notice = None;
+        self.creating = false;
+        self.pruning = false;
     }
 
     /// Reloads the volume list after `delay`. A newer call cancels a pending one.

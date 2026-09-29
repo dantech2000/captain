@@ -12,6 +12,7 @@ use futures::{FutureExt, StreamExt};
 
 use crate::child::{Guarded, SharedChild};
 use crate::process::drain;
+use crate::process_group::own_group;
 
 /// Runs `command` to the end and answers with an `ExecResult`.
 pub fn run(mut command: Command, cmd: String) -> BridgeStream {
@@ -86,7 +87,7 @@ pub fn stream(mut command: Command, cmd: String) -> BridgeStream {
 }
 
 fn spawn(command: &mut Command) -> std::io::Result<std::process::Child> {
-    command
+    own_group(command)
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())

@@ -8,14 +8,13 @@ use bollard::query_parameters::ListContainersOptionsBuilder;
 use captain_core::EngineError;
 use captain_core::model::ComposeProject;
 
-use super::super::compose::Project;
+use super::super::compose::{PROJECT_LABEL, Project};
 use super::super::container::copy_container;
 use super::super::owner;
 use super::super::progress::Events;
 use super::super::source::SourceEngine;
 use crate::{ComposeCli, mapping};
 
-pub const PROJECT_LABEL: &str = "com.docker.compose.project";
 const SERVICE_LABEL: &str = "com.docker.compose.service";
 /// Set on containers from `docker compose run`, which are not part of the service.
 const ONE_OFF_LABEL: &str = "com.docker.compose.oneoff";
@@ -68,9 +67,10 @@ pub async fn start(
                 config_files: project.config_files.to_vec(),
                 services: Vec::new(),
             };
-            // Labeled, so a later switch-over knows that Captain created them.
+            // Labeled, so a later switch-over knows that Captain created them. It
+            // runs to the end: the source is stopped already.
             let labels = owner::mark(None, &owner::origin(source).await?);
-            cli.up_labeled(&compose, services, labels).await?;
+            cli.up_labeled_to_end(&compose, services, labels).await?;
             project_containers(target, project.name, services).await
         }
         Start::Project {

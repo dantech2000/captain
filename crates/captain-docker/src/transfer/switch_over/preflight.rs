@@ -2,22 +2,16 @@
 //! refuses the switch-over, with the reason, when the stop or the copy could lose
 //! data. See docs/adr/0009-migration.md, "Switch-over mode".
 
-use std::collections::HashMap;
-
 use bollard::Docker;
 use bollard::models::{ContainerInspectResponse, ContainerSummary};
-use bollard::query_parameters::ListContainersOptionsBuilder;
 use captain_core::EngineError;
 
-use super::super::compose::Project;
+use super::super::compose::foreign_project;
 use super::super::owner;
 use super::super::source::SourceEngine;
 use super::Job;
-use super::start::{PROJECT_LABEL, Start};
+use super::start::Start;
 use crate::mapping;
-
-/// The folder Compose ran a project from.
-const WORKING_DIR_LABEL: &str = "com.docker.compose.project.working_dir";
 
 /// Runs every check for `job`, in the source first, then in the target.
 pub async fn check(
@@ -44,7 +38,11 @@ pub async fn check(
             cli: Ok(_),
             ..
         } if project.files_exist => {
-            return same_project(target, project, &origin).await;
+            if foreign_project(target, project, &origin).await? {
+                let what = format!("A Compose project named {}", project.name);
+                return Err(not_a_copy(&what));
+            }
+            return Ok(());
         }
         Start::Project { project, .. } => project.containers.iter().map(String::as_str).collect(),
     };
@@ -73,8 +71,9 @@ pub fn auto_remove(name: &str, inspect: &ContainerInspectResponse) -> Result<(),
     )))
 }
 
-/// Refuses while a running container that the switch-over does not stop mounts one
-/// of `volumes` for writing. It would keep writing while Captain copies.
+/// Refuses while an active container (running, paused, or restarting) that the
+/// switch-over does not stop mounts one of `volumes` for writing. It would keep
+/// writing while Captain copies.
 pub fn other_writers(
     volumes: &[&str],
     stop: &[String],
@@ -83,7 +82,7 @@ pub fn other_writers(
     for volume in volumes {
         let writers: Vec<String> = containers
             .iter()
-            .filter(|c| c.state.is_some_and(|s| s.as_ref() == "running"))
+            .filter(|c| mapping::is_active(c))
             .filter(|c| {
                 c.mounts
                     .iter()
@@ -102,33 +101,6 @@ pub fn other_writers(
                 writers.join(", ")
             )));
         }
-    }
-    Ok(())
-}
-
-/// Refuses when the target has containers of a project named like `project` that
-/// Captain did not copy there from `origin`, or that Compose ran from another
-/// folder. `docker compose up` would take them over.
-async fn same_project(
-    target: &Docker,
-    project: &Project<'_>,
-    origin: &str,
-) -> Result<(), EngineError> {
-    let label = format!("{PROJECT_LABEL}={}", project.name);
-    let filters = HashMap::from([("label", vec![label.as_str()])]);
-    let options = ListContainersOptionsBuilder::default()
-        .all(true)
-        .filters(&filters)
-        .build();
-    let listed = target.list_containers(Some(options)).await;
-    let other = listed.map_err(mapping::engine_error)?.into_iter().any(|c| {
-        let labels = c.labels.as_ref();
-        let dir = labels.and_then(|l| l.get(WORKING_DIR_LABEL));
-        dir.map(String::as_str) != project.working_dir || !owner::is_copy_from(labels, origin)
-    });
-    if other {
-        let what = format!("A Compose project named {}", project.name);
-        return Err(not_a_copy(&what));
     }
     Ok(())
 }

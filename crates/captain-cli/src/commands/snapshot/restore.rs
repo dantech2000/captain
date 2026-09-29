@@ -27,6 +27,8 @@ pub fn run(
     if context.app_running() {
         bail!(APP_RUNNING);
     }
+    // A settings file that does not load would fail only after the swap.
+    context.load()?;
     let snapshot = lookup(snapshots, key)?;
     let name = &snapshot.metadata.name;
     let was_running = running(host)?;
@@ -57,3 +59,6 @@ pub fn run(
     println!("Restored {name:?}.");
     Ok(())
 }
+
+#[cfg(test)]
+mod tests;

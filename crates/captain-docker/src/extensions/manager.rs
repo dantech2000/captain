@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use bollard::Docker;
 use captain_core::extension::{
     BridgeRequest, BridgeStream, ExtensionCandidate, ExtensionManager, ExtensionPaths,
@@ -43,7 +45,7 @@ impl Context {
 
     /// Fails when `extension` runs on another engine, so its backend and image stay.
     pub fn check_engine(&self, extension: &InstalledExtension) -> Result<(), EngineError> {
-        if extension.engine.is_empty() || extension.engine == self.engine {
+        if extension.runs_on(&self.engine) {
             return Ok(());
         }
         Err(EngineError::Api(format!(
@@ -57,7 +59,7 @@ impl Context {
 /// The Docker implementation of [`ExtensionManager`].
 pub struct DockerExtensions {
     context: Context,
-    runtime: BackgroundRuntime,
+    runtime: Arc<BackgroundRuntime>,
 }
 
 impl DockerExtensions {
@@ -73,7 +75,10 @@ impl DockerExtensions {
             host,
             paths,
         };
-        Ok(Self { context, runtime })
+        Ok(Self {
+            context,
+            runtime: Arc::new(runtime),
+        })
     }
 
     /// Records `label` as the engine instead, for example the `ssh://` URL of a
@@ -128,7 +133,9 @@ impl ExtensionManager for DockerExtensions {
         candidate: ExtensionCandidate,
     ) -> EngineFuture<InstalledExtension> {
         let context = self.context.clone();
-        runtime::spawn(self.runtime.handle(), async move {
+        // An engine switch drops this manager; the update still ends with its new
+        // version or its rollback.
+        runtime::spawn_to_end(self.runtime.clone(), async move {
             context.check_engine(&extension)?;
             update::apply(&context, extension, candidate).await
         })

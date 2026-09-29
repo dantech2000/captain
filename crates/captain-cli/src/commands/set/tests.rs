@@ -17,6 +17,7 @@ fn context(name: &str) -> Context {
             captain_available: true,
         },
         engine_paths: None,
+        holds_app: Default::default(),
     }
 }
 

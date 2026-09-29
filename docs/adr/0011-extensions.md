@@ -108,11 +108,12 @@ Recorded when M21 was built ([feature 0025](../features/0025-extensions.md)):
 - Toasts do not use Captain's GPUI notifications. Those draw as overlays, which the web view would cover, so the extension window shows toasts in a strip under its title bar.
 - Update came in the same milestone. Installing an extension that is installed already is refused and points to Update, so an install never deletes an existing extension or its backend's volumes.
 - The ID has 8 hex digits of a hash of the repository after the slug, so repositories that differ only in punctuation get different folders and projects.
-- `extension.json` records the engine. The page lists only the connected engine's extensions, and Update and Remove refuse an extension of another engine, because its backend runs there.
+- `extension.json` records the engine. The page lists only the connected engine's extensions, and Update and Remove refuse an extension of another engine, because its backend runs there. `unix://` engines compare by the resolved socket path.
+- Install also refuses an image whose repository an extension in another folder has, so an extension from before the hashed IDs is not installed twice.
 - Install and update read files from the inspected image ID and run the backend on it, not on the tag.
-- An update keeps the old files and manifest in a backup folder until the new backend starts, and puts the old version back and restarts it on a failure.
+- An update keeps the old files and manifest in a backup folder until the new backend starts, and puts the old version back and restarts it on a failure. It runs to its end even when an engine switch drops the manager.
 - Install pulls the image only when the engine does not have it, so a locally built extension installs without a registry.
 - The proxy is `alpine/socat:1.8.1.3`, a service named `captain-proxy` in the backend's project.
 - The test set has a UI-only extension (Docker's Disk Usage) and a backend extension built by the live test. A public extension with host binaries is still to check.
 - The window opened without a crash on the pinned `lb-wry` on this Mac, so wry#1705 did not show up.
-- `docker.cli.exec` and `vm.cli.exec` stay on the current engine: the page's `env` cannot override `DOCKER_HOST` or set another `DOCKER_*` variable that picks a daemon, and `cmd` cannot be a global option such as `--host` or `--context`.
+- `docker.cli.exec` and `vm.cli.exec` stay on the current engine: the page's `env` cannot override `DOCKER_HOST` or set a `DOCKER_*` variable outside a short allowlist of ones that pick no daemon (such as `DOCKER_API_VERSION`), and `cmd` cannot be a global option such as `--host` or `--context`.

@@ -77,14 +77,17 @@ impl Cancel {
             .stderr(Stdio::piped())
             .spawn()
             .map_err(|error| HostError(format!("Cannot run {program}: {error}")))?;
-        if let (Some(mut pipe), Some(input)) = (child.stdin.take(), input) {
-            // Small inputs only: the pipe buffer takes them before the child reads.
-            pipe.write_all(input.as_bytes())
-                .map_err(|error| HostError(error.to_string()))?;
-        }
         let stdout = child.stdout.take().map(read_all);
         let stderr = child.stderr.take().map(read_all);
+        let pipe = child.stdin.take();
         self.hold(child);
+        // The input goes on its own thread, after the child is held, so a child
+        // that does not read a large input can still be killed. The write ends
+        // once no process holds the pipe.
+        if let (Some(mut pipe), Some(input)) = (pipe, input) {
+            let input = input.to_owned();
+            std::thread::spawn(move || pipe.write_all(input.as_bytes()).ok());
+        }
         let status = loop {
             let mut running = lock(&self.running);
             let Some(child) = running.as_mut() else {
@@ -96,7 +99,13 @@ impl Cancel {
                     break status;
                 }
                 Ok(None) => {}
-                Err(error) => return Err(HostError(error.to_string())),
+                Err(error) => {
+                    if let Some(mut child) = running.take() {
+                        child.kill().ok();
+                        child.wait().ok();
+                    }
+                    return Err(HostError(error.to_string()));
+                }
             }
             drop(running);
             std::thread::sleep(POLL);

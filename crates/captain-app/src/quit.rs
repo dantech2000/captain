@@ -38,10 +38,12 @@ pub fn quit(cx: &mut App) {
         return;
     }
     let host = model.read(cx);
-    let stop_engine = host.uses_captain(cx)
-        && host.can_control()
-        && (host.is_starting()
-            || captain_ui::current_settings(cx).stop_engine_on_quit && host.status().can_stop());
+    let stop_engine = host.can_control()
+        && stops_engine(
+            host.is_starting(),
+            host.uses_captain(cx),
+            captain_ui::current_settings(cx).stop_engine_on_quit && host.status().can_stop(),
+        );
     if !stop_engine {
         cx.quit();
         return;
@@ -57,6 +59,13 @@ pub fn quit(cx: &mut App) {
         cx.update(|cx| cx.quit());
     })
     .detach();
+}
+
+/// True when Quit stops Captain Engine first: always while a Captain start runs,
+/// also after the user chose another engine meanwhile, and otherwise when Captain
+/// Engine is the chosen engine and `stop_on_quit` holds.
+fn stops_engine(starting: bool, uses_captain: bool, stop_on_quit: bool) -> bool {
+    starting || uses_captain && stop_on_quit
 }
 
 /// Quits when the snapshot step ends, because a step cut off halfway can leave the
@@ -79,3 +88,6 @@ fn wait_for_snapshot(model: Entity<captain_ui::HostModel>, cx: &mut App) {
         _subscription: subscription,
     });
 }
+
+#[cfg(test)]
+mod tests;

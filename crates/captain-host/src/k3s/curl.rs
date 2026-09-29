@@ -40,12 +40,13 @@ pub fn save(url: &str, file: &Path, cancel: &Cancel) -> Result<(), HostError> {
 }
 
 /// True when k3s answers `/ping` on `127.0.0.1:port`. The route needs no login
-/// (k3s pkg/server/handlers/router.go), and k3s's certificate is its own, so curl
-/// does not check it.
-pub fn ping(port: u16, cancel: &Cancel) -> bool {
+/// (k3s pkg/server/handlers/router.go). curl trusts only `ca`, k3s's own authority,
+/// so another cluster or program on the port does not count.
+pub fn ping(port: u16, ca: &Path, cancel: &Cancel) -> bool {
     let mut command = Command::new("curl");
     command
-        .args(["--silent", "--insecure", "--max-time", "5"])
+        .args(["--silent", "--max-time", "5", "--cacert"])
+        .arg(ca)
         .arg(format!("https://127.0.0.1:{port}/ping"));
     cancel
         .output(command, None)

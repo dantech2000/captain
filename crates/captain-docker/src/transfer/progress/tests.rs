@@ -44,3 +44,16 @@ fn fails_once_the_receiver_is_gone() {
     let out: Vec<_> = block_on(counted(chunks(1, 10), 10, tx).collect());
     assert!(out[0].is_err());
 }
+
+#[test]
+fn a_closed_stream_drops_the_work() {
+    let runtime = tokio::runtime::Builder::new_current_thread()
+        .enable_time()
+        .build()
+        .expect("runtime");
+    let (tx, rx) = mpsc::unbounded();
+    drop(rx);
+    let work = futures::future::pending::<Result<(), captain_core::EngineError>>();
+    let result = runtime.block_on(super::until_cancelled(&tx, work));
+    assert_eq!(result, Err(super::cancelled()));
+}

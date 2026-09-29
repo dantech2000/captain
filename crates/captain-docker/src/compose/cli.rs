@@ -100,7 +100,7 @@ impl ComposeCli {
             }
             Err(message) => return futures::future::ready(Err(EngineError::Api(message))).boxed(),
         };
-        // Dropping the future kills the command, for example when a migration stops.
+        // Dropping the future kills the command. Migration uses `up_labeled` instead.
         output_guarded(command).map(checked).boxed()
     }
 }

@@ -13,8 +13,8 @@ pub const PROJECT_PREFIX: &str = "captain-ext-";
 /// host of the `captain-ext://` URL, so it is a valid host name. `None` for input
 /// that is not an image reference.
 pub fn extension_id(reference: &str) -> Option<String> {
-    let parsed = ImageReference::parse(reference)?;
-    let repository = parsed.name.split('@').next().unwrap_or_default();
+    let repository = image_repository(reference)?;
+    let repository = repository.as_str();
     let mut id = String::new();
     for c in repository.chars() {
         let c = c.to_ascii_lowercase();
@@ -27,6 +27,20 @@ pub fn extension_id(reference: &str) -> Option<String> {
     let id = id.trim_end_matches('-');
     let hash = fnv1a(repository, FNV_OFFSET) >> 32;
     (!id.is_empty()).then(|| format!("{id}-{hash:08x}"))
+}
+
+/// The repository of an image reference, without tag or digest: `acme/foo:1` is
+/// `acme/foo`. `None` for input that is not an image reference.
+pub fn image_repository(reference: &str) -> Option<String> {
+    let parsed = ImageReference::parse(reference)?;
+    Some(
+        parsed
+            .name
+            .split('@')
+            .next()
+            .unwrap_or_default()
+            .to_string(),
+    )
 }
 
 /// The Compose project that runs the backend of the extension `id`.

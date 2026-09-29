@@ -47,6 +47,9 @@ pub fn create(host: &LimaHost, name: &str, description: &str) -> Result<Snapshot
 
     let id = folder::new_id();
     let dir = root.join(&id);
+    // The saved daemon and Kubernetes settings, not what the copied disk has: each
+    // start applies the saved settings, so a restore that adopts them gets the
+    // engine the user had set up.
     let metadata = SnapshotMetadata {
         disk_allocated,
         daemon: Some(host.daemon_settings()),

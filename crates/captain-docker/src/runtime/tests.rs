@@ -3,7 +3,7 @@ use std::time::{Duration, Instant};
 
 use futures::channel::mpsc::UnboundedSender;
 
-use super::{BackgroundRuntime, build, forward};
+use super::{BackgroundRuntime, build, forward, spawn_to_end};
 
 #[test]
 fn dropping_a_stream_aborts_an_idle_producer() {
@@ -33,4 +33,15 @@ fn dropping_a_background_runtime_does_not_wait_for_blocking_work() {
     let dropped = Instant::now();
     drop(runtime);
     assert!(dropped.elapsed() < Duration::from_secs(1));
+}
+
+#[test]
+fn work_spawned_to_end_finishes_after_its_runtime_owner_drops() {
+    let runtime = Arc::new(BackgroundRuntime::from(build().unwrap()));
+    let work = spawn_to_end(runtime.clone(), async {
+        tokio::time::sleep(Duration::from_millis(100)).await;
+        Ok(7)
+    });
+    drop(runtime);
+    assert_eq!(futures::executor::block_on(work).unwrap(), 7);
 }

@@ -28,6 +28,9 @@ impl VolumesView {
         cx.spawn(async move |this, cx| {
             let result = engine.prune_unused_volumes(all, None).await;
             this.update(cx, |this, cx| {
+                if this.generation != generation {
+                    return;
+                }
                 this.pruning = false;
                 match result {
                     Ok(report) => {

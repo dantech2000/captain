@@ -9,3 +9,4 @@ mod steps;
 mod swap;
 
 pub use lima_snapshots::LimaSnapshots;
+pub(crate) use swap::check_finished;

@@ -3,8 +3,12 @@
 
 use captain_core::EngineError;
 use captain_core::migration::TransferEvent;
+use std::pin::pin;
+use std::time::Duration;
+
 use futures::StreamExt;
 use futures::channel::mpsc::{self, UnboundedSender};
+use futures::future::{self, Either};
 
 use super::source::ByteStream;
 
@@ -30,6 +34,26 @@ pub fn cancelled() -> EngineError {
 /// True once the UI dropped the event stream.
 pub fn is_cancelled(events: &Events) -> bool {
     events.is_closed()
+}
+
+/// How often [`until_cancelled`] looks whether the UI dropped the event stream.
+const CANCEL_POLL: Duration = Duration::from_millis(200);
+
+/// Runs `work` until it ends, or until the UI drops the event stream. Then `work`
+/// drops, which stops it. Call it on the tokio runtime.
+pub async fn until_cancelled<T>(
+    events: &Events,
+    work: impl Future<Output = Result<T, EngineError>>,
+) -> Result<T, EngineError> {
+    let closed = async {
+        while !is_cancelled(events) {
+            tokio::time::sleep(CANCEL_POLL).await;
+        }
+    };
+    match future::select(pin!(work), pin!(closed)).await {
+        Either::Left((result, _)) => result,
+        Either::Right(_) => Err(cancelled()),
+    }
 }
 
 pub fn send(events: &Events, event: TransferEvent) {

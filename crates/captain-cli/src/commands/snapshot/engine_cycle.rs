@@ -8,7 +8,8 @@ use captain_core::EngineHost;
 use futures::executor::{block_on, block_on_stream};
 
 /// Runs `work` with the engine stopped. If the engine was running, it starts again
-/// afterwards, also when `work` failed.
+/// afterwards, also when `work` failed. Then `work`'s error comes first, because a
+/// restore that left the engine broken also stops the start.
 pub fn with_engine_stopped<T>(
     host: &Arc<dyn EngineHost>,
     was_running: bool,
@@ -19,8 +20,11 @@ pub fn with_engine_stopped<T>(
         block_on(host.stop())?;
     }
     let result = work();
-    if was_running {
-        start(host)?;
+    if was_running && let Err(error) = start(host) {
+        match &result {
+            Ok(_) => return Err(error),
+            Err(_) => eprintln!("captain: {error:#}"),
+        }
     }
     result
 }

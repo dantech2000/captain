@@ -52,12 +52,16 @@ impl NetworksView {
             return;
         }
         self.creating = true;
+        let generation = self.generation;
         self.error = None;
         self.notice = None;
         cx.notify();
         cx.spawn_in(window, async move |this, cx| {
             let result = engine.create_network(&name).await;
             this.update_in(cx, |this, window, cx| {
+                if this.generation != generation {
+                    return;
+                }
                 this.creating = false;
                 match result {
                     Ok(id) => {
@@ -95,6 +99,9 @@ impl NetworksView {
         cx.spawn(async move |this, cx| {
             let result = engine.remove_network(&id).await;
             this.update(cx, |this, cx| {
+                if this.generation != generation {
+                    return;
+                }
                 this.removing.remove(&id);
                 match result {
                     Ok(()) => this.reload(Duration::ZERO, cx),

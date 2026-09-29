@@ -142,7 +142,9 @@ pub async fn switch_over(
 /// Undoes a switch-over: stops the item's containers in the target, then starts
 /// the originals in the source. A copy that is missing or already stopped counts as
 /// stopped, so a switch-over that failed before the start can roll back too. It
-/// tries every step and reports the errors at the end. Nothing is removed.
+/// tries to stop every copy. If Captain cannot confirm that each copy stopped, it
+/// leaves the originals stopped, so the item never runs in both engines. Nothing
+/// is removed.
 pub async fn roll_back(
     source: &SourceEngine,
     target: &Docker,
@@ -163,8 +165,16 @@ pub async fn roll_back(
         }
         Err(error) => errors.push(error),
     }
-    for name in &job.stop {
-        errors.extend(source.start_container(name).await.err());
+    if errors.is_empty() {
+        for name in &job.stop {
+            errors.extend(source.start_container(name).await.err());
+        }
+    } else {
+        errors.push(EngineError::Api(
+            "Captain left the original stopped in the old engine, because it could not \
+             confirm that the copy stopped here. Stop the copy, then roll back again."
+                .into(),
+        ));
     }
     match errors.len() {
         0 => Ok(()),

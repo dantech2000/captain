@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use super::{DISK, files, source_of};
+use super::{DISK, files};
 use crate::lima::paths::LimaPaths;
 
 #[test]
@@ -36,6 +36,8 @@ fn copies_the_disk_config_and_keys_but_not_the_runtime_files() {
 #[cfg(unix)]
 #[test]
 fn a_legacy_disk_link_resolves_to_diffdisk() {
+    use super::source_of;
+
     let dir = std::env::temp_dir().join(format!("captain-plan-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     std::fs::write(dir.join("diffdisk"), b"x").unwrap();

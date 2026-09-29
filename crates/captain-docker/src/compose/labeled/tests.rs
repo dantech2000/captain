@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use captain_core::model::ProjectAction;
 
-use super::{label_override, list_args, stdin_file_args};
+use super::{label_override, list_args, stdin_file_args, with_project_directory};
 
 #[test]
 fn override_on_stdin_labels_every_listed_service() {
@@ -14,6 +14,10 @@ fn override_on_stdin_labels_every_listed_service() {
         [
             "compose", "-p", "shop", "-f", "/a.yaml", "-f", "-", "up", "-d"
         ]
+    );
+    assert_eq!(
+        with_project_directory(&args, "/src")[..4],
+        ["compose", "--project-directory", "/src", "-p"]
     );
     assert_eq!(
         list_args(&args, ProjectAction::Up),
@@ -35,8 +39,8 @@ fn override_on_stdin_labels_every_listed_service() {
     assert_eq!(
         json,
         serde_json::json!({ "services": {
-            "web": { "labels": { "dev.captain.migrated-from": "ID:1" } },
-            "db": { "labels": { "dev.captain.migrated-from": "ID:1" } },
+            "web": { "labels": { "dev.captain.migrated-from": "ID:1", "dev.captain.compose-labels-override": "true" } },
+            "db": { "labels": { "dev.captain.migrated-from": "ID:1", "dev.captain.compose-labels-override": "true" } },
         }})
     );
 }

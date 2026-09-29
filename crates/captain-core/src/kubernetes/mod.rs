@@ -15,8 +15,8 @@ mod versions;
 pub use assets::{K3sAssets, download_url, expected_sha256};
 pub use host::{KubernetesHost, KubernetesStatus};
 pub use kubeconfig::{
-    CONTEXT, captain_config, contexts, current_context, merge, parse, remove_captain, set_current,
-    to_yaml,
+    CONTEXT, captain_config, cluster_ca, contexts, current_context, merge, parse, remove_captain,
+    set_current, to_yaml,
 };
 pub use kubeconfig_files::{
     KubeContexts, install_captain, kubeconfig_paths, load_contexts, read_config, uninstall_captain,

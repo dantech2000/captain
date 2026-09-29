@@ -9,7 +9,7 @@ use bollard::query_parameters::{CreateImageOptionsBuilder, RemoveImageOptions};
 use captain_core::EngineError;
 use captain_core::extension::{
     Backend, ExtensionCandidate, ExtensionLabels, ExtensionMetadata, ExtensionPaths,
-    InstalledExtension, MANIFEST_FILE, binary_name, extension_id, host_platform,
+    InstalledExtension, MANIFEST_FILE, binary_name, extension_id, host_platform, image_repository,
 };
 use captain_core::model::ImageReference;
 use futures::StreamExt;
@@ -83,6 +83,7 @@ pub async fn install(
     let mut extension = InstalledExtension::new(candidate, installed);
     extension.engine = context.engine.clone();
     check_absent(&context.paths, &extension.id)?;
+    check_repository(&context.paths, &extension.image)?;
     let dir = context.paths.dir(&extension.id);
     // A folder without `extension.json` is left from an install that stopped.
     if dir.exists() {
@@ -127,6 +128,19 @@ fn check_absent(paths: &ExtensionPaths, id: &str) -> Result<(), EngineError> {
         )));
     }
     Ok(())
+}
+
+/// Fails when an extension from the same repository is installed in another folder,
+/// for example one installed before IDs carried a hash.
+fn check_repository(paths: &ExtensionPaths, image: &str) -> Result<(), EngineError> {
+    let repository = image_repository(image);
+    match read_all(paths)?
+        .into_iter()
+        .find(|present| image_repository(&present.image) == repository)
+    {
+        Some(present) => Err(already_installed(&present)),
+        None => Ok(()),
+    }
 }
 
 fn already_installed(present: &InstalledExtension) -> EngineError {
@@ -216,15 +230,26 @@ fn delete_folders(paths: &ExtensionPaths, id: &str) -> Result<(), EngineError> {
 }
 
 /// Every folder with a readable `extension.json` installed on `engine`, or on an
-/// unknown engine, sorted by title. The manifest's ID must be the folder's name:
-/// Captain builds paths and the Compose project from it, and deletes them on remove.
+/// unknown engine, sorted by title.
 pub fn list(paths: &ExtensionPaths, engine: &str) -> Result<Vec<InstalledExtension>, EngineError> {
+    let mut extensions: Vec<InstalledExtension> = read_all(paths)?
+        .into_iter()
+        .filter(|extension| extension.runs_on(engine))
+        .collect();
+    extensions.sort_by_key(|extension| extension.title().to_lowercase());
+    Ok(extensions)
+}
+
+/// Every folder with a readable `extension.json`, on any engine. The manifest's ID
+/// must be the folder's name: Captain builds paths and the Compose project from it,
+/// and deletes them on remove.
+fn read_all(paths: &ExtensionPaths) -> Result<Vec<InstalledExtension>, EngineError> {
     let entries = match std::fs::read_dir(paths.root()) {
         Ok(entries) => entries,
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(Vec::new()),
         Err(error) => return Err(files::io_error(error)),
     };
-    let mut extensions: Vec<InstalledExtension> = entries
+    Ok(entries
         .filter_map(Result::ok)
         .filter_map(|entry| {
             let json = std::fs::read_to_string(entry.path().join(MANIFEST_FILE)).ok()?;
@@ -238,10 +263,7 @@ pub fn list(paths: &ExtensionPaths, engine: &str) -> Result<Vec<InstalledExtensi
             }
             Some(extension)
         })
-        .filter(|extension| extension.engine.is_empty() || extension.engine == engine)
-        .collect();
-    extensions.sort_by_key(|extension| extension.title().to_lowercase());
-    Ok(extensions)
+        .collect())
 }
 
 #[cfg(test)]

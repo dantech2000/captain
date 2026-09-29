@@ -3,7 +3,7 @@
 //! a backup folder until every rename worked, and go back if one fails. A backup
 //! folder can hold the only copy of an old file, so the swap deletes it only after
 //! the swap finished or every old file went back. An earlier swap's folder stops
-//! the next one.
+//! the next swap and every engine start.
 
 use std::io;
 use std::path::{Path, PathBuf};
@@ -26,6 +26,22 @@ struct Moved {
     backup: Option<PathBuf>,
 }
 
+/// Fails while an earlier swap's backup folder is in `work`. Its live files can be
+/// missing or mixed, and the folder can hold the only copy of an old file, so no
+/// start and no other restore may run until the user puts the files back.
+pub fn check_finished(work: &Path) -> Result<(), String> {
+    let backup = work.join(BACKUP);
+    if !backup.exists() {
+        return Ok(());
+    }
+    Err(format!(
+        "An earlier snapshot restore did not finish, so Captain Engine may be missing \
+         files. The old files are in {}; {JOURNAL} there lists where each one belongs. \
+         Move each file back, or move that folder away and restore a snapshot again.",
+        backup.display()
+    ))
+}
+
 /// Copies each `from` into a staging folder in `work` with `copy`, then renames it
 /// over its `live` file. `work` must be on the same volume as every `live` file.
 pub fn swap(
@@ -35,14 +51,7 @@ pub fn swap(
 ) -> Result<(), String> {
     let staging = work.join(STAGING);
     let backup = work.join(BACKUP);
-    if backup.exists() {
-        return Err(format!(
-            "An earlier restore did not finish. Its backup of the old files is in {}; \
-             {JOURNAL} there lists where each one belongs. Move that folder away, then \
-             restore again.",
-            backup.display()
-        ));
-    }
+    check_finished(work)?;
     std::fs::remove_dir_all(&staging).ok();
     for dir in [&staging, &backup] {
         std::fs::create_dir_all(dir).map_err(|error| describe(dir, error))?;

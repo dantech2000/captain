@@ -12,7 +12,7 @@ mod network;
 mod stats;
 mod volume;
 
-pub use container::container;
+pub use container::{container, is_active};
 pub use detail::detail;
 pub use error::{engine_error, found};
 pub use event::event;

@@ -13,15 +13,26 @@ pub struct ComposeLabels {
 }
 
 impl ComposeLabels {
-    /// Splits the `config_files` label value. Empty parts are dropped, and so is
-    /// `-`, a file that Compose read from stdin (Captain's migration label).
-    pub fn split_config_files(value: &str) -> Vec<String> {
-        value
+    /// Captain's label on a container that `docker compose up` created with
+    /// Captain's labels-only override on stdin. It marks the last `-` in the config
+    /// files label as that override, not as a file of the user.
+    pub const CAPTAIN_OVERRIDE_LABEL: &str = "dev.captain.compose-labels-override";
+
+    /// Splits the `config_files` label value and drops empty parts. When
+    /// `captain_override` is true, it also drops the last `-`, Captain's override.
+    /// Any other `-` is a file the user gave on stdin: it stays, so Captain knows it
+    /// cannot replay the files.
+    pub fn split_config_files(value: &str, captain_override: bool) -> Vec<String> {
+        let mut files: Vec<String> = value
             .split(',')
             .map(str::trim)
-            .filter(|file| !file.is_empty() && *file != "-")
+            .filter(|file| !file.is_empty())
             .map(ToString::to_string)
-            .collect()
+            .collect();
+        if captain_override && files.last().is_some_and(|file| file == "-") {
+            files.pop();
+        }
+        files
     }
 }
 

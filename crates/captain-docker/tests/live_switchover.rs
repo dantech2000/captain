@@ -29,6 +29,7 @@ const COPY: &str = "captain-agent-sw-dst";
 const VOLUME: &str = "captain-agent-sw-vol";
 const VOLUME_COPY: &str = "captain-agent-sw-copy";
 const READER: &str = "captain-agent-sw-read";
+const OTHER: &str = "captain-agent-sw-other";
 const PROJECT: &str = "captain-agent-swc";
 const IMAGE: &str = "busybox:latest";
 /// The label Captain puts on what it copied into the target.
@@ -85,6 +86,8 @@ impl Fixture {
         let dir = std::env::temp_dir().join(PROJECT);
         std::fs::create_dir_all(&dir).expect("temp folder");
         std::fs::write(dir.join("compose.yaml"), COMPOSE_FILE).expect("compose file");
+        // The project runs with --project-directory, away from its file.
+        std::fs::create_dir_all(dir.join("app")).expect("project folder");
         let host = endpoint.to_string().replace("http://", "tcp://");
         let runtime = Runtime::new().expect("runtime");
         let fixture = Self {
@@ -99,7 +102,9 @@ impl Fixture {
 
     fn compose(&self, args: &[&str]) -> bool {
         let output = Command::new("docker")
-            .args(["compose", "-p", PROJECT, "-f"])
+            .args(["compose", "-p", PROJECT, "--project-directory"])
+            .arg(self.dir.join("app"))
+            .arg("-f")
             .arg(self.dir.join("compose.yaml"))
             .args(args)
             .env("DOCKER_HOST", &self.host)
@@ -172,27 +177,35 @@ impl Fixture {
     }
 
     /// `compose up` the way a Captain copy does: every container gets the label.
-    fn up_labeled(&self) {
+    fn up_labeled(&self, item: &MigrationItem) {
+        let MigrationItem::ComposeProject {
+            working_dir,
+            config_files,
+            ..
+        } = item
+        else {
+            panic!("not a project: {item:?}");
+        };
         let cli = ComposeCli::detect(&endpoint()).expect("compose CLI");
         let project = ComposeProject {
             name: PROJECT.into(),
-            working_dir: Some(self.dir.display().to_string()),
-            config_files: vec!["compose.yaml".into()],
+            working_dir: working_dir.clone(),
+            config_files: config_files.clone(),
             services: Vec::new(),
         };
         let id = self.block(self.docker.info()).expect("info").id;
         let labels = HashMap::from([(MIGRATED_FROM.to_string(), id.unwrap_or_default())]);
         block_on(cli.up_labeled(&project, &[], labels)).expect("labeled up");
-        let web = self.block(
-            self.docker
-                .inspect_container(&format!("{PROJECT}-web-1"), None),
+        assert!(
+            self.labels(&format!("{PROJECT}-web-1"))
+                .contains_key(MIGRATED_FROM)
         );
-        let labels = web
-            .expect("web")
-            .config
-            .and_then(|c| c.labels)
-            .unwrap_or_default();
-        assert!(labels.contains_key(MIGRATED_FROM));
+    }
+
+    fn labels(&self, name: &str) -> HashMap<String, String> {
+        let inspect = self.block(self.docker.inspect_container(name, None));
+        let config = inspect.expect("inspect").config;
+        config.and_then(|c| c.labels).unwrap_or_default()
     }
 
     fn running(&self, name: &str) -> Option<bool> {
@@ -223,7 +236,7 @@ impl Fixture {
         let docker = self.docker.clone();
         self.block(async move {
             let force = RemoveContainerOptionsBuilder::default().force(true).build();
-            for name in [SOURCE, COPY, READER] {
+            for name in [SOURCE, COPY, READER, OTHER] {
                 docker
                     .remove_container(name, Some(force.clone()))
                     .await
@@ -375,9 +388,24 @@ fn switches_a_project_over_without_its_profile_services() {
     let error = refused.expect_err("refused").to_string();
     assert!(error.contains("Captain did not copy it"), "{error}");
     assert_eq!(fixture.running(&format!("{PROJECT}-web-1")), Some(true));
+    // An ordinary copy skips the project too, and does not relabel it.
+    let events: Vec<TransferEvent> =
+        block_on(session.copy(&item, false).try_collect()).expect("copy");
+    assert!(matches!(events.last(), Some(TransferEvent::Skipped(_))));
+    assert!(
+        !fixture
+            .labels(&format!("{PROJECT}-web-1"))
+            .contains_key(MIGRATED_FROM)
+    );
 
     // Recreated with Captain's label, as a Compose copy does, it switches over.
-    fixture.up_labeled();
+    // Its copy keeps the --project-directory folder, and Captain can replay it.
+    fixture.up_labeled(&item);
+    let rescanned = block_on(session.scan()).expect("scan");
+    assert!(rescanned.entries.iter().any(|entry| matches!(
+        &entry.item,
+        MigrationItem::ComposeProject { name, files_exist: true, .. } if name == PROJECT
+    )));
     let events: Vec<TransferEvent> =
         block_on(session.switch_over(&item, false).try_collect()).expect("switch over");
     assert_eq!(steps(&events), (SwitchOverStep::SEQUENCE.to_vec(), true));
@@ -386,5 +414,102 @@ fn switches_a_project_over_without_its_profile_services() {
 
     block_on(session.roll_back(&item)).expect("roll back");
     assert_eq!(fixture.project_services(), ["web"]);
+    block_on(session.finish()).expect("finish");
+}
+
+/// A Unix socket that forwards to the engine until [`Proxy::cut`], so a session can
+/// connect through it and then lose the engine.
+#[cfg(unix)]
+struct Proxy {
+    path: PathBuf,
+    streams: std::sync::Arc<Mutex<Vec<std::os::unix::net::UnixStream>>>,
+}
+
+#[cfg(unix)]
+impl Proxy {
+    fn new(to: PathBuf) -> Self {
+        use std::os::unix::net::{UnixListener, UnixStream};
+        let path = std::env::temp_dir().join("captain-agent-sw-proxy.sock");
+        std::fs::remove_file(&path).ok();
+        let listener = UnixListener::bind(&path).expect("proxy socket");
+        let streams = std::sync::Arc::new(Mutex::new(Vec::<UnixStream>::new()));
+        let kept = streams.clone();
+        std::thread::spawn(move || {
+            for client in listener.incoming().flatten() {
+                let Ok(server) = UnixStream::connect(&to) else {
+                    break;
+                };
+                let pipe = |mut from: UnixStream, mut to: UnixStream| {
+                    std::thread::spawn(move || std::io::copy(&mut from, &mut to).ok());
+                };
+                let mut list = kept.lock().unwrap_or_else(|e| e.into_inner());
+                list.extend([client.try_clone().unwrap(), server.try_clone().unwrap()]);
+                pipe(client.try_clone().unwrap(), server.try_clone().unwrap());
+                pipe(server, client);
+            }
+        });
+        Self { path, streams }
+    }
+
+    /// Closes every connection and removes the socket, so the engine is gone.
+    fn cut(&self) {
+        std::fs::remove_file(&self.path).ok();
+        let streams = self.streams.lock().unwrap_or_else(|e| e.into_inner());
+        for stream in streams.iter() {
+            stream.shutdown(std::net::Shutdown::Both).ok();
+        }
+    }
+}
+
+#[cfg(unix)]
+#[test]
+#[ignore = "needs a running Docker engine on a Unix socket"]
+fn roll_back_leaves_the_source_stopped_when_the_target_is_gone() {
+    let _serial = SERIAL.lock().unwrap_or_else(|e| e.into_inner());
+    let fixture = Fixture::new();
+    // As if the switch-over stopped the source and the copy may still run.
+    fixture.container(SOURCE, "exec sleep 300", HostConfig::default(), false);
+    let Endpoint::Unix(socket) = endpoint() else {
+        panic!("the engine is not on a Unix socket");
+    };
+    let proxy = Proxy::new(socket);
+    let target = Endpoint::Unix(proxy.path.clone());
+    let session = DockerSession::connect(&endpoint(), &target).expect("session");
+    proxy.cut();
+
+    let error = block_on(session.roll_back_container_as(SOURCE, COPY)).expect_err("refused");
+    assert!(
+        error.to_string().contains("left the original stopped"),
+        "{error}"
+    );
+    assert_eq!(fixture.running(SOURCE), Some(false));
+}
+
+#[test]
+#[ignore = "needs a running Docker engine"]
+fn refuses_while_a_paused_container_writes_the_volume() {
+    let _serial = SERIAL.lock().unwrap_or_else(|e| e.into_inner());
+    let fixture = Fixture::new();
+    let host_config = || HostConfig {
+        binds: Some(vec![format!("{VOLUME}:/data")]),
+        init: Some(true),
+        ..HostConfig::default()
+    };
+    fixture.container(SOURCE, "exec sleep 300", host_config(), true);
+    fixture.container(OTHER, "exec sleep 300", host_config(), true);
+    fixture
+        .block(fixture.docker.pause_container(OTHER))
+        .expect("pause");
+
+    let session = session();
+    let volumes = [(VOLUME.to_string(), VOLUME_COPY.to_string())];
+    let switched: Result<Vec<TransferEvent>, _> = block_on(
+        session
+            .switch_container_as(SOURCE, COPY, &volumes)
+            .try_collect(),
+    );
+    let error = switched.expect_err("refused").to_string();
+    assert!(error.contains(&format!("{OTHER} also runs")), "{error}");
+    assert_eq!(fixture.running(SOURCE), Some(true));
     block_on(session.finish()).expect("finish");
 }

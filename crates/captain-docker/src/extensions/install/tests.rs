@@ -1,6 +1,6 @@
 use captain_core::extension::{ExtensionCandidate, ExtensionPaths, InstalledExtension};
 
-use super::{check_absent, delete_folders, list};
+use super::{check_absent, check_repository, delete_folders, list};
 
 fn write(paths: &ExtensionPaths, id: &str, engine: &str) {
     write_in(paths, id, id, engine);
@@ -57,4 +57,15 @@ fn install_refuses_an_unreadable_manifest_or_an_unfinished_update_until_remove()
     std::fs::remove_dir_all(&root).ok();
     assert_eq!(refused, [true, true]);
     assert!(leftover_ok && after_remove);
+}
+
+#[test]
+fn install_refuses_a_repository_that_an_older_folder_holds() {
+    let root = std::env::temp_dir().join(format!("captain-ext-repo-{}", std::process::id()));
+    let paths = ExtensionPaths::new(root.clone());
+    write(&paths, "old", "unix:///b.sock");
+    let refused = check_repository(&paths, "acme/old:2").is_err();
+    let other = check_repository(&paths, "acme/new:1").is_ok();
+    std::fs::remove_dir_all(&root).ok();
+    assert!(refused && other);
 }

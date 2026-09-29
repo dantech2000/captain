@@ -1,4 +1,6 @@
-use super::{captain_config, contexts, current_context, merge, parse, remove_captain, to_yaml};
+use super::{
+    captain_config, cluster_ca, contexts, current_context, merge, parse, remove_captain, to_yaml,
+};
 
 const K3S_YAML: &str = "apiVersion: v1
 clusters:
@@ -54,6 +56,7 @@ fn renames_k3s_entries_and_points_at_the_port() {
         config["clusters"][0]["cluster"]["certificate-authority-data"],
         "Q0E="
     );
+    assert_eq!(cluster_ca(&config).unwrap(), b"CA");
     assert_eq!(config["users"][0]["user"]["client-key-data"], "S0VZ");
     assert_eq!(contexts(&config), ["captain"]);
 }

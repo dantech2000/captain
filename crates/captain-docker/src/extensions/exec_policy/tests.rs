@@ -29,13 +29,22 @@ fn global_options_and_daemon_variables_are_refused() {
         "docker_context",
         "DOCKER_CONFIG",
         "DOCKER_TLS_VERIFY",
+        "DOCKER_CERT_PATH",
+        "DOCKER_CUSTOM_HEADERS",
     ] {
         assert!(
             check(ExecScope::Vm, &exec("ps", &[(name, "x")])).is_err(),
             "{name}"
         );
     }
-    let allowed = exec("run", &[("DOCKER_BUILDKIT", "1"), ("FOO", "bar")]);
+    let allowed = exec(
+        "run",
+        &[
+            ("DOCKER_API_VERSION", "1.45"),
+            ("DOCKER_BUILDKIT", "1"),
+            ("FOO", "bar"),
+        ],
+    );
     assert!(check(ExecScope::Docker, &allowed).is_ok());
 }
 

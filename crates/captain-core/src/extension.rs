@@ -18,8 +18,8 @@ pub use compose::{
     COMPOSE_FILE, GUEST_SERVICES, PROXY_IMAGE, PROXY_PORT, PROXY_SERVICE, image_project,
     with_guest_services,
 };
-pub use id::{PROJECT_PREFIX, data_store_id, extension_id, project_name};
-pub use installed::{ExtensionCandidate, InstalledExtension, binary_name};
+pub use id::{PROJECT_PREFIX, data_store_id, extension_id, image_repository, project_name};
+pub use installed::{ExtensionCandidate, InstalledExtension, binary_name, engine_key};
 pub use labels::{API_VERSION_LABEL, ExtensionLabels};
 pub use manager::{BridgeStream, ExtensionManager};
 pub use metadata::{

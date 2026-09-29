@@ -32,6 +32,8 @@ const COPY: &str = "captain-agent-ctr-copy";
 const SNAPSHOT: &str = "captain-migrate/captain-agent-ctr:snapshot";
 const TAG: &str = "captain-agent-img:1";
 const HELPER_IMAGE: &str = "busybox:latest";
+/// A Compose project that its user started with an override file on stdin.
+const STDIN_PROJECT: &str = "captain-agent-stdin";
 
 /// The tests share one engine and its helper containers, so they run one at a time.
 static SERIAL: Mutex<()> = Mutex::new(());
@@ -132,7 +134,8 @@ impl Fixture {
         let docker = self.docker.clone();
         self.runtime.block_on(async move {
             let force = RemoveContainerOptionsBuilder::default().force(true).build();
-            for name in ["captain-agent-run", CONTAINER, COPY] {
+            let stdin_app = format!("{STDIN_PROJECT}-app-1");
+            for name in ["captain-agent-run", CONTAINER, COPY, &stdin_app] {
                 docker
                     .remove_container(name, Some(force.clone()))
                     .await
@@ -143,6 +146,8 @@ impl Fixture {
                 docker.remove_volume(name, Some(options)).await.ok();
             }
             docker.remove_network(NETWORK).await.ok();
+            let stdin_network = format!("{STDIN_PROJECT}_default");
+            docker.remove_network(&stdin_network).await.ok();
             for image in [TAG, SNAPSHOT] {
                 let removed = docker.remove_image(image, None::<RemoveImageOptions>, None);
                 removed.await.ok();
@@ -401,4 +406,52 @@ fn recreates_a_container_from_a_snapshot() {
     assert_eq!(copy.state.and_then(|s| s.running), Some(true));
     let binds = copy.host_config.and_then(|h| h.binds).unwrap_or_default();
     assert_eq!(binds, [format!("{SRC}:/data")]);
+}
+
+#[test]
+#[ignore = "needs a running Docker engine and the docker compose CLI"]
+fn a_project_with_the_users_stdin_file_is_not_replayed() {
+    let _serial = SERIAL.lock().unwrap_or_else(|e| e.into_inner());
+    let _fixture = Fixture::new();
+    let dir = std::env::temp_dir().join(STDIN_PROJECT);
+    std::fs::create_dir_all(&dir).expect("temp folder");
+    let file = dir.join("compose.yaml");
+    let service = "services:\n  app:\n    image: busybox:latest\n    command: [sleep, \"300\"]\n";
+    std::fs::write(&file, service).expect("compose file");
+    let mut up = std::process::Command::new("docker")
+        .args(["compose", "-p", STDIN_PROJECT, "-f"])
+        .arg(&file)
+        .args(["-f", "-", "up", "-d"])
+        .env(
+            "DOCKER_HOST",
+            endpoint().to_string().replace("http://", "tcp://"),
+        )
+        .env_remove("DOCKER_CONTEXT")
+        .stdin(std::process::Stdio::piped())
+        .spawn()
+        .expect("docker compose");
+    let input = "services:\n  app:\n    environment: [FROM_STDIN=1]\n";
+    std::io::Write::write_all(&mut up.stdin.take().expect("stdin"), input.as_bytes())
+        .expect("write stdin");
+    assert!(up.wait().expect("compose up").success());
+
+    let plan = block_on(session().scan()).expect("scan");
+    let item = plan
+        .entries
+        .iter()
+        .map(|entry| &entry.item)
+        .find(|item| matches!(item, MigrationItem::ComposeProject { name, .. } if name == STDIN_PROJECT))
+        .expect("the project");
+    // The stdin file is gone, so Captain must not replay the files without it.
+    let MigrationItem::ComposeProject {
+        files_exist,
+        config_files,
+        ..
+    } = item
+    else {
+        unreachable!()
+    };
+    assert!(!files_exist);
+    assert_eq!(config_files.last().map(String::as_str), Some("-"));
+    std::fs::remove_dir_all(&dir).ok();
 }

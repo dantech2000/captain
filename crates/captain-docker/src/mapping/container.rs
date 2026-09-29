@@ -50,13 +50,21 @@ pub fn container(summary: ContainerSummary) -> Container {
     }
 }
 
+/// True if the container is running, paused, or restarting: it can write now, or
+/// soon without anyone starting it.
+pub fn is_active(summary: &ContainerSummary) -> bool {
+    let state = summary.state.map(|s| ContainerState::parse(s.as_ref()));
+    state.is_some_and(ContainerState::is_active)
+}
+
 fn compose_labels(labels: &mut HashMap<String, String>) -> ComposeLabels {
+    let captain_override = labels.contains_key(ComposeLabels::CAPTAIN_OVERRIDE_LABEL);
     ComposeLabels {
         service: labels.remove(COMPOSE_SERVICE_LABEL),
         working_dir: labels.remove(COMPOSE_WORKING_DIR_LABEL),
         config_files: labels
             .remove(COMPOSE_CONFIG_FILES_LABEL)
-            .map(|files| ComposeLabels::split_config_files(&files))
+            .map(|files| ComposeLabels::split_config_files(&files, captain_override))
             .unwrap_or_default(),
     }
 }

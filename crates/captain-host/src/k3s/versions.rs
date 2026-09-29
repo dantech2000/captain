@@ -17,12 +17,12 @@ const PAGES: u32 = 3;
 
 /// The version list. `refresh` asks the network first; otherwise the cache file
 /// answers when it exists. The versions in the download folder `cache` are always
-/// in the list, so the picker works offline.
-pub fn list(cache_file: &Path, cache: &Path, refresh: bool) -> VersionList {
+/// in the list, so the picker works offline. `cancel` can end the downloads.
+pub fn list(cache_file: &Path, cache: &Path, refresh: bool, cancel: &Cancel) -> VersionList {
     let cached = VersionList::load(cache_file);
     let mut list = match cached {
         Some(list) if !refresh => list,
-        cached => match fetch() {
+        cached => match fetch(cancel) {
             Ok(list) => {
                 if let Err(error) = list.save(cache_file) {
                     tracing::warn!(%error, "cannot cache the k3s versions");
@@ -39,12 +39,11 @@ pub fn list(cache_file: &Path, cache: &Path, refresh: bool) -> VersionList {
     list
 }
 
-fn fetch() -> Result<VersionList, HostError> {
-    let cancel = Cancel::default();
-    let channels = parse_channels(&curl::text(CHANNELS_URL, &cancel)?).map_err(HostError)?;
+fn fetch(cancel: &Cancel) -> Result<VersionList, HostError> {
+    let channels = parse_channels(&curl::text(CHANNELS_URL, cancel)?).map_err(HostError)?;
     let mut releases = Vec::new();
     for page in 1..=PAGES {
-        let json = curl::text(&format!("{RELEASES_URL}&page={page}"), &cancel)?;
+        let json = curl::text(&format!("{RELEASES_URL}&page={page}"), cancel)?;
         releases.extend(parse_releases(&json).map_err(HostError)?);
     }
     Ok(VersionList::new(releases, channels))
@@ -60,3 +59,6 @@ fn downloaded(cache: &Path) -> Vec<K3sVersion> {
         .filter_map(|entry| entry.file_name().to_str()?.parse().ok())
         .collect()
 }
+
+#[cfg(test)]
+mod tests;

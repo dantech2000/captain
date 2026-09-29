@@ -41,3 +41,21 @@ fn a_roll_back_restores_the_old_files_and_drops_the_new_ones() {
         (true, true, false, false, "old".into(), true, false)
     );
 }
+
+#[test]
+fn a_failed_roll_back_keeps_a_manifest_in_the_folder() {
+    let root = std::env::temp_dir().join(format!("captain-ext-swap-m-{}", std::process::id()));
+    let (live, staged, backup) = (root.join("live"), root.join("staged"), root.join("backup"));
+    fs::create_dir_all(&live).unwrap();
+    fs::create_dir_all(&staged).unwrap();
+    fs::write(live.join(MANIFEST_FILE), "old").unwrap();
+    let mut swap = Swap::new(live.clone(), staged, backup.clone());
+    swap.replace("new").unwrap();
+    // The old manifest cannot move back.
+    fs::remove_file(backup.join(MANIFEST_FILE)).unwrap();
+    let failed = swap.roll_back().is_err();
+    let manifest = fs::read_to_string(live.join(MANIFEST_FILE)).ok();
+    fs::remove_dir_all(&root).ok();
+    assert!(failed);
+    assert_eq!(manifest.as_deref(), Some("new"));
+}

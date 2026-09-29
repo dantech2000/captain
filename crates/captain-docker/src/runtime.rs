@@ -4,10 +4,12 @@
 use std::future::Future;
 use std::ops::Deref;
 use std::pin::Pin;
+use std::sync::Arc;
 use std::task::{Context, Poll};
 
 use captain_core::EngineError;
 use futures::channel::mpsc::{self, UnboundedReceiver, UnboundedSender};
+use futures::channel::oneshot;
 use futures::future::BoxFuture;
 use futures::stream::BoxStream;
 use futures::{FutureExt, Stream, StreamExt};
@@ -58,6 +60,32 @@ where
     handle
         .spawn(future)
         .map(|joined| joined.unwrap_or_else(|err| Err(EngineError::Api(err.to_string()))))
+        .boxed()
+}
+
+/// Runs `future` on `runtime` from a thread of its own, and keeps the runtime alive
+/// until the future ends, even when the caller drops the returned future or the
+/// engine that owns the runtime. For work that must finish or roll back, such as an
+/// extension update. The last clone of the runtime drops on that thread, not on one
+/// of the runtime's own.
+pub fn spawn_to_end<T, F>(
+    runtime: Arc<BackgroundRuntime>,
+    future: F,
+) -> BoxFuture<'static, Result<T, EngineError>>
+where
+    T: Send + 'static,
+    F: Future<Output = Result<T, EngineError>> + Send + 'static,
+{
+    let (tx, rx) = oneshot::channel();
+    let spawned = std::thread::Builder::new()
+        .name("captain-docker-to-end".into())
+        .spawn(move || {
+            tx.send(runtime.block_on(future)).ok();
+        });
+    if let Err(error) = spawned {
+        return futures::future::ready(Err(EngineError::Api(error.to_string()))).boxed();
+    }
+    rx.map(|result| result.unwrap_or_else(|_| Err(EngineError::Api("the work stopped".into()))))
         .boxed()
 }
 

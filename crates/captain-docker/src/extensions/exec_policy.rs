@@ -8,11 +8,16 @@ use std::process::Command;
 use captain_core::EngineError;
 use captain_core::extension::{ExecRequest, ExecScope};
 
-/// `DOCKER_*` variables a page may still set. None of them picks the daemon.
-const ALLOWED_DOCKER_ENV: [&str; 3] = [
+/// `DOCKER_*` variables a page may still set. None of them picks the daemon, its TLS
+/// keys, the CLI config, or what the client sends. Every other `DOCKER_*` variable
+/// is refused, also one a later CLI adds. See the list in
+/// <https://docs.docker.com/reference/cli/docker/#environment-variables>.
+const ALLOWED_DOCKER_ENV: [&str; 5] = [
+    "DOCKER_API_VERSION",
     "DOCKER_BUILDKIT",
     "DOCKER_CLI_HINTS",
     "DOCKER_DEFAULT_PLATFORM",
+    "DOCKER_HIDE_LEGACY_COMMANDS",
 ];
 
 /// Refuses an exec that could choose the daemon. Host binaries are the extension's

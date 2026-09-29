@@ -104,6 +104,11 @@ impl LimaPaths {
             .join("kubeconfig")
     }
 
+    /// k3s's certificate authority, which the host port check trusts.
+    pub fn kubernetes_ca(&self) -> PathBuf {
+        self.kubeconfig().with_file_name("kubernetes-ca.pem")
+    }
+
     /// Fails with a message if a socket in the instance folder would be too long.
     pub fn check_socket_paths(&self) -> Result<(), String> {
         let longest = self.instance_dir().join(LONGEST_SOCKET);

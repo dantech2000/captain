@@ -3,6 +3,8 @@
 //! `captain` ever change; other clusters, users, and contexts stay as they are.
 //! See ADR 0010.
 
+use base64::Engine as _;
+use base64::engine::general_purpose::STANDARD;
 use serde_json::{Map, Value, json};
 
 /// The name of Captain's cluster, user, and context.
@@ -49,6 +51,17 @@ pub fn captain_config(k3s_yaml: &str, port: u16) -> Result<Value, String> {
         "contexts": [{"name": CONTEXT, "context": {"cluster": CONTEXT, "user": CONTEXT}}],
         "current-context": CONTEXT,
     }))
+}
+
+/// The PEM certificate authority of `config`'s first cluster, to check that a
+/// server on the host port is this cluster and not another program.
+pub fn cluster_ca(config: &Value) -> Result<Vec<u8>, String> {
+    let data = config["clusters"][0]["cluster"]["certificate-authority-data"]
+        .as_str()
+        .ok_or("k3s.yaml has no certificate authority.")?;
+    STANDARD
+        .decode(data)
+        .map_err(|error| format!("k3s.yaml has a bad certificate authority: {error}"))
 }
 
 /// `existing` with its `captain` entries replaced by those in `captain`. The current

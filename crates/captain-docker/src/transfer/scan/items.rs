@@ -161,14 +161,18 @@ fn named_volumes(summary: &ContainerSummary) -> Vec<String> {
         .collect()
 }
 
-/// True if the project's folder and every Compose file exist on this computer.
+/// True if the project's folder and every Compose file exist on this computer. A
+/// file the user gave on stdin (`-`) cannot be replayed.
 fn files_exist(project: &ComposeProject, exists: &impl Fn(&Path) -> bool) -> bool {
     let Some(dir) = project.working_dir.as_deref().map(Path::new) else {
         return false;
     };
     !project.config_files.is_empty()
         && exists(dir)
-        && project.config_files.iter().all(|f| exists(&dir.join(f)))
+        && project
+            .config_files
+            .iter()
+            .all(|f| f != "-" && exists(&dir.join(f)))
 }
 
 #[cfg(test)]

@@ -1,7 +1,7 @@
 //! The blocking work behind each [`LimaHost`](super::LimaHost) action. Each runs on
 //! its own thread.
 
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 use captain_core::{HostError, HostResources, HostStatus};
 
@@ -9,10 +9,9 @@ use super::{Inner, Phase, daemon_steps, engine_lock, kube_steps, lock};
 use crate::lima::args;
 use crate::lima::instance::{LimaInstance, find_instance};
 use crate::lima::limactl::Limactl;
+use crate::lima::snapshot::check_finished;
 use crate::lima::template;
 
-/// How long a stop waits for a start it cancelled to wind down.
-const CANCEL_WAIT: Duration = Duration::from_secs(10);
 /// How long `limactl list` and the other status checks may take.
 pub const QUICK_TIMEOUT: Duration = Duration::from_secs(30);
 
@@ -46,6 +45,7 @@ pub fn start(inner: &Inner, sink: &mut dyn FnMut(String)) -> Result<(), HostErro
     let _guard = inner.begin(Phase::Starting)?;
     let _lock = engine_lock::acquire(inner, true)?;
     inner.cancel.reset();
+    check_finished(&inner.paths.instance_dir()).map_err(HostError)?;
     inner.paths.check_socket_paths().map_err(HostError)?;
     let limactl = inner.limactl().map_err(HostError)?;
     let wanted = *lock(&inner.resources);
@@ -172,14 +172,15 @@ pub fn reset(inner: &Inner) -> Result<(), HostError> {
     Ok(())
 }
 
-/// Kills a running start and waits for it to end.
+/// Kills a running start and waits for it to end, so the stop that follows is not
+/// refused. Each start step runs under `inner.cancel` or a short timeout, so the
+/// wait is short.
 fn cancel_start(inner: &Inner) {
     if inner.phase() != Phase::Starting {
         return;
     }
     inner.cancel.cancel();
-    let deadline = Instant::now() + CANCEL_WAIT;
-    while inner.phase() == Phase::Starting && Instant::now() < deadline {
+    while inner.phase() == Phase::Starting {
         std::thread::sleep(Duration::from_millis(100));
         inner.cancel.kill();
     }

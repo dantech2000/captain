@@ -55,11 +55,14 @@ impl Swap {
     }
 
     /// Removes the new parts, also those the new backend made, and moves the backup
-    /// back. The backup stays when a step fails, so no file is lost.
+    /// back. The backup stays when a step fails, so no file is lost. The old
+    /// `extension.json` replaces the new one in one rename, so the folder always has
+    /// one and the extension stays listed, with Remove.
     pub fn roll_back(&self) -> Result<(), EngineError> {
         for part in REPLACED {
             let live = self.live.join(part);
-            if self.cleared {
+            let replaces = part == MANIFEST_FILE && self.moved_out.contains(&part);
+            if self.cleared && !replaces {
                 remove(&live)?;
             }
             if self.moved_out.contains(&part) {

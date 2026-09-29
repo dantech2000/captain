@@ -104,6 +104,9 @@ impl VolumesView {
         cx.spawn(async move |this, cx| {
             let results = runs.await;
             this.update(cx, |this, cx| {
+                if this.generation != generation {
+                    return;
+                }
                 let mut outcome = BulkOutcome::default();
                 for (name, result) in results {
                     this.removing.remove(&name);

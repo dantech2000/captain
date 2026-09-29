@@ -109,19 +109,23 @@ pub async fn save(
             .find(|part| !part.is_empty())
             .unwrap_or("root"),
     );
-    let part = dir.join(temp_name());
-    if let Err(error) = archive::write_to(docker, id, path, &part).await {
-        fs::remove_file(&part).ok();
-        return Err(error);
-    }
-    let result = tokio::task::spawn_blocking(move || {
-        let saved = unpack(&part, &dir, &name);
-        fs::remove_file(&part).ok();
-        saved
-    })
-    .await
-    .map_err(|error| EngineError::Api(error.to_string()))?;
+    // An engine switch can drop this future halfway; the guard still removes the
+    // temporary file.
+    let part = TempFile(dir.join(temp_name()));
+    archive::write_to(docker, id, path, &part.0).await?;
+    let result = tokio::task::spawn_blocking(move || unpack(&part.0, &dir, &name))
+        .await
+        .map_err(|error| EngineError::Api(error.to_string()))?;
     result.map_err(io_error)
+}
+
+/// A temporary file that is removed when it drops.
+struct TempFile(PathBuf);
+
+impl Drop for TempFile {
+    fn drop(&mut self) {
+        fs::remove_file(&self.0).ok();
+    }
 }
 
 /// A hidden name that no other download uses: the process ID, the time, and a count.

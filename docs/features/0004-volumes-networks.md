@@ -43,6 +43,7 @@ Replace the Volumes and Networks stubs with real pages. Each page lists its item
   - Project cards with rows styled like container rows. A click on a row selects it. A second click closes the detail panel.
   - A selected row shows Remove. Remove is off for items that are in use or built-in.
   - Failed loads and actions show in red text above the list.
+  - An engine switch clears the page, its busy states, and its messages. A create, remove, or prune that was running on the old engine then ends without a message and without changing the page.
 - Detail panels, 400 px wide on the right, like the container inspector:
   - Volume: name, driver, scope, mountpoint, creation date, size, the containers that use it (state dot, name, and destination path), labels, and driver options.
   - Network: ID, driver, scope, subnets, gateways, the internal, attachable, and IPv6 flags, creation date, the attached containers (state dot, name, IPv4 address, and MAC address), and labels.

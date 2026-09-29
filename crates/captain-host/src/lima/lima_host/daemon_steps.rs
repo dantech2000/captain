@@ -1,7 +1,7 @@
 //! Applies the Docker daemon settings after a start, and learns what a running
 //! engine uses, for "Restart to apply". See feature 0020.
 
-use captain_core::daemon::{DaemonSettings, DaemonState};
+use captain_core::daemon::DaemonSettings;
 use captain_core::{HostError, HostStatus};
 
 use super::{Inner, lock, steps};
@@ -17,7 +17,13 @@ pub fn apply(
     sink: &mut dyn FnMut(String),
 ) -> Result<(), HostError> {
     let wanted = lock(&inner.daemon).state();
-    let current = read(inner, limactl);
+    // Under the start's cancel, so a stop ends the read at once.
+    let args = daemon::read_args(&inner.paths.instance);
+    let current = limactl
+        .run(&args, None, &inner.cancel)
+        .ok()
+        .and_then(|output| daemon::parse_state(&output));
+    inner.cancel.check()?;
     if current.as_ref() != Some(&wanted) {
         sink("Applying the Docker daemon settings.".into());
         let args = daemon::write_args(&inner.paths.instance, &wanted);
@@ -42,15 +48,11 @@ pub fn track(inner: &Inner, limactl: &Limactl, status: &HostStatus) {
     if lock(&inner.running_daemon).is_some() {
         return;
     }
-    if let Some(state) = read(inner, limactl) {
-        *lock(&inner.running_daemon) = Some(state);
-    }
-}
-
-fn read(inner: &Inner, limactl: &Limactl) -> Option<DaemonState> {
     let args = daemon::read_args(&inner.paths.instance);
     let output = limactl.output_within(&args, steps::QUICK_TIMEOUT);
-    daemon::parse_state(&output.ok()?)
+    if let Some(state) = output.ok().and_then(|output| daemon::parse_state(&output)) {
+        *lock(&inner.running_daemon) = Some(state);
+    }
 }
 
 impl LimaHost {

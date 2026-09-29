@@ -116,17 +116,19 @@ async fn create(
 }
 
 /// Empties the target volume `name` before a switch-over copies it again. The
-/// switch-over checked first that Captain made the volume. It refuses while a
-/// running container in the target uses the volume.
+/// switch-over checked first that Captain made the volume. It refuses while an
+/// active container (running, paused, or restarting) in the target uses the volume.
 async fn empty(target: &Docker, name: &str) -> Result<(), EngineError> {
-    let filters = HashMap::from([("volume", vec![name]), ("status", vec!["running"])]);
+    let filters = HashMap::from([("volume", vec![name])]);
     let options = ListContainersOptionsBuilder::default()
+        .all(true)
         .filters(&filters)
         .build();
-    let running = target.list_containers(Some(options)).await;
-    let users: Vec<String> = running
+    let listed = target.list_containers(Some(options)).await;
+    let users: Vec<String> = listed
         .map_err(mapping::engine_error)?
         .into_iter()
+        .filter(mapping::is_active)
         .filter_map(|c| {
             c.names?
                 .first()

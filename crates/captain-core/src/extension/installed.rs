@@ -74,6 +74,12 @@ impl InstalledExtension {
         }
     }
 
+    /// Whether the backend runs on `engine`. An older install with no engine runs on
+    /// every engine. See [`engine_key`].
+    pub fn runs_on(&self, engine: &str) -> bool {
+        self.engine.is_empty() || engine_key(&self.engine) == engine_key(engine)
+    }
+
     /// The tab title, else the image title, else the image.
     pub fn title(&self) -> &str {
         match self.metadata.dashboard_tab() {
@@ -101,6 +107,18 @@ impl InstalledExtension {
     pub fn from_json(json: &str) -> Result<Self, String> {
         serde_json::from_str(json).map_err(|error| error.to_string())
     }
+}
+
+/// `host` with the path of a `unix://` socket resolved through symlinks, so two
+/// paths to one socket name the same engine. Other hosts, and sockets that do not
+/// exist, stay as they are.
+pub fn engine_key(host: &str) -> String {
+    host.strip_prefix("unix://")
+        .and_then(|path| std::fs::canonicalize(path).ok())
+        .map_or_else(
+            || host.to_string(),
+            |path| format!("unix://{}", path.display()),
+        )
 }
 
 /// The last part of an image path: `/darwin/tool` is `tool`.

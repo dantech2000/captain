@@ -9,6 +9,7 @@ use futures::channel::mpsc::{self, UnboundedSender};
 
 use crate::child::{Guarded, SharedChild};
 use crate::compose::error_message;
+use crate::process_group::own_group;
 
 /// How many stderr lines Captain keeps to find the error of a failed command.
 const TAIL_LINES: usize = 50;
@@ -19,7 +20,7 @@ const TAIL_LINES: usize = 50;
 pub fn stream_lines(mut command: Command, name: &'static str) -> EngineStream<String> {
     let (tx, rx) = mpsc::unbounded();
     command.stdout(Stdio::piped()).stderr(Stdio::piped());
-    let mut child = match command.spawn() {
+    let mut child = match own_group(&mut command).spawn() {
         Ok(child) => child,
         Err(err) => {
             let error = EngineError::Api(format!("cannot run {name}: {err}"));

@@ -26,6 +26,9 @@ impl NetworksView {
         cx.spawn(async move |this, cx| {
             let result = engine.prune_unused_networks(None).await;
             this.update(cx, |this, cx| {
+                if this.generation != generation {
+                    return;
+                }
                 this.pruning = false;
                 match result {
                     Ok(removed) => {
