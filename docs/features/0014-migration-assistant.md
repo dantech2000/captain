@@ -16,7 +16,8 @@ Copy a user's volumes, images, networks, Compose projects, and containers from a
    - The helper image `busybox:latest`. Captain pulls it only if the source does not have it. If Captain pulled it, Captain removes it at the end. If the image was already there, Captain never pulls, so an existing tag never moves.
    - An opt-in snapshot. It is off by default and offered only for containers with changes in their own filesystem. Captain commits the container, without pausing it, to `captain-migrate/<name>:snapshot`. Captain copies that image and then removes it from the source, whether the copy worked or not. If the removal fails, the item's note says so.
    - Switch-over (opt-in, see below). Captain stops the containers the user confirmed in a dialog. It never removes them. Roll back starts them again. `SourceEngine` has a stop and a start for this, and no remove.
-3. Captain never overwrites the target. The one exception is a switch-over: it empties the item's volumes in the target and copies them again, and it refuses while a running container in the target uses the volume. A volume, network, container, or image that already exists there is skipped, and the row says why.
+3. Captain never overwrites the target. The one exception is a switch-over: it empties the item's volumes in the target and copies them again. It does this only for volumes that Captain copied there, and it refuses while a running container in the target uses the volume. A volume, network, container, or image that already exists there is skipped, and the row says why.
+   - Each volume and container that Captain creates in the target carries the label `dev.captain.migrated-from=<source engine ID>`. A switch-over replaces or starts only what carries this label for its source.
 4. A volume copy that fails or is stopped removes its half-filled target volume.
 5. Captain refuses a source and a target that are the same engine. It compares the engine IDs, so a symlinked socket also counts as the same engine.
 
@@ -27,7 +28,7 @@ Copy a user's volumes, images, networks, Compose projects, and containers from a
   - The plan shows the total size and a time estimate at 80 MB/s.
   - It checks free space in the target with `df` in a helper. The check is green when the target has twice the copy size free, orange when the copy fits but not twice, and red when the copy does not fit. Red blocks the start.
   - A running Compose project or container has a **Switch over** toggle, off by default: "Stops it in the old engine (not deleted), copies its data again, and starts it here. Downtime is usually a few seconds."
-  - If any selected item switches over, Copy first opens a dialog. It lists each container that Captain will stop in the old engine.
+  - If any selected item switches over, Copy first opens a dialog. It lists each container that Captain will stop in the old engine. It also says when Captain refuses a switch-over (see "Switch-over", step 0).
   - A warning lists containers whose own filesystem has changes (`SizeRw > 0`). A copy does not keep those changes unless the user turns on Snapshot for the container.
 - **Step 3, Copy.** Items run one at a time, in this order: networks, volumes, images, Compose projects, containers. Each row has a status icon, bytes copied, and a note.
   - A failed row has Retry.
@@ -49,13 +50,18 @@ Copy a user's volumes, images, networks, Compose projects, and containers from a
 
 For a clean copy of live data (a database), and to free the published ports in the old engine. See ADR 0009, "Switch-over mode". The switch-over replaces the item's normal copy step.
 
+0. **Check first.** Before it stops anything, Captain refuses the switch-over, and the row says why, when:
+   - A container to stop was started with `--rm` (`HostConfig.AutoRemove`). The engine deletes such a container when it stops, so a roll back could not start it again.
+   - Another running container in the old engine mounts one of the item's volumes for writing. It would write while Captain copies. Stop it first, or switch over the item it belongs to.
+   - The target has a volume or container with the same name that does not carry Captain's label for this source. Captain will not empty or start it.
+   - A project starts with `docker compose up`, and the target has containers of a project with that name that Compose ran from another folder.
 1. **Stop in the old engine.** `POST /containers/{id}/stop` with `t` set to the container's `StopTimeout`, or 30 s. The engine's default of 10 s is short for a database. A container that already stopped is left as it is.
 2. **Copy data again.** For each volume the item mounts, Captain empties the target volume (`find /v -mindepth 1 -delete` in a helper) and streams the tar again. It checks the entry count and file bytes, as a normal copy does. A volume that is not in the target yet is created.
 3. **Start here.** A project with its files on this computer runs `docker compose -p <name> -f <files> up -d <services>`, with only the services that ran in the source. Compose starts a named service even when it has a profile, and it starts the services it depends on. Services that were not named, and profile services, stay off. The copied network and volumes keep their Compose labels, so Compose adopts them. Without files or the CLI, Captain recreates the containers one by one and starts the ones that ran. A standalone container is recreated and started.
 4. **Check.** A container with a health check must report `healthy` within 2 minutes. One without must keep running, without a restart, for 10 s. When the target runs on this computer, each published TCP port must accept a connection on `127.0.0.1` within 30 s.
 5. **Done.** The downtime is the time from the stop until the check passed.
 
-Once the source is stopped, the switch-over runs to the end, even when the event stream closes. If a step fails, the row has Retry and Roll back. Roll back stops the item in the target and starts the stopped originals in the source.
+Once the source is stopped, the switch-over runs to the end, even when the event stream closes. Closing the assistant does not end it: the session and its helpers stay until every switch-over ends. If a step fails, the row has Retry and Roll back. Roll back stops the item in the target and starts the stopped originals in the source. A copy that is missing or already stopped counts as stopped, so a switch-over that failed before the start rolls back too. Roll back tries every step and reports every error at the end.
 
 Captain does not use checkpoint and restore to avoid the stop. It is experimental and fails with volume mounts and some network setups (moby/moby#32227, #48207, #50750).
 
@@ -65,14 +71,15 @@ Captain does not use checkpoint and restore to avoid the stop. It is experimenta
 - Captain cannot save one platform of an image. The Engine API has a `platform` parameter on `/images/get` since API 1.48, but bollard 0.21 does not send it. If the source is missing blobs for other platforms, the export fails ("content digest ... not found", docker/cli#5476). The row then suggests that the user pull the image again for one platform.
 - `POST /images/load` is not atomic (moby/moby#48591). This is one reason Captain skips images that the target already has under every tag.
 - Transfers use their own bollard clients with a one-day request timeout. Bollard has one timeout for a whole client (fussybeaver/bollard#165), and large loads timed out at the default (fussybeaver/bollard#503). Stop cancels a copy. The timeout does not.
-- The assistant runs its session's cleanup for up to 60 s after it closes. A switch-over that is still copying a large volume or waiting for a health check at that time can stop before the item starts in the target. Leave the assistant open until the switch-over ends. Roll back and Retry then fix a half-done item.
+- When the assistant closes, it waits for each switch-over to end, and for a stopped copy up to 60 s. Then it removes the helpers. If a copy still runs after 60 s, the helpers stay, and the next session removes them as leftovers.
+- A volume or container that an older Captain copied into the target has no `dev.captain.migrated-from` label, so a switch-over refuses it. Remove or rename it in the target, then switch over again.
 - The port check connects on `127.0.0.1`. It is skipped for a `tcp://` target, and it cannot tell Captain's forward from another program that holds the same port.
 - The first-launch setup screen and Settings entry (ADR 0009) belong to the Captain Engine work (M12). They only need to dispatch `OpenMigrationAssistant`.
 
 ## Verification
 
 1. Run `cargo test -p captain-docker --test live_transfer -- --ignored`. It uses one engine as both source and target, and only resources named `captain-agent-*`. It copies a volume, keeps owners, links, and modes, then checks the copy. It stops a 64 MB copy and confirms that the half copy and the helpers are gone. It reloads an image tag. It recreates a container from a snapshot. It confirms that items already in the target are skipped.
-2. Run `cargo test -p captain-docker --test live_switchover -- --ignored`. It uses one engine as both sides and only `captain-agent-sw*` resources. It switches a busybox httpd container over into a new name with a replaced volume copy, checks the port, and rolls back. It switches a Compose project over and confirms that its profile service does not start.
+2. Run `cargo test -p captain-docker --test live_switchover -- --ignored`. It uses one engine as both sides and only `captain-agent-sw*` resources. It switches a busybox httpd container over into a new name with a replaced volume copy, checks the port, and rolls back. It confirms that a switch-over refuses to empty a target volume that Captain did not copy, and that nothing stops then. It rolls back a switch-over whose copy was never created. It switches a Compose project over and confirms that its profile service does not start.
 3. Then confirm that `docker ps -a`, `docker volume ls`, `docker images`, and `docker network ls` show no `captain-agent-*` or `captain-migrate-*` entries.
 4. Connect Captain to a second engine. Open the palette and choose "Bring data from another engine…". Pick the old engine and copy a volume with data. Then run `docker volume ls` on the old engine and confirm that nothing changed.
 

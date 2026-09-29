@@ -19,6 +19,8 @@ pub(super) struct Context {
     pub cli: Option<DockerCli>,
     /// The engine as a `DOCKER_HOST` value.
     pub host: String,
+    /// The engine that `extension.json` records: `host`, or the label it was given.
+    pub engine: String,
     pub paths: ExtensionPaths,
 }
 
@@ -38,6 +40,18 @@ impl Context {
             .env_remove("DOCKER_CONTEXT");
         Ok(command)
     }
+
+    /// Fails when `extension` runs on another engine, so its backend and image stay.
+    pub fn check_engine(&self, extension: &InstalledExtension) -> Result<(), EngineError> {
+        if extension.engine.is_empty() || extension.engine == self.engine {
+            return Ok(());
+        }
+        Err(EngineError::Api(format!(
+            "{} was installed on {}. Connect to that engine to update or remove it.",
+            extension.title(),
+            extension.engine
+        )))
+    }
 }
 
 /// The Docker implementation of [`ExtensionManager`].
@@ -51,21 +65,31 @@ impl DockerExtensions {
     /// background thread.
     pub fn connect(endpoint: &Endpoint, paths: ExtensionPaths) -> Result<Self, EngineError> {
         let (docker, runtime) = engine::connect(endpoint)?;
+        let host = docker_host(endpoint);
         let context = Context {
             docker,
             cli: DockerCli::find(),
-            host: docker_host(endpoint),
+            engine: host.clone(),
+            host,
             paths,
         };
         Ok(Self { context, runtime })
+    }
+
+    /// Records `label` as the engine instead, for example the `ssh://` URL of a
+    /// tunnel's local socket, which changes with each connection.
+    pub fn with_label(mut self, label: impl Into<String>) -> Self {
+        self.context.engine = label.into();
+        self
     }
 }
 
 impl ExtensionManager for DockerExtensions {
     fn list(&self) -> EngineFuture<Vec<InstalledExtension>> {
         let paths = self.context.paths.clone();
+        let engine = self.context.engine.clone();
         runtime::spawn(self.runtime.handle(), async move {
-            tokio::task::spawn_blocking(move || install::list(&paths))
+            tokio::task::spawn_blocking(move || install::list(&paths, &engine))
                 .await
                 .map_err(|error| EngineError::Api(error.to_string()))?
         })
@@ -93,6 +117,7 @@ impl ExtensionManager for DockerExtensions {
     ) -> EngineFuture<UpdateCheck> {
         let context = self.context.clone();
         runtime::spawn(self.runtime.handle(), async move {
+            context.check_engine(&extension)?;
             update::check(&context, extension, &tag).await
         })
     }
@@ -104,6 +129,7 @@ impl ExtensionManager for DockerExtensions {
     ) -> EngineFuture<InstalledExtension> {
         let context = self.context.clone();
         runtime::spawn(self.runtime.handle(), async move {
+            context.check_engine(&extension)?;
             update::apply(&context, extension, candidate).await
         })
     }
@@ -111,6 +137,7 @@ impl ExtensionManager for DockerExtensions {
     fn remove(&self, extension: InstalledExtension) -> EngineFuture<()> {
         let context = self.context.clone();
         runtime::spawn(self.runtime.handle(), async move {
+            context.check_engine(&extension)?;
             install::remove(&context, &extension).await
         })
     }

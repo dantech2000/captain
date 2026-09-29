@@ -16,6 +16,8 @@ fn metadata(name: &str, created: u64) -> SnapshotMetadata {
             memory_bytes: 4 * GIB,
             disk_bytes: 16 * GIB,
         },
+        daemon: None,
+        kubernetes: None,
     }
 }
 

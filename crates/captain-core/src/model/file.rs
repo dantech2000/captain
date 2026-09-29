@@ -1,9 +1,11 @@
 //! Files inside a container: folder entries, paths, previews, and saved names.
 
+mod host_name;
 mod path;
 mod preview;
 mod save_name;
 
+pub use host_name::host_file_name;
 pub use path::{Crumb, breadcrumbs, join_path, parent_path};
 pub use preview::{FilePreview, PREVIEW_LIMIT};
 pub use save_name::save_name;

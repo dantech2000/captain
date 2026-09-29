@@ -96,11 +96,13 @@ impl Workspace {
     pub fn reconnect(&mut self, connect: Connector, cx: &mut Context<Self>) {
         tracing::info!("reconnecting to the engine");
         self.engine = None;
+        self.generation += 1;
         self.connection = Connection::Connecting;
         self.loaded = false;
         self.store = ContainerStore::default();
         self.stats = StatsBoard::default();
         self.selected = None;
+        self.checked.clear();
         self.reload_task = None;
         self.events_task = None;
         self.stats_tasks.clear();

@@ -4,9 +4,9 @@
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use anyhow::{Context as _, Result};
+use anyhow::{Context as _, Result, bail};
 use captain_core::EngineHost;
-use captain_core::process_lock::{ProcessLock, app_lock_path};
+use captain_core::process_lock::{ProcessLock, app_lock_path, settings_lock_path};
 use captain_core::settings::Settings;
 use captain_host::{LimaHost, LimaPaths, machine};
 
@@ -59,6 +59,28 @@ impl Context {
             eprintln!("captain: {error:#}; using the defaults");
             Settings::default()
         })
+    }
+
+    /// Loads the settings, changes them with `change`, and saves them, all under the
+    /// settings lock, so two commands never lose each other's change. It refuses
+    /// with `refusal` while the app runs, because the app writes the whole file on
+    /// each change. The check is inside the lock, so an app that starts meanwhile
+    /// reads the saved file.
+    pub fn update_settings<T>(
+        &self,
+        refusal: &str,
+        change: impl FnOnce(&mut Settings) -> Result<T>,
+    ) -> Result<T> {
+        let path = settings_lock_path(&self.settings_path);
+        let _lock = ProcessLock::acquire(&path)
+            .with_context(|| format!("cannot lock {}", path.display()))?;
+        if self.app_running() {
+            bail!("{refusal}");
+        }
+        let mut settings = self.load()?;
+        let result = change(&mut settings)?;
+        settings.save(&self.settings_path)?;
+        Ok(result)
     }
 
     /// True while the Captain app runs with this settings file.

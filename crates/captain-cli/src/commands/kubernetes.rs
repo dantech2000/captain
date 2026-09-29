@@ -98,16 +98,16 @@ fn reset(context: &Context, yes: bool) -> Result<()> {
     print_stream(kubernetes.reset())
 }
 
-/// Saves the Kubernetes settings. Like `captain set`, it refuses while the app runs,
-/// because the app writes the whole settings file on each change.
+/// Saves the Kubernetes settings. Like `captain set`, it holds the settings lock and
+/// refuses while the app runs, because the app writes the whole file on each change.
 fn save(context: &Context, kubernetes: &KubernetesSettings) -> Result<()> {
-    if context.app_running() {
-        bail!("Captain is running. Change Kubernetes in Settings, or quit Captain first.");
-    }
-    let mut settings = context.load()?;
-    settings.kubernetes = kubernetes.clone();
-    settings.save(&context.settings_path)?;
-    Ok(())
+    context.update_settings(
+        "Captain is running. Change Kubernetes in Settings, or quit Captain first.",
+        |settings| {
+            settings.kubernetes = kubernetes.clone();
+            Ok(())
+        },
+    )
 }
 
 fn engine_running(host: &Arc<dyn EngineHost>) -> Result<bool> {

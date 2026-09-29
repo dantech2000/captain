@@ -2,6 +2,7 @@
 
 use std::path::{Path, PathBuf};
 
+use super::swap::Replace;
 use crate::lima::paths::LimaPaths;
 
 /// One file of a snapshot.
@@ -42,6 +43,28 @@ pub fn files(paths: &LimaPaths) -> Vec<SnapshotFile> {
             required: false,
         },
     ]
+}
+
+/// The files of the snapshot in `dir` to put in place of `plan`. A required file
+/// that the snapshot lacks fails the restore before it touches the instance; an
+/// optional one is skipped.
+pub fn restorable(plan: Vec<SnapshotFile>, dir: &Path) -> Result<Vec<Replace>, String> {
+    let mut replace = Vec::new();
+    for file in plan {
+        let from = dir.join(file.name);
+        if from.exists() {
+            replace.push(Replace {
+                from,
+                live: file.live,
+            });
+        } else if file.required {
+            return Err(format!(
+                "The snapshot is damaged: {} is missing.",
+                from.display()
+            ));
+        }
+    }
+    Ok(replace)
 }
 
 /// The file behind `live`: the link target for a legacy `disk` link, else `live`.

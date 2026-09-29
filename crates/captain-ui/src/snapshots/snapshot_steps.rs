@@ -61,8 +61,7 @@ impl SnapshotsModel {
                 .ok();
                 result = match store.restore(snapshot.id).await {
                     Ok(restored) => {
-                        let resources = restored.metadata.resources;
-                        host.update(cx, |host, cx| host.adopt_resources(resources, cx))
+                        host.update(cx, |host, cx| host.adopt_snapshot(&restored.metadata, cx))
                             .await
                     }
                     Err(error) => Err(error),

@@ -164,7 +164,8 @@ impl ImageApi for DockerEngine {
     fn scan_image(&self, reference: &str) -> EngineStream<ScanProgress> {
         let docker = self.docker.clone();
         let reference = reference.to_string();
-        runtime::forward(self.runtime.handle(), move |tx| {
+        // To the end, so the scan always removes its Trivy container.
+        runtime::forward_to_end(self.runtime.handle(), move |tx| {
             scan::scan(docker, reference, tx)
         })
     }

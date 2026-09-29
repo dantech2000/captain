@@ -1,6 +1,7 @@
 use std::fs;
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicU64, Ordering};
 
 use super::Settings;
 
@@ -32,6 +33,8 @@ impl Settings {
 
     /// Writes the settings to `path`, creating its directory if needed. It writes a
     /// temporary file next to `path` and renames it, so a crash never leaves half a file.
+    /// A writer that reads the settings first holds
+    /// [`settings_lock_path`](crate::process_lock::settings_lock_path) meanwhile.
     pub fn save(&self, path: &Path) -> Result<(), SettingsError> {
         if let Some(dir) = path.parent() {
             fs::create_dir_all(dir).map_err(|source| io_error(dir, source))?;
@@ -53,13 +56,15 @@ fn write_synced(path: &Path, bytes: &[u8]) -> io::Result<()> {
     file.sync_all()
 }
 
-/// `settings.json` becomes `.settings.json.tmp` in the same directory, so the rename
-/// stays on one file system.
+/// `settings.json` becomes `.settings.json.<pid>-<n>.tmp` in the same directory, so
+/// the rename stays on one file system and two writers never share a temporary file.
 fn temp_path(path: &Path) -> PathBuf {
+    static NEXT: AtomicU64 = AtomicU64::new(0);
     let name = path
         .file_name()
         .map_or_else(|| "settings".into(), |name| name.to_string_lossy());
-    path.with_file_name(format!(".{name}.tmp"))
+    let n = NEXT.fetch_add(1, Ordering::Relaxed);
+    path.with_file_name(format!(".{name}.{}-{n}.tmp", std::process::id()))
 }
 
 fn io_error(path: &Path, source: io::Error) -> SettingsError {

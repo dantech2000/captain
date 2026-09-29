@@ -1,4 +1,7 @@
 use super::{Snapshot, SnapshotMetadata, find, newest_first};
+use crate::daemon::DaemonSettings;
+use crate::kubernetes::KubernetesSettings;
+use crate::settings::Settings;
 use crate::{GIB, HostResources};
 
 fn snapshot(id: &str, name: &str, created: u64) -> Snapshot {
@@ -16,6 +19,8 @@ fn snapshot(id: &str, name: &str, created: u64) -> Snapshot {
                 memory_bytes: 8 * GIB,
                 disk_bytes: 64 * GIB,
             },
+            daemon: None,
+            kubernetes: None,
         },
     }
 }
@@ -45,4 +50,31 @@ fn lists_newest_first_and_finds_by_name_before_id() {
         Some("id-1")
     );
     assert!(find(&snapshots, "missing").is_none());
+}
+
+#[test]
+fn restoring_adopts_the_saved_engine_settings_and_keeps_them_when_absent() {
+    let mut metadata = snapshot("a", "base", 10).metadata;
+    let mut settings = Settings::default();
+    settings.engine_daemon.tcp = true;
+    metadata.adopt_into(&mut settings);
+    assert_eq!(settings.engine_resources, Some(metadata.resources));
+    assert!(
+        settings.engine_daemon.tcp,
+        "old snapshots keep the daemon settings"
+    );
+
+    metadata.daemon = Some(DaemonSettings::default());
+    metadata.kubernetes = Some(KubernetesSettings {
+        enabled: true,
+        version: Some("v1.35.1+k3s1".into()),
+        ..KubernetesSettings::default()
+    });
+    metadata.adopt_into(&mut settings);
+    assert!(!settings.engine_daemon.tcp);
+    assert_eq!(settings.kubernetes.version.as_deref(), Some("v1.35.1+k3s1"));
+    assert_eq!(
+        SnapshotMetadata::from_json(&metadata.to_json()),
+        Ok(metadata)
+    );
 }

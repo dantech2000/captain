@@ -18,6 +18,7 @@ pub fn render(
     selected: bool,
     highlighted: bool,
     removing: bool,
+    generation: u64,
     handle: &Entity<VolumesView>,
     palette: &Palette,
 ) -> impl IntoElement {
@@ -70,7 +71,9 @@ pub fn render(
             })
             .child(volume.usage_label()),
     )
-    .child(trailing_cell(volume, selected, removing, handle, palette))
+    .child(trailing_cell(
+        volume, selected, removing, generation, handle, palette,
+    ))
 }
 
 fn name_cell(volume: &Volume, palette: &Palette) -> Div {
@@ -108,6 +111,7 @@ fn trailing_cell(
     volume: &Volume,
     selected: bool,
     removing: bool,
+    generation: u64,
     handle: &Entity<VolumesView>,
     palette: &Palette,
 ) -> Div {
@@ -139,7 +143,7 @@ fn trailing_cell(
         palette,
         move |_, _, cx| {
             cx.stop_propagation();
-            handle.update(cx, |view, cx| view.remove(name.clone(), cx));
+            handle.update(cx, |view, cx| view.remove(name.clone(), generation, cx));
         },
     ))
 }

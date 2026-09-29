@@ -1,6 +1,9 @@
 use serde::{Deserialize, Serialize};
 
 use crate::HostResources;
+use crate::daemon::DaemonSettings;
+use crate::kubernetes::KubernetesSettings;
+use crate::settings::Settings;
 
 /// The file in each snapshot folder that describes it.
 pub const METADATA_FILE: &str = "metadata.json";
@@ -26,6 +29,13 @@ pub struct SnapshotMetadata {
     pub disk_allocated: u64,
     /// The engine's CPUs, memory, and disk size.
     pub resources: HostResources,
+    /// The Docker daemon settings the engine had. `None` in snapshots from before
+    /// Captain saved them.
+    #[serde(default)]
+    pub daemon: Option<DaemonSettings>,
+    /// The Kubernetes settings the engine had, with its k3s version.
+    #[serde(default)]
+    pub kubernetes: Option<KubernetesSettings>,
 }
 
 impl SnapshotMetadata {
@@ -35,6 +45,18 @@ impl SnapshotMetadata {
 
     pub fn from_json(json: &str) -> Result<Self, String> {
         serde_json::from_str(json).map_err(|error| error.to_string())
+    }
+
+    /// Makes `settings` match the restored engine, so its next start does not edit
+    /// `lima.yaml` back, change `daemon.json`, or move k3s to another version.
+    pub fn adopt_into(&self, settings: &mut Settings) {
+        settings.engine_resources = Some(self.resources);
+        if let Some(daemon) = &self.daemon {
+            settings.engine_daemon = daemon.clone();
+        }
+        if let Some(kubernetes) = &self.kubernetes {
+            settings.kubernetes = kubernetes.clone();
+        }
     }
 }
 

@@ -1,15 +1,14 @@
 //! Finds the registry login for a push the way the Docker CLI does: the config
 //! file, then a credential helper. See docs/features/0019-image-build-push-scan.md.
 
-use std::io::Write;
 use std::path::{Path, PathBuf};
-use std::process::{Command, Stdio};
-use std::sync::mpsc;
+use std::process::Command;
 use std::time::Duration;
 
 use captain_core::registry::{CredentialSource, DockerConfig, RegistryAuth};
 
 use crate::compose::locate_helper;
+use crate::process::input_output_within;
 
 /// How long a credential helper may take. A keychain can ask the user first.
 const HELPER_TIMEOUT: Duration = Duration::from_secs(30);
@@ -55,31 +54,13 @@ fn run_helper(name: &str, server_address: &str) -> Option<RegistryAuth> {
         tracing::warn!(%binary, "the credential helper is not installed");
         return None;
     };
-    let server = server_address.to_string();
-    let (tx, rx) = mpsc::channel();
-    std::thread::spawn(move || {
-        let output = Command::new(helper)
-            .arg("get")
-            .stdin(Stdio::piped())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .spawn()
-            .and_then(|mut child| {
-                if let Some(mut stdin) = child.stdin.take() {
-                    stdin.write_all(server.as_bytes())?;
-                }
-                child.wait_with_output()
-            });
-        tx.send(output).ok();
-    });
-    let output = match rx.recv_timeout(HELPER_TIMEOUT) {
-        Ok(Ok(output)) => output,
-        Ok(Err(error)) => {
+    let mut command = Command::new(helper);
+    command.arg("get");
+    let input = Some(server_address.as_bytes().to_vec());
+    let output = match input_output_within(command, input, HELPER_TIMEOUT) {
+        Ok(output) => output,
+        Err(error) => {
             tracing::warn!(%error, %binary, "the credential helper failed");
-            return None;
-        }
-        Err(_) => {
-            tracing::warn!(%binary, "the credential helper did not answer");
             return None;
         }
     };

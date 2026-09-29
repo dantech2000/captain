@@ -31,8 +31,8 @@ pub use env_var::EnvVar;
 pub use event::{EngineEvent, EventKind};
 pub use exec::{DEFAULT_SHELLS, ExecInput, ExecResizer, ExecSession, ExecSpec};
 pub use file::{
-    Crumb, FileEntry, FileKind, FilePreview, PREVIEW_LIMIT, breadcrumbs, join_path, parent_path,
-    save_name, sort_entries,
+    Crumb, FileEntry, FileKind, FilePreview, PREVIEW_LIMIT, breadcrumbs, host_file_name, join_path,
+    parent_path, save_name, sort_entries,
 };
 pub use health::Health;
 #[allow(unused_imports)]

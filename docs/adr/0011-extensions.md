@@ -106,7 +106,11 @@ Recorded when M21 was built ([feature 0025](../features/0025-extensions.md)):
 
 - GPUI Kit has no web view feature flag. `gpui-wry` 0.7 is a separate crate; its `inspector` feature turns on wry devtools. Captain depends on `gpui-wry`, `lb-wry` 0.53.3, and `raw-window-handle` on macOS only.
 - Toasts do not use Captain's GPUI notifications. Those draw as overlays, which the web view would cover, so the extension window shows toasts in a strip under its title bar.
-- The first release has no Update button. Installing the same image again replaces the extension.
+- Update came in the same milestone. Installing an extension that is installed already is refused and points to Update, so an install never deletes an existing extension or its backend's volumes.
+- The ID has 8 hex digits of a hash of the repository after the slug, so repositories that differ only in punctuation get different folders and projects.
+- `extension.json` records the engine. The page lists only the connected engine's extensions, and Update and Remove refuse an extension of another engine, because its backend runs there.
+- Install and update read files from the inspected image ID and run the backend on it, not on the tag.
+- An update keeps the old files and manifest in a backup folder until the new backend starts, and puts the old version back and restarts it on a failure.
 - Install pulls the image only when the engine does not have it, so a locally built extension installs without a registry.
 - The proxy is `alpine/socat:1.8.1.3`, a service named `captain-proxy` in the backend's project.
 - The test set has a UI-only extension (Docker's Disk Usage) and a backend extension built by the live test. A public extension with host binaries is still to check.

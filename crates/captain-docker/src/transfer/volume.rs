@@ -1,7 +1,8 @@
 //! Copies a volume: a helper in the source streams `/v` as a tar, and a helper in
 //! the target unpacks it into a new volume with the same driver, options, and
-//! labels. Then both sides are measured and compared. A switch-over copies into the
-//! existing target volume again, after it empties it.
+//! labels, and marks it as a copy (see [`super::owner`]). Then both sides are
+//! measured and compared. A switch-over copies into the existing target volume
+//! again, after it empties it.
 
 use std::collections::HashMap;
 
@@ -15,6 +16,7 @@ use captain_core::migration::TransferEvent;
 use futures::StreamExt;
 
 use super::helper::{self, Mount};
+use super::owner;
 use super::progress::{self, Events, Outcome};
 use super::source::SourceEngine;
 use super::verify::{MEASURE_SCRIPT, Measure};
@@ -51,9 +53,10 @@ pub async fn copy_volume(
         ));
     }
     let volume = source.inspect_volume(name).await?;
+    let origin = owner::origin(source).await?;
     if let Some(note) = data_elsewhere(&volume) {
         if !exists {
-            create(target, &volume, target_name).await?;
+            create(target, &volume, target_name, &origin).await?;
         }
         progress::send(events, TransferEvent::Note(note));
         return Ok(Outcome::Copied);
@@ -64,7 +67,7 @@ pub async fn copy_volume(
     if exists {
         empty(target, target_name).await?;
     } else {
-        create(target, &volume, target_name).await?;
+        create(target, &volume, target_name, &origin).await?;
     }
     let copied = fill(source, target, name, target_name, measure, events).await;
     // A replaced volume stays: containers in the target may refer to it, and a
@@ -95,20 +98,26 @@ fn data_elsewhere(volume: &Volume) -> Option<String> {
     ))
 }
 
-async fn create(target: &Docker, volume: &Volume, name: &str) -> Result<(), EngineError> {
+async fn create(
+    target: &Docker,
+    volume: &Volume,
+    name: &str,
+    origin: &str,
+) -> Result<(), EngineError> {
     let request = VolumeCreateRequest {
         name: Some(name.into()),
         driver: Some(volume.driver.clone()),
         driver_opts: Some(volume.options.clone()),
-        labels: Some(volume.labels.clone()),
+        labels: Some(owner::mark(Some(volume.labels.clone()), origin)),
         ..VolumeCreateRequest::default()
     };
     let created = target.create_volume(request).await;
     created.map(|_| ()).map_err(mapping::engine_error)
 }
 
-/// Empties the target volume `name` before a switch-over copies it again. It
-/// refuses while a running container in the target uses the volume.
+/// Empties the target volume `name` before a switch-over copies it again. The
+/// switch-over checked first that Captain made the volume. It refuses while a
+/// running container in the target uses the volume.
 async fn empty(target: &Docker, name: &str) -> Result<(), EngineError> {
     let filters = HashMap::from([("volume", vec![name]), ("status", vec!["running"])]);
     let options = ListContainersOptionsBuilder::default()

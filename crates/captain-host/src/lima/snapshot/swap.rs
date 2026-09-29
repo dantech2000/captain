@@ -1,12 +1,17 @@
 //! The restore swap: stage every file first, then rename each one into place.
 //! A rename is atomic, so a crash leaves each file old or new. The old files wait in
-//! a backup folder until every rename worked, and go back if one fails.
+//! a backup folder until every rename worked, and go back if one fails. A backup
+//! folder can hold the only copy of an old file, so the swap deletes it only after
+//! the swap finished or every old file went back. An earlier swap's folder stops
+//! the next one.
 
 use std::io;
 use std::path::{Path, PathBuf};
 
 const STAGING: &str = ".restore-staging";
 const BACKUP: &str = ".restore-backup";
+/// In the backup folder: one `<backup name>\t<live path>` line per file.
+const JOURNAL: &str = "journal.txt";
 
 /// One file to restore: the copy in the snapshot and its place in the instance.
 #[derive(Debug, Clone)]
@@ -30,14 +35,31 @@ pub fn swap(
 ) -> Result<(), String> {
     let staging = work.join(STAGING);
     let backup = work.join(BACKUP);
+    if backup.exists() {
+        return Err(format!(
+            "An earlier restore did not finish. Its backup of the old files is in {}; \
+             {JOURNAL} there lists where each one belongs. Move that folder away, then \
+             restore again.",
+            backup.display()
+        ));
+    }
+    std::fs::remove_dir_all(&staging).ok();
     for dir in [&staging, &backup] {
-        std::fs::remove_dir_all(dir).ok();
         std::fs::create_dir_all(dir).map_err(|error| describe(dir, error))?;
     }
     let result = stage(files, &staging, copy).and_then(|staged| place(&staged, &backup));
     std::fs::remove_dir_all(&staging).ok();
-    std::fs::remove_dir_all(&backup).ok();
-    result
+    if result.is_ok() || is_empty(&backup) {
+        std::fs::remove_dir_all(&backup).ok();
+    }
+    result.map_err(|error| match backup.exists() {
+        true => format!(
+            "{error} Some old files could not go back. They are in {}; {JOURNAL} there \
+             lists where each one belongs.",
+            backup.display()
+        ),
+        false => error,
+    })
 }
 
 /// Copies each file into `staging`, named by its position.
@@ -58,11 +80,25 @@ fn stage(
 }
 
 /// Renames each staged file over its live file, keeping the old one in `backup`.
+/// The journal goes once every old file is back, so an empty `backup` is safe to
+/// delete.
 fn place(staged: &[(PathBuf, PathBuf)], backup: &Path) -> Result<(), String> {
+    let journal: String = staged
+        .iter()
+        .enumerate()
+        .map(|(ix, (_, live))| format!("{ix}\t{}\n", live.display()))
+        .collect();
+    let journal_file = backup.join(JOURNAL);
+    if let Err(error) = std::fs::write(&journal_file, journal) {
+        std::fs::remove_file(&journal_file).ok();
+        return Err(describe(&journal_file, error));
+    }
     let mut moved = Vec::new();
     for (ix, (from, live)) in staged.iter().enumerate() {
         if let Err(error) = place_one(from, live, &backup.join(ix.to_string()), &mut moved) {
-            roll_back(moved);
+            if roll_back(moved) {
+                std::fs::remove_file(&journal_file).ok();
+            }
             return Err(describe(live, error));
         }
     }
@@ -77,20 +113,18 @@ fn place_one(from: &Path, live: &Path, backup: &Path, moved: &mut Vec<Moved>) ->
     if had_file {
         std::fs::rename(live, backup)?;
     }
-    let entry = Moved {
+    let renamed = std::fs::rename(from, live);
+    moved.push(Moved {
         live: live.to_path_buf(),
         backup: had_file.then(|| backup.to_path_buf()),
-    };
-    if let Err(error) = std::fs::rename(from, live) {
-        roll_back(vec![entry]);
-        return Err(error);
-    }
-    moved.push(entry);
-    Ok(())
+    });
+    renamed
 }
 
-/// Puts the old files back, newest move first.
-fn roll_back(moved: Vec<Moved>) {
+/// Puts the old files back, newest move first. Returns false if one could not go
+/// back and stays in the backup folder.
+fn roll_back(moved: Vec<Moved>) -> bool {
+    let mut restored = true;
     for entry in moved.into_iter().rev() {
         match entry.backup {
             Some(backup) => {
@@ -99,6 +133,7 @@ fn roll_back(moved: Vec<Moved>) {
                 }
                 if let Err(error) = std::fs::rename(&backup, &entry.live) {
                     tracing::error!(%error, file = %entry.live.display(), "cannot put back");
+                    restored = false;
                 }
             }
             None => {
@@ -106,6 +141,11 @@ fn roll_back(moved: Vec<Moved>) {
             }
         }
     }
+    restored
+}
+
+fn is_empty(dir: &Path) -> bool {
+    std::fs::read_dir(dir).is_ok_and(|mut entries| entries.next().is_none())
 }
 
 fn describe(path: &Path, error: io::Error) -> String {

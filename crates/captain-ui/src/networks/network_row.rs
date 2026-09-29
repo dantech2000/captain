@@ -16,6 +16,7 @@ pub fn render(
     network: &Network,
     selected: bool,
     removing: bool,
+    generation: u64,
     handle: &Entity<NetworksView>,
     palette: &Palette,
 ) -> impl IntoElement {
@@ -74,7 +75,9 @@ pub fn render(
             })
             .child(network.usage_label()),
     )
-    .child(trailing_cell(network, selected, removing, handle, palette))
+    .child(trailing_cell(
+        network, selected, removing, generation, handle, palette,
+    ))
 }
 
 fn name_cell(network: &Network, palette: &Palette) -> Div {
@@ -119,6 +122,7 @@ fn trailing_cell(
     network: &Network,
     selected: bool,
     removing: bool,
+    generation: u64,
     handle: &Entity<NetworksView>,
     palette: &Palette,
 ) -> Div {
@@ -146,7 +150,7 @@ fn trailing_cell(
         palette,
         move |_, _, cx| {
             cx.stop_propagation();
-            handle.update(cx, |view, cx| view.remove(id.clone(), cx));
+            handle.update(cx, |view, cx| view.remove(id.clone(), generation, cx));
         },
     ))
 }

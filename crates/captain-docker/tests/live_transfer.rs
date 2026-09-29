@@ -389,7 +389,10 @@ fn recreates_a_container_from_a_snapshot() {
             .unwrap_or_default()
             .contains(&"MODE=test".to_string())
     );
-    assert_eq!(config.labels.unwrap_or_default()["captain-agent-test"], "1");
+    let labels = config.labels.unwrap_or_default();
+    assert_eq!(labels["captain-agent-test"], "1");
+    // The mark that lets a switch-over tell Captain's copies from other containers.
+    assert!(labels.contains_key("dev.captain.migrated-from"));
     let networks = copy
         .network_settings
         .and_then(|n| n.networks)

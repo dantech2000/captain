@@ -58,6 +58,7 @@ pub fn render(
     let remove = {
         let handle = handle.clone();
         let id = selected.map(|image| image.id.clone());
+        let generation = state.generation();
         toolbar_button(
             "remove-image",
             "Remove",
@@ -67,7 +68,7 @@ pub fn render(
             palette,
             move |_, cx| {
                 if let Some(id) = id.clone() {
-                    handle.update(cx, |state, cx| state.remove(id, cx));
+                    handle.update(cx, |state, cx| state.remove(id, generation, cx));
                 }
             },
         )

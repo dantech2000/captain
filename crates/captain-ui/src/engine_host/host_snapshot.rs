@@ -1,11 +1,11 @@
 //! What a snapshot step needs from [`HostModel`]: block the engine controls, stop
-//! the engine, adopt restored resources, and start it again. See
+//! the engine, adopt a restored snapshot's settings, and start it again. See
 //! docs/features/0023-snapshots.md.
 
 use std::sync::Arc;
 
-use captain_core::snapshot::EngineSnapshots;
-use captain_core::{HostFuture, HostResources};
+use captain_core::HostFuture;
+use captain_core::snapshot::{EngineSnapshots, SnapshotMetadata};
 use gpui_kit::*;
 
 use super::HostModel;
@@ -35,15 +35,19 @@ impl HostModel {
         (running, stop)
     }
 
-    /// Saves the resources of a restored snapshot, so the next start does not edit
-    /// its `lima.yaml` back.
-    pub(crate) fn adopt_resources(
+    /// Saves the resources, daemon, and Kubernetes settings of a restored snapshot,
+    /// so the next start does not change the restored engine.
+    pub(crate) fn adopt_snapshot(
         &mut self,
-        resources: HostResources,
+        metadata: &SnapshotMetadata,
         cx: &mut Context<Self>,
     ) -> HostFuture<()> {
-        settings::update(cx, |settings| settings.engine_resources = Some(resources));
-        self.host.set_resources(resources)
+        settings::update(cx, |settings| metadata.adopt_into(settings));
+        let saved = settings::current(cx);
+        self.host.set_daemon(saved.engine_daemon);
+        self.host.set_kubernetes(saved.kubernetes);
+        cx.notify();
+        self.host.set_resources(metadata.resources)
     }
 
     /// Unblocks the engine controls, and starts the engine if `restart`.

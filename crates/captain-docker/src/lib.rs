@@ -2,6 +2,7 @@
 //! Bollard types stay inside this crate.
 
 mod build;
+mod child;
 mod compose;
 mod credentials;
 mod discovery;

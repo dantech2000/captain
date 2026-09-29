@@ -76,8 +76,14 @@ impl NetworksView {
     }
 
     /// Removes a network. The engine refuses built-in networks and ones with containers.
-    pub(super) fn remove(&mut self, id: String, cx: &mut Context<Self>) {
-        let Some(engine) = self.engine.clone() else {
+    /// `generation` is the engine the row was shown for; a click from before an engine
+    /// switch does nothing.
+    pub(super) fn remove(&mut self, id: String, generation: u64, cx: &mut Context<Self>) {
+        let Some(engine) = self
+            .engine
+            .clone()
+            .filter(|_| generation == self.generation)
+        else {
             return;
         };
         if !self.removing.insert(id.clone()) {

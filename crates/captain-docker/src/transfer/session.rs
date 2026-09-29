@@ -30,6 +30,9 @@ pub struct DockerSession {
     source_host: String,
     target_endpoint: Endpoint,
     in_flight: InFlight,
+    /// Switch-overs that run. The session's end waits for these without a limit,
+    /// because a switch-over runs to the end once it stopped the source.
+    switching: InFlight,
 }
 
 /// How long [`MigrationSession::finish`] waits for stopped copies to clean up.
@@ -48,6 +51,7 @@ impl DockerSession {
             source_host: source.to_string(),
             target_endpoint: target.clone(),
             in_flight: InFlight::default(),
+            switching: InFlight::default(),
         })
     }
 
@@ -105,7 +109,9 @@ impl DockerSession {
         let (source, target) = (self.source.clone(), self.target.clone());
         let (name, target_name) = (name.to_string(), target_name.to_string());
         let (volumes, local) = (volumes.to_vec(), self.target_is_local());
+        let switching = self.switching.enter();
         run(&self.runtime, &self.in_flight, move |events| async move {
+            let _switching = switching;
             let job = Job::container(&name, &target_name, volumes, local);
             switch_over(&source, &target, job, &events).await
         })
@@ -211,7 +217,9 @@ impl MigrationSession for DockerSession {
         let item = item.clone();
         let cli = matches!(item, MigrationItem::ComposeProject { .. }).then(|| self.compose_cli());
         let local = self.target_is_local();
+        let switching = self.switching.enter();
         run(&self.runtime, &self.in_flight, move |events| async move {
+            let _switching = switching;
             let cli = match cli {
                 Some(cli) => cli.await,
                 None => Err("no Compose CLI".into()),
@@ -233,11 +241,21 @@ impl MigrationSession for DockerSession {
         })
     }
 
+    /// Waits for every switch-over to end, and for stopped copies up to
+    /// [`CLEANUP_WAIT`], then removes the helpers. If a copy still runs then, the
+    /// helpers stay: the next session removes them as leftovers.
     fn finish(&self) -> EngineFuture<()> {
         let (source, target) = (self.source.clone(), self.target.clone());
-        let in_flight = self.in_flight.clone();
+        let (in_flight, switching) = (self.in_flight.clone(), self.switching.clone());
         runtime::spawn(self.runtime.handle(), async move {
-            in_flight.wait_idle(CLEANUP_WAIT).await;
+            switching.wait_idle(None).await;
+            if !in_flight.wait_idle(Some(CLEANUP_WAIT)).await {
+                tracing::warn!(
+                    copies = in_flight.count(),
+                    "copies still run at the end of a session; their helpers stay"
+                );
+                return Ok(());
+            }
             source.clean_up().await;
             for id in helper::leftovers(&target).await.unwrap_or_default() {
                 helper::remove(&target, &id).await;
@@ -262,7 +280,7 @@ where
     Fut: Future<Output = Result<Outcome, EngineError>> + Send + 'static,
 {
     let guard = in_flight.enter();
-    runtime::forward(runtime.handle(), move |events: Events| async move {
+    runtime::forward_to_end(runtime.handle(), move |events: Events| async move {
         let _guard = guard;
         match copy(events.clone()).await {
             Ok(Outcome::Copied) => {}

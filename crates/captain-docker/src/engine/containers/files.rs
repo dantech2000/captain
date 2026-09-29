@@ -7,10 +7,12 @@ mod capture;
 use std::fs::{self, File};
 use std::io;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use bollard::Docker;
 use captain_core::EngineError;
-use captain_core::model::{FileEntry, FilePreview, save_name};
+use captain_core::model::{FileEntry, FilePreview, host_file_name, save_name};
 use tar::{Archive, EntryType};
 
 use self::archive::{Collected, io_error};
@@ -82,20 +84,21 @@ pub async fn read(
     mapping::tar_preview(&tar, limit).map_err(io_error)
 }
 
-/// Streams the tar to a hidden file in `dir`, then keeps a folder as `name.tar` or
-/// unpacks a single file.
+/// Streams the tar to a new hidden file in `dir`, then keeps a folder as `name.tar`
+/// or unpacks a single file. The name comes from the container, so it passes
+/// through [`host_file_name`] first.
 pub async fn save(
     docker: &Docker,
     id: &str,
     path: &str,
     dir: PathBuf,
 ) -> Result<PathBuf, EngineError> {
-    let name = path
-        .rsplit('/')
-        .find(|part| !part.is_empty())
-        .unwrap_or("root")
-        .to_string();
-    let part = dir.join(format!(".{name}.captain-download"));
+    let name = host_file_name(
+        path.rsplit('/')
+            .find(|part| !part.is_empty())
+            .unwrap_or("root"),
+    );
+    let part = dir.join(temp_name());
     if let Err(error) = archive::write_to(docker, id, path, &part).await {
         fs::remove_file(&part).ok();
         return Err(error);
@@ -110,6 +113,16 @@ pub async fn save(
     result.map_err(io_error)
 }
 
+/// A hidden name that no other download uses: the process ID, the time, and a count.
+fn temp_name() -> String {
+    static COUNT: AtomicU64 = AtomicU64::new(0);
+    let nanos = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map_or(0, |d| d.as_nanos());
+    let count = COUNT.fetch_add(1, Ordering::Relaxed);
+    format!(".captain-download-{}-{nanos}-{count}", std::process::id())
+}
+
 fn unpack(tar: &Path, dir: &Path, name: &str) -> io::Result<PathBuf> {
     let free = |name: &str| dir.join(save_name(name, |n| dir.join(n).exists()));
     let kind = {
@@ -121,7 +134,7 @@ fn unpack(tar: &Path, dir: &Path, name: &str) -> io::Result<PathBuf> {
         let kind = entry.header().entry_type();
         if kind == EntryType::Regular {
             let target = free(name);
-            io::copy(&mut entry, &mut File::create(&target)?)?;
+            io::copy(&mut entry, &mut File::create_new(&target)?)?;
             return Ok(target);
         }
         kind

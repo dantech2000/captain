@@ -22,8 +22,8 @@ cat /etc/systemd/system/docker.service.d/captain-tcp.conf 2>/dev/null || true
 "#;
 
 /// Installs `daemon.json` from standard input and the drop-in for port `$1` (`0`
-/// for none), then restarts Docker. `dockerd --validate` checks the file first, and a
-/// failed restart puts the old files back.
+/// for none), then restarts Docker. `dockerd --validate` checks the file first. After
+/// the backup, a trap puts the old files back on any failure until the commit.
 const WRITE_SCRIPT: &str = r#"set -eu
 json=/etc/docker/daemon.json
 unit=/etc/systemd/system/docker.service.d/captain-tcp.conf
@@ -38,10 +38,12 @@ backup() { if [ -f "$1" ]; then cp -p "$1" "$1.captain-old"; else rm -f "$1.capt
 restore() { if [ -f "$1.captain-old" ]; then mv "$1.captain-old" "$1"; else rm -f "$1"; fi; }
 backup "$json"
 backup "$unit"
+trap 'st=$?; set +e; restore "$json"; restore "$unit"; systemctl daemon-reload; exit $st' EXIT
+trap 'exit 1' HUP INT TERM
 mv "$json.captain-new" "$json"
 if [ "$1" -gt 0 ]; then
   start=$(sed -n 's/^ExecStart=//p' /lib/systemd/system/docker.service | head -n 1)
-  [ -n "$start" ] || { restore "$json"; restore "$unit"; echo "docker.service has no ExecStart line." >&2; exit 1; }
+  [ -n "$start" ] || { echo "docker.service has no ExecStart line." >&2; exit 1; }
   printf '[Service]\nExecStart=\nExecStart=%s -H tcp://127.0.0.1:%s\n' "$start" "$1" > "$unit"
 else
   rm -f "$unit"
@@ -49,6 +51,7 @@ fi
 systemctl daemon-reload
 if ! systemctl restart docker; then
   why=$(journalctl -u docker -n 1 --no-pager -o cat 2>/dev/null || true)
+  trap - EXIT
   restore "$json"
   restore "$unit"
   systemctl daemon-reload
@@ -57,6 +60,7 @@ if ! systemctl restart docker; then
   echo "Docker did not start with the new settings. $why" >&2
   exit 1
 fi
+trap - EXIT
 rm -f "$json.captain-old" "$unit.captain-old"
 "#;
 

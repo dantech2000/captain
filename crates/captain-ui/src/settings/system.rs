@@ -4,7 +4,7 @@
 use std::path::Path;
 use std::sync::Arc;
 
-use captain_core::behavior::docker_socket::SocketProbe;
+use captain_core::behavior::docker_socket::{SocketLink, SocketProbe};
 use gpui_kit::*;
 
 /// System work that only the app can do. Errors are messages for the user. The
@@ -17,10 +17,12 @@ pub trait SystemIntegration: Send + Sync {
     fn has_menu_bar_icon(&self) -> bool;
     /// What `/var/run/docker.sock` is now, or `None` where it does not apply.
     fn docker_socket(&self) -> Option<SocketProbe>;
-    /// Links `/var/run/docker.sock` to `target`, with administrator rights.
-    fn link_docker_socket(&self, target: &Path) -> Result<(), String>;
-    /// Removes `/var/run/docker.sock`, with administrator rights.
-    fn unlink_docker_socket(&self) -> Result<(), String>;
+    /// Links `/var/run/docker.sock` to `target`, with administrator rights, if it is
+    /// still what `replacing` says.
+    fn link_docker_socket(&self, target: &Path, replacing: &SocketLink) -> Result<(), String>;
+    /// Removes `/var/run/docker.sock`, with administrator rights, if it still links
+    /// to Captain Engine's socket at `captain`.
+    fn unlink_docker_socket(&self, captain: &Path) -> Result<(), String>;
 }
 
 struct SystemGlobal(Arc<dyn SystemIntegration>);

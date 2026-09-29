@@ -13,6 +13,9 @@ use super::Started;
 /// builder once the workspace connects.
 pub struct ImagesState {
     pub(super) engine: Option<Arc<dyn Engine>>,
+    /// Counts engine switches. Remove carries the number it was shown for, and does
+    /// nothing after a switch.
+    pub(super) generation: u64,
     /// Runs `docker buildx build`. `None` turns the Build button off.
     pub(super) builder: Option<Arc<dyn ImageBuilder>>,
     pub(super) store: ImageStore,
@@ -48,6 +51,7 @@ impl ImagesState {
     pub fn new() -> Self {
         Self {
             engine: None,
+            generation: 0,
             builder: None,
             store: ImageStore::default(),
             filter: ImageFilter::default(),
@@ -73,7 +77,8 @@ impl ImagesState {
         }
     }
 
-    /// Starts loading images. A second call with the same engine does nothing.
+    /// Starts loading images. A second call with the same engine does nothing. A new
+    /// engine drops the old engine's list and selection at once.
     pub fn attach(
         &mut self,
         engine: Arc<dyn Engine>,
@@ -89,7 +94,34 @@ impl ImagesState {
             return;
         }
         self.engine = Some(engine);
+        self.clear_engine_state(cx);
         self.reload(std::time::Duration::ZERO, cx);
+    }
+
+    /// Drops the engine and everything loaded from it, while the workspace has none.
+    pub fn detach(&mut self, cx: &mut Context<Self>) {
+        if self.engine.take().is_some() {
+            self.clear_engine_state(cx);
+        }
+    }
+
+    fn clear_engine_state(&mut self, cx: &mut Context<Self>) {
+        self.generation += 1;
+        self.store = ImageStore::default();
+        self.loaded = false;
+        self.selected = None;
+        self.clear_detail();
+        self.reload_task = None;
+        self.removing.clear();
+        self.load_error = None;
+        self.error = None;
+        self.notice = None;
+        cx.notify();
+    }
+
+    /// The number of the current engine. See [`ImagesState::remove`].
+    pub fn generation(&self) -> u64 {
+        self.generation
     }
 
     /// True once the first image list has arrived.

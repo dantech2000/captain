@@ -8,8 +8,8 @@ use std::path::Path;
 use std::process::Command;
 
 use captain_core::behavior::docker_socket::{
-    DEFAULT_SOCKET, Elevation, PrivilegedCommand, SocketProbe, failure_message, link_command,
-    unlink_command,
+    DEFAULT_SOCKET, Elevation, PrivilegedCommand, SocketLink, SocketProbe, failure_message,
+    link_command, unlink_command,
 };
 
 const ELEVATION: Elevation = if cfg!(target_os = "macos") {
@@ -34,12 +34,12 @@ pub fn probe() -> SocketProbe {
     }
 }
 
-pub fn link(target: &Path) -> Result<(), String> {
-    run(link_command(ELEVATION, target))
+pub fn link(target: &Path, replacing: &SocketLink) -> Result<(), String> {
+    run(link_command(ELEVATION, target, replacing))
 }
 
-pub fn unlink() -> Result<(), String> {
-    run(unlink_command(ELEVATION))
+pub fn unlink(captain: &Path) -> Result<(), String> {
+    run(unlink_command(ELEVATION, captain))
 }
 
 /// Runs `command` and waits for it, which includes the password prompt.

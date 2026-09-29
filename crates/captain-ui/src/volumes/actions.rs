@@ -76,8 +76,14 @@ impl VolumesView {
     }
 
     /// Removes a volume. The engine refuses one that a container uses.
-    pub(super) fn remove(&mut self, name: String, cx: &mut Context<Self>) {
-        let Some(engine) = self.engine.clone() else {
+    /// `generation` is the engine the row was shown for; a click from before an engine
+    /// switch does nothing.
+    pub(super) fn remove(&mut self, name: String, generation: u64, cx: &mut Context<Self>) {
+        let Some(engine) = self
+            .engine
+            .clone()
+            .filter(|_| generation == self.generation)
+        else {
             return;
         };
         if !self.removing.insert(name.clone()) {

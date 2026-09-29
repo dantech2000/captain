@@ -40,7 +40,7 @@ pub async fn collect(
     Ok(Collected::All(bytes))
 }
 
-/// Streams the tar of `path` into the file `target`.
+/// Streams the tar of `path` into the new file `target`. Fails if it exists.
 pub async fn write_to(
     docker: &Docker,
     id: &str,
@@ -51,7 +51,7 @@ pub async fn write_to(
         .path(path)
         .build();
     let mut stream = docker.download_from_container(id, Some(options));
-    let mut file = File::create(target).map_err(io_error)?;
+    let mut file = File::create_new(target).map_err(io_error)?;
     while let Some(chunk) = stream.next().await {
         file.write_all(&chunk.map_err(mapping::engine_error)?)
             .map_err(io_error)?;

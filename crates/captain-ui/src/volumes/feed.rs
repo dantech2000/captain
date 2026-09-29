@@ -2,6 +2,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use captain_core::model::Volume;
+use captain_core::store::VolumeStore;
 use captain_core::{Engine, EngineError};
 use gpui_kit::*;
 
@@ -31,9 +32,25 @@ impl VolumesView {
         }
         self.engine = engine;
         self.reload_task = None;
+        self.clear_engine_state();
         if self.engine.is_some() {
             self.reload(Duration::ZERO, cx);
         }
+    }
+
+    /// Forgets everything loaded from the old engine at once, so no row, selection,
+    /// or confirmation of it can act on the new one.
+    fn clear_engine_state(&mut self) {
+        self.generation += 1;
+        self.store = VolumeStore::default();
+        self.loaded = false;
+        self.selected = None;
+        self.checked.clear();
+        self.removing.clear();
+        self.users = None;
+        self.users_task = None;
+        self.error = None;
+        self.notice = None;
     }
 
     /// Reloads the volume list after `delay`. A newer call cancels a pending one.

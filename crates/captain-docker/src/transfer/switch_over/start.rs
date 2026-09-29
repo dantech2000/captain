@@ -14,7 +14,7 @@ use super::super::progress::Events;
 use super::super::source::SourceEngine;
 use crate::{ComposeCli, mapping};
 
-const PROJECT_LABEL: &str = "com.docker.compose.project";
+pub const PROJECT_LABEL: &str = "com.docker.compose.project";
 const SERVICE_LABEL: &str = "com.docker.compose.service";
 /// Set on containers from `docker compose run`, which are not part of the service.
 const ONE_OFF_LABEL: &str = "com.docker.compose.oneoff";

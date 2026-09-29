@@ -1,21 +1,22 @@
 //! `captain set <key> <value>`. The app keeps the settings in memory and writes the
-//! whole file on each change, so `set` refuses while the app runs.
+//! whole file on each change, so `set` refuses while the app runs. It holds the
+//! settings lock from the read to the write.
 
-use anyhow::{Result, anyhow, bail};
+use anyhow::{Result, anyhow};
 use futures::executor::block_on;
 
 use crate::context::Context;
 use crate::settings_keys::SettingKey;
 
 pub fn run(context: &Context, key: SettingKey, value: &str) -> Result<()> {
-    if context.app_running() {
-        bail!("Captain is running. Change this in Settings, or quit Captain first.");
-    }
-    let mut settings = context.load()?;
-    key.apply(&mut settings, value, &context.machine)
-        .map_err(|why| anyhow!(why))?;
-    settings.save(&context.settings_path)?;
-    let saved = key.value(&settings, &context.machine);
+    let saved = context.update_settings(
+        "Captain is running. Change this in Settings, or quit Captain first.",
+        |settings| {
+            key.apply(settings, value, &context.machine)
+                .map_err(|why| anyhow!(why))?;
+            Ok(key.value(settings, &context.machine))
+        },
+    )?;
     println!("{} is {saved}.", key.name());
     if key.is_resource() && engine_running(context) {
         println!("Run `captain restart` to apply it.");

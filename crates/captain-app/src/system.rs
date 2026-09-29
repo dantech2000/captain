@@ -3,7 +3,7 @@
 
 use std::path::Path;
 
-use captain_core::behavior::docker_socket::SocketProbe;
+use captain_core::behavior::docker_socket::{SocketLink, SocketProbe};
 use captain_ui::SystemIntegration;
 
 #[cfg(unix)]
@@ -32,13 +32,13 @@ impl SystemIntegration for System {
     }
 
     #[cfg(unix)]
-    fn link_docker_socket(&self, target: &Path) -> Result<(), String> {
-        docker_socket::link(target)
+    fn link_docker_socket(&self, target: &Path, replacing: &SocketLink) -> Result<(), String> {
+        docker_socket::link(target, replacing)
     }
 
     #[cfg(unix)]
-    fn unlink_docker_socket(&self) -> Result<(), String> {
-        docker_socket::unlink()
+    fn unlink_docker_socket(&self, captain: &Path) -> Result<(), String> {
+        docker_socket::unlink(captain)
     }
 
     #[cfg(not(unix))]
@@ -47,12 +47,12 @@ impl SystemIntegration for System {
     }
 
     #[cfg(not(unix))]
-    fn link_docker_socket(&self, _: &Path) -> Result<(), String> {
+    fn link_docker_socket(&self, _: &Path, _: &SocketLink) -> Result<(), String> {
         Err("Windows has no /var/run/docker.sock.".into())
     }
 
     #[cfg(not(unix))]
-    fn unlink_docker_socket(&self) -> Result<(), String> {
+    fn unlink_docker_socket(&self, _: &Path) -> Result<(), String> {
         Err("Windows has no /var/run/docker.sock.".into())
     }
 }

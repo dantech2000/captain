@@ -1,5 +1,7 @@
 //! Counts the copies that run, so the end of a session can wait for a stopped copy
-//! to remove its helpers and its half-copied volume before the runtime goes away.
+//! to remove its helpers and its half-copied volume before the runtime goes away. A
+//! session counts its switch-overs apart, because it waits for those without a
+//! limit.
 
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -24,18 +26,20 @@ impl InFlight {
         self.0.load(Ordering::SeqCst)
     }
 
-    /// Waits until no copy runs, or `limit` passes.
-    pub async fn wait_idle(&self, limit: Duration) {
-        let waited = tokio::time::timeout(limit, async {
+    /// Waits until no copy runs, or `limit` passes. With no limit, it waits as
+    /// long as it takes. Returns true if no copy runs.
+    pub async fn wait_idle(&self, limit: Option<Duration>) -> bool {
+        let idle = async {
             while self.count() > 0 {
                 tokio::time::sleep(POLL).await;
             }
-        });
-        if waited.await.is_err() {
-            tracing::warn!(
-                copies = self.count(),
-                "copies still run at the end of a session"
-            );
+        };
+        match limit {
+            Some(limit) => tokio::time::timeout(limit, idle).await.is_ok(),
+            None => {
+                idle.await;
+                true
+            }
         }
     }
 }

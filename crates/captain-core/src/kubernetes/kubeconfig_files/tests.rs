@@ -63,3 +63,16 @@ fn installs_into_the_first_file_when_none_has_captain() {
     assert_eq!(load_contexts(&paths).current.as_deref(), Some(CONTEXT));
     std::fs::remove_dir_all(&dir).ok();
 }
+
+#[test]
+fn keeps_the_current_context_that_a_later_file_sets() {
+    let dir = folder("later");
+    let (first, second) = (dir.join("first"), dir.join("second"));
+    std::fs::write(&first, "contexts:\n- name: dev\n").unwrap();
+    std::fs::write(&second, "current-context: production\n").unwrap();
+    let paths = [first.clone(), second];
+    assert_eq!(install_captain(&paths, &captain()).unwrap(), first);
+    assert_eq!(load_contexts(&paths).current.as_deref(), Some("production"));
+    assert_eq!(load_contexts(&paths).names, ["dev", CONTEXT]);
+    std::fs::remove_dir_all(&dir).ok();
+}

@@ -110,42 +110,102 @@ pub struct PrivilegedCommand {
     pub args: Vec<String>,
 }
 
-/// The command that runs `ln -sfn target /var/run/docker.sock` as root.
-pub fn link_command(elevation: Elevation, target: &Path) -> PrivilegedCommand {
-    let target = target.display().to_string();
-    match elevation {
-        // The path is an argument of the run handler, and `quoted form of` quotes it
-        // for the shell, so no path text becomes script text.
-        Elevation::AppleScript => apple_script(
-            &format!(
-                "do shell script \"/bin/ln -sfn \" & quoted form of item 1 of argv & \" {DEFAULT_SOCKET}\" with administrator privileges"
-            ),
-            Some(target),
-        ),
-        Elevation::Pkexec => PrivilegedCommand {
-            program: "pkexec",
-            args: vec![
-                "/bin/ln".into(),
-                "-sfn".into(),
-                target,
-                DEFAULT_SOCKET.into(),
-            ],
-        },
-    }
+/// The root shell script behind both commands. It checks again that the socket is
+/// in the state the user saw, right before it changes it, so a change made while
+/// the password prompt was open is left alone. Paths arrive as arguments, never as
+/// script text: `$1` is `link` or `unlink`, `$2` the default socket, `$3` Captain
+/// Engine's socket; for a link, `$4` is the state it replaces and `$5` that state's
+/// link target.
+const SCRIPT: &str = r#"s=$2
+target() { l=$(readlink "$s") || return 1; case "$l" in /*) printf '%s' "$l" ;; *) printf '%s' "${s%/*}/$l" ;; esac; }
+case "$1" in
+unlink) [ -L "$s" ] && [ "$(target)" = "$3" ] ;;
+link) case "$4" in
+  missing) [ ! -e "$s" ] && [ ! -L "$s" ] ;;
+  socket) [ -S "$s" ] && [ ! -L "$s" ] ;;
+  link) [ -L "$s" ] && [ "$(target)" = "$5" ] ;;
+  *) false ;;
+  esac ;;
+*) false ;;
+esac || { echo "$s changed after Captain read it, so Captain left it. Try again." >&2; exit 3; }
+if [ "$1" = unlink ]; then rm -f "$s"; else ln -sfn "$3" "$s"; fi"#;
+
+/// The command that links `/var/run/docker.sock` to `target` as root, if the socket
+/// is still what `replacing` says.
+pub fn link_command(
+    elevation: Elevation,
+    target: &Path,
+    replacing: &SocketLink,
+) -> PrivilegedCommand {
+    elevated(
+        elevation,
+        script_argv(Path::new(DEFAULT_SOCKET), target, Some(replacing)),
+    )
 }
 
-/// The command that removes `/var/run/docker.sock` as root.
-pub fn unlink_command(elevation: Elevation) -> PrivilegedCommand {
+/// The command that removes `/var/run/docker.sock` as root, if it still links to
+/// Captain Engine's socket at `captain`.
+pub fn unlink_command(elevation: Elevation, captain: &Path) -> PrivilegedCommand {
+    elevated(
+        elevation,
+        script_argv(Path::new(DEFAULT_SOCKET), captain, None),
+    )
+}
+
+/// The arguments of `/bin/sh -c` for [`SCRIPT`] on `socket`: a link that replaces
+/// `replacing`, or with `None` an unlink.
+fn script_argv(socket: &Path, captain: &Path, replacing: Option<&SocketLink>) -> Vec<String> {
+    let mut argv = vec![SCRIPT.to_string(), "sh".into()];
+    argv.push(
+        if replacing.is_some() {
+            "link"
+        } else {
+            "unlink"
+        }
+        .into(),
+    );
+    argv.push(socket.display().to_string());
+    argv.push(captain.display().to_string());
+    if let Some(replacing) = replacing {
+        let (state, old) = match replacing {
+            SocketLink::Missing => ("missing", String::new()),
+            SocketLink::Socket => ("socket", String::new()),
+            SocketLink::OtherLink(old) => ("link", old.display().to_string()),
+            SocketLink::Captain | SocketLink::Other => ("none", String::new()),
+        };
+        argv.extend([state.to_string(), old]);
+    }
+    argv
+}
+
+/// Runs `/bin/sh -c` with `argv` as root.
+fn elevated(elevation: Elevation, argv: Vec<String>) -> PrivilegedCommand {
     match elevation {
-        Elevation::AppleScript => apple_script(
-            &format!(
-                "do shell script \"/bin/rm -f {DEFAULT_SOCKET}\" with administrator privileges"
-            ),
-            None,
-        ),
+        // Each value is an argument of the run handler, and `quoted form of` quotes
+        // it for the shell, so no path text becomes script text.
+        Elevation::AppleScript => {
+            let quoted = (1..=argv.len())
+                .map(|ix| format!("quoted form of item {ix} of argv"))
+                .collect::<Vec<_>>()
+                .join(" & \" \" & ");
+            let line =
+                format!("do shell script \"/bin/sh -c \" & {quoted} with administrator privileges");
+            let mut args = ["on run argv", &line, "end run"]
+                .into_iter()
+                .flat_map(|part| ["-e".to_string(), part.to_string()])
+                .collect::<Vec<_>>();
+            args.extend(argv);
+            PrivilegedCommand {
+                program: "/usr/bin/osascript",
+                args,
+            }
+        }
         Elevation::Pkexec => PrivilegedCommand {
             program: "pkexec",
-            args: vec!["/bin/rm".into(), "-f".into(), DEFAULT_SOCKET.into()],
+            args: ["/bin/sh".to_string(), "-c".into()]
+                .into_iter()
+                .chain(argv)
+                .collect(),
         },
     }
 }
@@ -159,18 +219,6 @@ pub fn failure_message(stderr: &str) -> String {
     match stderr.trim() {
         "" => "The command failed.".into(),
         message => message.to_string(),
-    }
-}
-
-fn apple_script(line: &str, arg: Option<String>) -> PrivilegedCommand {
-    let mut args = ["on run argv", line, "end run"]
-        .into_iter()
-        .flat_map(|part| ["-e".to_string(), part.to_string()])
-        .collect::<Vec<_>>();
-    args.extend(arg);
-    PrivilegedCommand {
-        program: "/usr/bin/osascript",
-        args,
     }
 }
 

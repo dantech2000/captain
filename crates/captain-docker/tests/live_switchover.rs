@@ -11,7 +11,7 @@ use std::process::Command;
 use std::sync::Mutex;
 use std::time::Duration;
 
-use bollard::models::{ContainerCreateBody, HostConfig, PortBinding};
+use bollard::models::{ContainerCreateBody, HostConfig, PortBinding, VolumeCreateRequest};
 use bollard::query_parameters::{
     CreateContainerOptionsBuilder, ListContainersOptionsBuilder, LogsOptionsBuilder,
     RemoveContainerOptionsBuilder, RemoveVolumeOptions,
@@ -30,6 +30,10 @@ const VOLUME_COPY: &str = "captain-agent-sw-copy";
 const READER: &str = "captain-agent-sw-read";
 const PROJECT: &str = "captain-agent-swc";
 const IMAGE: &str = "busybox:latest";
+/// The label Captain puts on what it copied into the target.
+const MIGRATED_FROM: &str = "dev.captain.migrated-from";
+const HTTPD: &str = "echo hello > /data/marker && mkdir -p /www && echo ok > /www/index.html \
+                     && exec httpd -f -p 80 -h /www";
 /// Host ports the tests publish. Chosen to be unlikely to be in use.
 const PORT: u16 = 18474;
 const PROJECT_PORT: u16 = 18475;
@@ -148,6 +152,24 @@ impl Fixture {
         lines.into_iter().map(|line| line.to_string()).collect()
     }
 
+    /// Creates `name` as a volume that Captain copied from this engine, or else as
+    /// one that was already in the target.
+    fn volume(&self, name: &str, copied: bool) {
+        let docker = self.docker.clone();
+        let name = name.to_string();
+        self.block(async move {
+            let id = docker.info().await?.id.unwrap_or_default();
+            let labels = copied.then(|| HashMap::from([(MIGRATED_FROM.to_string(), id)]));
+            let request = VolumeCreateRequest {
+                name: Some(name),
+                labels,
+                ..VolumeCreateRequest::default()
+            };
+            docker.create_volume(request).await.map(|_| ())
+        })
+        .expect("volume");
+    }
+
     fn running(&self, name: &str) -> Option<bool> {
         let inspect = self.block(self.docker.inspect_container(name, None)).ok()?;
         inspect.state.and_then(|state| state.running)
@@ -220,8 +242,8 @@ fn switches_a_container_over_and_rolls_back() {
     let _serial = SERIAL.lock().unwrap_or_else(|e| e.into_inner());
     assert!(!listening(PORT), "port {PORT} is in use; pick another");
     let fixture = Fixture::new();
-    // A stale copy from an earlier run. The switch-over must replace it. A bind of
-    // a named volume that does not exist creates it.
+    // A stale copy from an earlier run. The switch-over must replace it.
+    fixture.volume(VOLUME_COPY, true);
     fixture.read(VOLUME_COPY, "echo old > /v/stale");
     let port = PortBinding {
         host_ip: Some("127.0.0.1".into()),
@@ -233,9 +255,7 @@ fn switches_a_container_over_and_rolls_back() {
         init: Some(true),
         ..HostConfig::default()
     };
-    let script = "echo hello > /data/marker && mkdir -p /www && echo ok > /www/index.html \
-                  && exec httpd -f -p 80 -h /www";
-    fixture.container(SOURCE, script, host_config, true);
+    fixture.container(SOURCE, HTTPD, host_config, true);
 
     let session = session();
     let volumes = [(VOLUME.to_string(), VOLUME_COPY.to_string())];
@@ -259,6 +279,50 @@ fn switches_a_container_over_and_rolls_back() {
     block_on(session.roll_back_container_as(SOURCE, COPY)).expect("roll back");
     assert_eq!(fixture.running(COPY), Some(false));
     assert_eq!(fixture.running(SOURCE), Some(true));
+    block_on(session.finish()).expect("finish");
+}
+
+#[test]
+#[ignore = "needs a running Docker engine"]
+fn refuses_to_empty_a_volume_that_captain_did_not_copy() {
+    let _serial = SERIAL.lock().unwrap_or_else(|e| e.into_inner());
+    let fixture = Fixture::new();
+    fixture.volume(VOLUME_COPY, false);
+    fixture.read(VOLUME_COPY, "echo mine > /v/keep");
+    let host_config = HostConfig {
+        binds: Some(vec![format!("{VOLUME}:/data")]),
+        init: Some(true),
+        ..HostConfig::default()
+    };
+    fixture.container(SOURCE, HTTPD, host_config, true);
+
+    let session = session();
+    let volumes = [(VOLUME.to_string(), VOLUME_COPY.to_string())];
+    let switched: Result<Vec<TransferEvent>, _> = block_on(
+        session
+            .switch_container_as(SOURCE, COPY, &volumes)
+            .try_collect(),
+    );
+    let error = switched.expect_err("refused").to_string();
+    assert!(error.contains("Captain did not copy it"), "{error}");
+    // Nothing stopped, and the target volume keeps its data.
+    assert_eq!(fixture.running(SOURCE), Some(true));
+    assert_eq!(fixture.read(VOLUME_COPY, "cat /v/keep").trim(), "mine");
+    block_on(session.finish()).expect("finish");
+}
+
+#[test]
+#[ignore = "needs a running Docker engine"]
+fn rolls_back_when_the_copy_was_never_created() {
+    let _serial = SERIAL.lock().unwrap_or_else(|e| e.into_inner());
+    let fixture = Fixture::new();
+    // As if the switch-over stopped the source and failed before the start.
+    fixture.container(SOURCE, "exec sleep 300", HostConfig::default(), false);
+
+    let session = session();
+    block_on(session.roll_back_container_as(SOURCE, COPY)).expect("roll back");
+    assert_eq!(fixture.running(SOURCE), Some(true));
+    assert_eq!(fixture.running(COPY), None);
     block_on(session.finish()).expect("finish");
 }
 

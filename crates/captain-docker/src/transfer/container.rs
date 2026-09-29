@@ -10,6 +10,7 @@ use captain_core::EngineError;
 use captain_core::migration::TransferEvent;
 
 use super::image::copy_image;
+use super::owner;
 use super::progress::{self, Events, Outcome};
 use super::source::SourceEngine;
 use crate::mapping;
@@ -38,17 +39,23 @@ pub async fn copy_container(
         let reason = "A container with this name is already in the target.";
         return Ok(Outcome::Skipped(reason.into()));
     }
+    let origin = owner::origin(source).await?;
+    let copy = Target {
+        inspect: &inspect,
+        name: target_name,
+        origin: &origin,
+    };
     if !snapshot {
         let configured = inspect.config.as_ref().and_then(|c| c.image.clone());
         let image = target_image(target, configured, inspect.image.clone()).await?;
-        return create(target, &inspect, target_name, &image, events).await;
+        return create(target, &copy, &image, events).await;
     }
     let size = inspect.size_rw.and_then(|s| u64::try_from(s).ok());
     let reference = source.snapshot(id, &name).await?;
     let tags = [reference.clone()];
     let copied = copy_image(source, target, &reference, &tags, size.unwrap_or(0), events).await;
     let created = match copied {
-        Ok(_) => create(target, &inspect, target_name, &reference, events).await,
+        Ok(_) => create(target, &copy, &reference, events).await,
         Err(error) => Err(error),
     };
     // The snapshot is the one thing Captain writes to the source. It goes again
@@ -61,17 +68,27 @@ pub async fn copy_container(
     created
 }
 
-/// Creates the copy from `image`, joins its networks, and starts it if the
-/// original runs.
+/// The container to create in the target.
+struct Target<'a> {
+    inspect: &'a ContainerInspectResponse,
+    name: &'a str,
+    /// The source engine, for the mark from [`owner`].
+    origin: &'a str,
+}
+
+/// Creates the copy from `image`, marks it, joins its networks, and starts it if
+/// the original runs.
 async fn create(
     target: &Docker,
-    inspect: &ContainerInspectResponse,
-    name: &str,
+    copy: &Target<'_>,
     image: &str,
     events: &Events,
 ) -> Result<Outcome, EngineError> {
-    let recreate = spec::recreate(inspect, image);
-    let options = CreateContainerOptionsBuilder::default().name(name).build();
+    let mut recreate = spec::recreate(copy.inspect, image);
+    recreate.body.labels = Some(owner::mark(recreate.body.labels.take(), copy.origin));
+    let options = CreateContainerOptionsBuilder::default()
+        .name(copy.name)
+        .build();
     let created = target
         .create_container(Some(options), recreate.body)
         .await

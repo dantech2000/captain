@@ -7,48 +7,48 @@ use captain_core::{EngineError, EngineStream};
 use futures::StreamExt;
 use futures::channel::mpsc::{self, UnboundedSender};
 
+use crate::child::{Guarded, SharedChild};
 use crate::compose::error_message;
 
 /// How many stderr lines Captain keeps to find the error of a failed command.
 const TAIL_LINES: usize = 50;
 
-/// Runs `command` on a plain thread. The stream yields each line of stdout and
-/// stderr, then ends, or ends with the error line of a failed run. When the
-/// receiver drops the stream, the command is killed.
+/// Runs `command` with its output read on plain threads. The stream yields each
+/// line of stdout and stderr, then ends, or ends with the error line of a failed
+/// run. When the receiver drops the stream, the command is killed and reaped.
 pub fn stream_lines(mut command: Command, name: &'static str) -> EngineStream<String> {
     let (tx, rx) = mpsc::unbounded();
+    command.stdout(Stdio::piped()).stderr(Stdio::piped());
+    let mut child = match command.spawn() {
+        Ok(child) => child,
+        Err(err) => {
+            let error = EngineError::Api(format!("cannot run {name}: {err}"));
+            tx.unbounded_send(Err(error)).ok();
+            return rx.boxed();
+        }
+    };
+    let stdout = child.stdout.take().map(|stdout| {
+        let tx = tx.clone();
+        std::thread::spawn(move || forward(stdout, &tx, &mut Vec::new()))
+    });
+    let stderr = child.stderr.take().map(|stderr| {
+        let tx = tx.clone();
+        std::thread::spawn(move || {
+            let mut tail = Vec::new();
+            forward(stderr, &tx, &mut tail);
+            tail
+        })
+    });
+    let child = SharedChild::new(child);
+    let waiter = child.clone();
     std::thread::spawn(move || {
-        command.stdout(Stdio::piped()).stderr(Stdio::piped());
-        let mut child = match command.spawn() {
-            Ok(child) => child,
-            Err(err) => {
-                let error = EngineError::Api(format!("cannot run {name}: {err}"));
-                tx.unbounded_send(Err(error)).ok();
-                return;
-            }
-        };
-        let stdout = child.stdout.take().map(|stdout| {
-            let tx = tx.clone();
-            std::thread::spawn(move || forward(stdout, &tx, &mut Vec::new()))
-        });
-        let mut tail = Vec::new();
-        let mut open = child
-            .stderr
-            .take()
-            .is_none_or(|stderr| forward(stderr, &tx, &mut tail));
-        if !open {
-            // Kill first, so the stdout thread sees the end of its pipe.
-            child.kill().ok();
-        }
         if let Some(thread) = stdout {
-            open &= thread.join().unwrap_or(false);
+            thread.join().ok();
         }
-        if !open {
-            child.kill().ok();
-            child.wait().ok();
-            return;
-        }
-        let result = match child.wait() {
+        let tail = stderr
+            .and_then(|thread| thread.join().ok())
+            .unwrap_or_default();
+        let result = match waiter.wait() {
             Ok(status) if status.success() => return,
             Ok(status) => error_message(&tail.join("\n"))
                 .unwrap_or_else(|| format!("{name} exited with {status}")),
@@ -56,16 +56,16 @@ pub fn stream_lines(mut command: Command, name: &'static str) -> EngineStream<St
         };
         tx.unbounded_send(Err(EngineError::Api(result))).ok();
     });
-    rx.boxed()
+    Guarded::new(rx, child).boxed()
 }
 
-/// Sends each line of `pipe` and keeps the last ones in `tail`. Returns false when
-/// the receiver is gone.
+/// Sends each line of `pipe` and keeps the last ones in `tail`. Stops when the
+/// receiver is gone.
 fn forward(
     pipe: impl Read,
     tx: &UnboundedSender<Result<String, EngineError>>,
     tail: &mut Vec<String>,
-) -> bool {
+) {
     for line in BufReader::new(pipe).lines() {
         let Ok(line) = line else {
             break;
@@ -75,8 +75,10 @@ fn forward(
         }
         tail.push(line.clone());
         if tx.unbounded_send(Ok(line)).is_err() {
-            return false;
+            return;
         }
     }
-    true
 }
+
+#[cfg(all(test, unix))]
+mod tests;

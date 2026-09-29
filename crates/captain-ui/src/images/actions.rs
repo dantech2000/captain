@@ -10,8 +10,13 @@ use super::ImagesState;
 
 impl ImagesState {
     /// Removes one image. It never forces, so the engine refuses an image in use.
-    pub fn remove(&mut self, id: String, cx: &mut Context<Self>) {
-        let Some(engine) = self.engine.clone() else {
+    /// `generation` is the engine the button was shown for.
+    pub fn remove(&mut self, id: String, generation: u64, cx: &mut Context<Self>) {
+        let Some(engine) = self
+            .engine
+            .clone()
+            .filter(|_| generation == self.generation)
+        else {
             return;
         };
         if !self.removing.insert(id.clone()) {

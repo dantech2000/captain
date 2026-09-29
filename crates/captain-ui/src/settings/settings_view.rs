@@ -1,4 +1,6 @@
+use captain_core::daemon::DaemonSettings;
 use captain_core::docker_context::ContextList;
+use captain_core::kubernetes::KubernetesSettings;
 use gpui_kit::component::input::{InputEvent, InputState};
 use gpui_kit::*;
 
@@ -25,10 +27,15 @@ pub struct SettingsView {
     pub(super) host: Option<Entity<HostModel>>,
     /// The Docker daemon fields. They need a window, so the first render creates them.
     pub(super) daemon_form: Option<DaemonForm>,
+    /// The saved settings the daemon form shows. A change from elsewhere, such as a
+    /// snapshot restore, rebuilds the form so Save cannot write old values back.
+    daemon_form_source: Option<DaemonSettings>,
     /// The k3s cluster, when Captain Engine has one.
     pub(super) kubernetes: Option<Entity<KubernetesModel>>,
     /// The Kubernetes version picker and port. The first render creates them.
     pub(super) kube_form: Option<KubeForm>,
+    /// The saved settings the Kubernetes form shows.
+    pub(super) kube_form_source: Option<KubernetesSettings>,
     /// The custom endpoint field. It needs a window, so the first render creates it.
     input: Option<Entity<InputState>>,
     /// Why the custom endpoint is not valid.
@@ -64,8 +71,10 @@ impl SettingsView {
             workspace,
             host,
             daemon_form: None,
+            daemon_form_source: None,
             kubernetes,
             kube_form: None,
+            kube_form_source: None,
             input: None,
             hint: None,
             detected: Vec::new(),
@@ -150,8 +159,9 @@ impl Render for SettingsView {
         let palette = Palette::of(cx);
         let settings = store::current(cx);
         let input = self.input(window, cx);
-        if self.daemon_form.is_none() {
+        if self.daemon_form_source.as_ref() != Some(&settings.engine_daemon) {
             self.daemon_form = Some(DaemonForm::new(&settings.engine_daemon, window, cx));
+            self.daemon_form_source = Some(settings.engine_daemon.clone());
         }
         let versions = self
             .kubernetes

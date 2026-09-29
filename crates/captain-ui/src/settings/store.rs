@@ -1,5 +1,6 @@
 use std::path::PathBuf;
 
+use captain_core::process_lock::{ProcessLock, settings_lock_path};
 use captain_core::settings::{Accent, Appearance, Settings};
 use gpui_kit::component::{Theme, ThemeMode};
 use gpui_kit::*;
@@ -64,6 +65,9 @@ pub fn update(cx: &mut App, change: impl FnOnce(&mut Settings)) {
         return;
     }
     if let Some(path) = &store.path {
+        // The `captain` CLI changes the file under the same lock.
+        let _lock = ProcessLock::acquire(&settings_lock_path(path))
+            .inspect_err(|error| tracing::warn!(%error, "cannot lock the settings"));
         store.save_error = match store.settings.save(path) {
             Ok(()) => None,
             Err(error) => {

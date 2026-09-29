@@ -36,6 +36,9 @@ impl ExtensionsModel {
                 _ => false,
             };
             if !same {
+                if model.source.is_some() {
+                    super::close_all_windows(cx);
+                }
                 model.reload(cx);
             }
         });

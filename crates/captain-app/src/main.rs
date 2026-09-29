@@ -18,7 +18,7 @@ use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use std::sync::Arc;
 
-use captain_core::process_lock::{ProcessLock, app_lock_path};
+use captain_core::process_lock::{ProcessLock, app_lock_path, settings_lock_path};
 use captain_core::settings::Settings;
 
 fn main() {
@@ -91,13 +91,25 @@ fn settings_path() -> Option<PathBuf> {
 }
 
 /// Locks `app.lock` next to the settings file, so the `captain` CLI knows that the
-/// app runs and holds the settings. See docs/features/0022-command-line.md.
+/// app runs and holds the settings. See docs/features/0022-command-line.md. Exits
+/// when another Captain holds it, because two apps would overwrite each other's
+/// settings. Any other failure only logs.
 fn app_lock(settings: &Path) -> Option<ProcessLock> {
     let path = app_lock_path(settings);
-    ProcessLock::try_acquire(&path, "running")
-        .inspect_err(|error| tracing::warn!(%error, "cannot lock {}", path.display()))
-        .ok()
-        .flatten()
+    // A `captain status` probe holds the lock for an instant, so try a few times.
+    for _ in 0..10 {
+        match ProcessLock::try_acquire(&path, "running") {
+            Ok(Some(lock)) => return Some(lock),
+            Ok(None) => std::thread::sleep(std::time::Duration::from_millis(100)),
+            Err(error) => {
+                tracing::warn!(%error, "cannot lock {}", path.display());
+                return None;
+            }
+        }
+    }
+    tracing::warn!("another Captain is running; quitting");
+    eprintln!("Captain is already running.");
+    std::process::exit(0);
 }
 
 /// The saved settings, or the defaults when there is no file or it cannot be read.
@@ -105,6 +117,9 @@ fn load_settings(path: Option<&Path>) -> Settings {
     let Some(path) = path else {
         return Settings::default();
     };
+    // The `captain` CLI changes the file under this lock.
+    let _lock = ProcessLock::acquire(&settings_lock_path(path))
+        .inspect_err(|error| tracing::warn!(%error, "cannot lock the settings"));
     Settings::load(path).unwrap_or_else(|error| {
         tracing::warn!(%error, "cannot read the settings; using the defaults");
         Settings::default()

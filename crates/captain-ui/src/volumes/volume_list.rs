@@ -100,8 +100,16 @@ fn card(
         let selected = view.selected.as_deref() == Some(volume.name.as_str());
         let highlighted = selected || view.checked.contains(&volume.name);
         let removing = view.removing.contains(&volume.name);
-        volume_row::render(volume, selected, highlighted, removing, handle, palette)
-            .into_any_element()
+        volume_row::render(
+            volume,
+            selected,
+            highlighted,
+            removing,
+            view.generation,
+            handle,
+            palette,
+        )
+        .into_any_element()
     });
     group_card(group.project.as_deref(), summary, rows, palette)
 }

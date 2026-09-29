@@ -55,6 +55,8 @@ impl ImagesView {
             let builder = workspace.image_builder();
             self.state
                 .update(cx, |state, cx| state.attach(engine, builder, cx));
+        } else {
+            self.state.update(cx, |state, cx| state.detach(cx));
         }
         cx.notify();
     }

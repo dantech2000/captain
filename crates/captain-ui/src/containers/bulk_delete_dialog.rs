@@ -6,13 +6,15 @@ use gpui_kit::*;
 use crate::workspace::Workspace;
 
 /// Asks once before deleting several containers, and lists them. Live containers
-/// are stopped and removed, like "Stop and delete" for one.
+/// are stopped and removed, like "Stop and delete" for one. Does nothing if the
+/// workspace switched engines while the dialog was open.
 pub fn open(
     containers: Vec<Container>,
     handle: Entity<Workspace>,
     window: &mut Window,
     cx: &mut App,
 ) {
+    let generation = handle.read(cx).engine_generation();
     let running = containers.iter().filter(|c| c.state.is_active()).count();
     let title = SharedString::from(format!(
         "Delete {}?",
@@ -55,7 +57,9 @@ pub fn open(
             .on_ok(move |_, _, cx| {
                 let targets = targets.clone();
                 handle.update(cx, |workspace, cx| {
-                    workspace.run_bulk(targets, ContainerAction::Remove, cx)
+                    if workspace.engine_generation() == generation {
+                        workspace.run_bulk(targets, ContainerAction::Remove, cx)
+                    }
                 });
                 true
             })

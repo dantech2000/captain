@@ -1,10 +1,11 @@
-//! Switch-over mode: stops an item in the source, copies its volumes again, starts
-//! it in the target, and checks it. The source containers are stopped, never
-//! removed, and a roll back starts them again. See docs/adr/0009-migration.md,
-//! "Switch-over mode".
+//! Switch-over mode: checks that the switch-over is safe, stops an item in the
+//! source, copies its volumes again, starts it in the target, and checks it. The
+//! source containers are stopped, never removed, and a roll back starts them again.
+//! See docs/adr/0009-migration.md, "Switch-over mode".
 
 mod check;
 mod inspect;
+mod preflight;
 mod start;
 
 use std::time::Instant;
@@ -104,14 +105,16 @@ impl<'a> Job<'a> {
     }
 }
 
-/// Runs the switch-over steps in order and reports each one. Once the source is
-/// stopped, a closed event stream no longer stops the work.
+/// Runs the switch-over steps in order and reports each one. Nothing is stopped
+/// until the checks in [`preflight`] pass. Once the source is stopped, a closed
+/// event stream no longer stops the work.
 pub async fn switch_over(
     source: &SourceEngine,
     target: &Docker,
     job: Job<'_>,
     events: &Events,
 ) -> Result<Outcome, EngineError> {
+    preflight::check(source, target, &job).await?;
     if progress::is_cancelled(events) {
         return Err(progress::cancelled());
     }
@@ -137,28 +140,56 @@ pub async fn switch_over(
 }
 
 /// Undoes a switch-over: stops the item's containers in the target, then starts
-/// the originals in the source. Nothing is removed.
+/// the originals in the source. A copy that is missing or already stopped counts as
+/// stopped, so a switch-over that failed before the start can roll back too. It
+/// tries every step and reports the errors at the end. Nothing is removed.
 pub async fn roll_back(
     source: &SourceEngine,
     target: &Docker,
     job: &Job<'_>,
 ) -> Result<(), EngineError> {
+    let mut errors = Vec::new();
     let copies = match &job.start {
-        Start::Container { target_name, .. } => vec![target_name.to_string()],
+        Start::Container { target_name, .. } => Ok(vec![target_name.to_string()]),
         Start::Project {
             project, services, ..
-        } => start::project_containers(target, project.name, services).await?,
+        } => start::project_containers(target, project.name, services).await,
     };
-    for name in copies {
-        let timeout = inspect::stop_timeout(&target_inspect(target, &name).await?);
-        let options = StopContainerOptionsBuilder::default().t(timeout).build();
-        let stopped = target.stop_container(&name, Some(options)).await;
-        stopped.map_err(mapping::engine_error)?;
+    match copies {
+        Ok(copies) => {
+            for name in copies {
+                errors.extend(stop_copy(target, &name).await.err());
+            }
+        }
+        Err(error) => errors.push(error),
     }
     for name in &job.stop {
-        source.start_container(name).await?;
+        errors.extend(source.start_container(name).await.err());
     }
-    Ok(())
+    match errors.len() {
+        0 => Ok(()),
+        1 => Err(errors.remove(0)),
+        _ => Err(EngineError::Api(
+            errors
+                .iter()
+                .map(ToString::to_string)
+                .collect::<Vec<_>>()
+                .join("; "),
+        )),
+    }
+}
+
+/// Stops the copy `name` in the target, unless it is missing or not running.
+async fn stop_copy(target: &Docker, name: &str) -> Result<(), EngineError> {
+    let Some(inspect) = mapping::found(target.inspect_container(name, None).await)? else {
+        return Ok(());
+    };
+    if !inspect::is_running(&inspect) {
+        return Ok(());
+    }
+    let timeout = inspect::stop_timeout(&inspect);
+    let options = StopContainerOptionsBuilder::default().t(timeout).build();
+    mapping::found(target.stop_container(name, Some(options)).await).map(|_| ())
 }
 
 fn enter(events: &Events, step: SwitchOverStep) {
@@ -175,12 +206,4 @@ async fn stop_source(source: &SourceEngine, name: &str) -> Result<(), EngineErro
     source
         .stop_container(name, inspect::stop_timeout(&inspect))
         .await
-}
-
-async fn target_inspect(
-    target: &Docker,
-    name: &str,
-) -> Result<bollard::models::ContainerInspectResponse, EngineError> {
-    let inspect = target.inspect_container(name, None).await;
-    inspect.map_err(mapping::engine_error)
 }

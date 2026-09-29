@@ -11,6 +11,12 @@ pub fn app_lock_path(settings: &Path) -> PathBuf {
     settings.with_file_name("app.lock")
 }
 
+/// The lock file next to `settings.json` that guards each read, change, and write
+/// of the settings, so two writers never lose each other's change.
+pub fn settings_lock_path(settings: &Path) -> PathBuf {
+    settings.with_file_name("settings.lock")
+}
+
 /// An exclusive lock on a file. Dropping it releases the lock.
 #[derive(Debug)]
 pub struct ProcessLock {
@@ -18,18 +24,17 @@ pub struct ProcessLock {
 }
 
 impl ProcessLock {
+    /// Waits until no other process holds the lock at `path`, then takes it.
+    pub fn acquire(path: &Path) -> io::Result<Self> {
+        let file = open(path)?;
+        file.lock()?;
+        Ok(Self { _file: file })
+    }
+
     /// Takes the lock at `path` and writes `note` into the file, for others to read.
     /// `Ok(None)` when another process holds it.
     pub fn try_acquire(path: &Path, note: &str) -> io::Result<Option<Self>> {
-        if let Some(dir) = path.parent() {
-            std::fs::create_dir_all(dir)?;
-        }
-        let mut file = OpenOptions::new()
-            .read(true)
-            .write(true)
-            .create(true)
-            .truncate(false)
-            .open(path)?;
+        let mut file = open(path)?;
         match file.try_lock() {
             Ok(()) => {}
             Err(TryLockError::WouldBlock) => return Ok(None),
@@ -56,6 +61,19 @@ impl ProcessLock {
             Err(TryLockError::Error(_)) => None,
         }
     }
+}
+
+/// Opens the lock file at `path`, creating it and its folder, and keeps its text.
+fn open(path: &Path) -> io::Result<File> {
+    if let Some(dir) = path.parent() {
+        std::fs::create_dir_all(dir)?;
+    }
+    OpenOptions::new()
+        .read(true)
+        .write(true)
+        .create(true)
+        .truncate(false)
+        .open(path)
 }
 
 #[cfg(test)]

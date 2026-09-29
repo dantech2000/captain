@@ -39,13 +39,14 @@ pub fn render(
     let remove = {
         let handle = handle.clone();
         let id = image.id.clone();
+        let generation = state.generation();
         action_button(
             "Remove",
             IconName::Trash,
             palette.red,
             !image.in_use() && !state.is_removing(&image.id),
             palette,
-            move |_, cx| handle.update(cx, |state, cx| state.remove(id.clone(), cx)),
+            move |_, cx| handle.update(cx, |state, cx| state.remove(id.clone(), generation, cx)),
         )
     };
     let tag = {

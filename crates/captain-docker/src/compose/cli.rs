@@ -3,7 +3,6 @@
 
 use std::path::Path;
 use std::process::{Command, Output, Stdio};
-use std::sync::mpsc;
 use std::time::Duration;
 
 use captain_core::model::{ComposeProject, ProjectAction};
@@ -67,17 +66,11 @@ impl ComposeCli {
         command
     }
 
-    /// Runs `args` and waits at most [`DETECT_TIMEOUT`]. A command that hangs keeps
-    /// its thread, which is fine for a one-off check.
+    /// Runs `args` and waits at most [`DETECT_TIMEOUT`]. A command that hangs is
+    /// killed.
     fn output_within(&self, args: &[&str]) -> Result<Output, String> {
         let args: Vec<String> = args.iter().map(ToString::to_string).collect();
-        let mut command = self.command(&args, None);
-        let (tx, rx) = mpsc::channel();
-        std::thread::spawn(move || tx.send(command.output()).ok());
-        match rx.recv_timeout(DETECT_TIMEOUT) {
-            Ok(result) => result.map_err(|err| err.to_string()),
-            Err(_) => Err("docker compose did not answer".into()),
-        }
+        crate::process::output_within(self.command(&args, None), DETECT_TIMEOUT)
     }
 }
 

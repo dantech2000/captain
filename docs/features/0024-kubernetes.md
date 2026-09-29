@@ -22,7 +22,7 @@ A user turns on a switch and gets a one-node Kubernetes cluster in Captain Engin
 
   It restarts k3s only when the binary or the unit changed. It then waits until systemd reports the unit active, `/readyz` answers, and the `default` service account exists, so a first `kubectl apply` works.
 - **Start and stop with the engine.** Each engine start installs and starts k3s when Kubernetes is on, or disables the unit when it is off. A k3s failure does not fail the engine start: the progress log shows a warning, and the Kubernetes card shows the state. Stopping the engine stops k3s with it.
-- **Kubeconfig.** Captain reads `/etc/rancher/k3s/k3s.yaml`, renames the cluster, user, and context to `captain`, and sets the server to `https://127.0.0.1:<port>`. It writes `~/.captain/kubeconfig` with only that context. It merges the entries into the user's kubeconfig only when Kubernetes starts: into the first file in `KUBECONFIG` that has a `captain` context, or else the first file in `KUBECONFIG`, or else `~/.kube/config`. Only the `captain` entries change. The current context becomes `captain` only when the file has none. Before each write, Captain copies the file to `<file>.captain-backup`.
+- **Kubeconfig.** Captain reads `/etc/rancher/k3s/k3s.yaml`, renames the cluster, user, and context to `captain`, and sets the server to `https://127.0.0.1:<port>`. It writes `~/.captain/kubeconfig` with only that context. It merges the entries into the user's kubeconfig only when Kubernetes starts: into the first file in `KUBECONFIG` that has a `captain` context, or else the first file in `KUBECONFIG`, or else `~/.kube/config`. Only the `captain` entries change. The current context becomes `captain` only when no file in the list sets one. kubectl takes the current context from the first file that sets it ([Organizing cluster access](https://kubernetes.io/docs/concepts/configuration/organize-cluster-access-kubeconfig/#merging-kubeconfig-files)), so with `KUBECONFIG=first:second`, a `current-context` in `second` stays in effect when Captain writes to `first`. Before each write, Captain copies the file to `<file>.captain-backup`.
 - **Settings: a Kubernetes card** below the Docker daemon card, while Captain controls Captain Engine:
 
   | Row | What it does |
@@ -79,6 +79,7 @@ Automated (`cargo test -p captain-core -p captain-host -p captain-cli -p captain
 - Version order and parsing, the channel and release lists with the floor, channel labels, and cached versions.
 - Checksum lookup, the download URL, file hashing, and a complete cache folder that needs no download.
 - The `captain` kubeconfig from `k3s.yaml`, the merge that keeps other entries and the current context, removal, the target file in a `KUBECONFIG` list, the backup, and `use-context`.
+- A current context set in a later `KUBECONFIG` file stays current after the install.
 - The install arguments, the unit state parsing, `targetPort` resolution, the local port rule, the CLI arguments, and the contexts submenu.
 - Pod containers: the namespace label mapping, hidden by default, and one card per namespace when shown.
 

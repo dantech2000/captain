@@ -37,13 +37,18 @@ pub fn run(
     with_engine_stopped(host, was_running, || {
         println!("Restoring {name:?}.");
         let restored = block_on(snapshots.restore(snapshot.id.clone()))?;
-        // Keep the settings in line with the restored `lima.yaml`, so the next start
-        // does not edit it back.
-        let resources = restored.metadata.resources;
-        let mut settings = context.load_or_default();
-        settings.engine_resources = Some(resources);
-        settings.save(&context.settings_path)?;
-        block_on(host.set_resources(resources))?;
+        // Keep the settings in line with the restored engine, so the next start does
+        // not edit `lima.yaml` back, change `daemon.json`, or move k3s.
+        let settings = context.update_settings(
+            "Captain started during the restore, so the settings keep the old engine's values.",
+            |settings| {
+                restored.metadata.adopt_into(settings);
+                Ok(settings.clone())
+            },
+        )?;
+        host.set_daemon(settings.engine_daemon);
+        host.set_kubernetes(settings.kubernetes);
+        block_on(host.set_resources(restored.metadata.resources))?;
         Ok(())
     })?;
     println!("Restored {name:?}.");

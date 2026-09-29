@@ -64,3 +64,19 @@ pub fn close_window(id: &str, cx: &mut App) {
             .ok();
     }
 }
+
+/// Closes every extension window, when Captain connects to another engine: each
+/// window talks to the engine it was opened on.
+pub fn close_all_windows(cx: &mut App) {
+    let handles: Vec<AnyWindowHandle> = cx
+        .default_global::<Windows>()
+        .0
+        .drain()
+        .map(|(_, handle)| handle)
+        .collect();
+    for handle in handles {
+        handle
+            .update(cx, |_, window, _| window.remove_window())
+            .ok();
+    }
+}

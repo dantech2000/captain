@@ -73,3 +73,21 @@ fn a_failed_rename_puts_every_old_file_back() {
     assert_eq!(read(&dir.join("live/efi")), "old efi");
     std::fs::remove_dir_all(&dir).ok();
 }
+
+#[test]
+fn an_unfinished_backup_stops_the_next_swap_and_stays() {
+    let dir = temp("interrupted");
+    std::fs::write(dir.join("snap/disk"), "new disk").unwrap();
+    std::fs::write(dir.join("live/disk"), "half restored").unwrap();
+    std::fs::create_dir_all(dir.join("live/.restore-backup")).unwrap();
+    std::fs::write(dir.join("live/.restore-backup/0"), "old disk").unwrap();
+    let files = [Replace {
+        from: dir.join("snap/disk"),
+        live: dir.join("live/disk"),
+    }];
+    let error = swap(&files, &dir.join("live"), &copy).expect_err("refuses");
+    assert!(error.contains(".restore-backup"), "{error}");
+    assert_eq!(read(&dir.join("live/.restore-backup/0")), "old disk");
+    assert_eq!(read(&dir.join("live/disk")), "half restored");
+    std::fs::remove_dir_all(&dir).ok();
+}

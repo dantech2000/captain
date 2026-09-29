@@ -41,8 +41,10 @@ It adds one write to the source: Captain **stops** the containers that the user 
 
 - **Opt-in per item.** Only running Compose projects and running standalone containers offer it. It is off by default.
 - **Confirmation.** Before the run, a dialog lists every container that Captain will stop in the old engine.
+- **Checks before the stop.** Captain refuses the item, and stops nothing, when a container to stop was started with `--rm` (stopping deletes it), when another running container writes to the item's volumes, or when the target already has a volume or container of that name that Captain did not copy. Captain labels each volume and container it creates in the target with `dev.captain.migrated-from=<source engine ID>`, and a switch-over replaces only what carries that label.
 - **Steps.** Stop in the source (with the container's own stop timeout, or 30 s) → copy the item's volumes again into the emptied target volumes, and check them → start the item in the target → check it (health, or a steady run, and the published ports) → done. A Compose project starts with `docker compose up -d <services>`, with only the services that ran in the source. Services behind a profile, or ones that were off, stay off.
-- **Roll back.** Stop the item in the target, then start the originals in the source. Nothing is removed on either side.
+- **Roll back.** Stop the item in the target, then start the originals in the source. A missing or stopped copy counts as stopped. Roll back tries every step and reports every error. Nothing is removed on either side.
+- **Session end.** A switch-over keeps its session alive until it ends, even when the assistant closes. Helpers are removed only when no copy runs.
 - **No live migration.** Checkpoint and restore (CRIU) would avoid the stop, but it is experimental in Docker and has open issues with volume mounts and networking (moby/moby#32227, #48207, #50750). A short stop is the reliable way to get a consistent copy.
 
 ### Where it appears

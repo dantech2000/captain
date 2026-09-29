@@ -79,7 +79,13 @@ impl SettingsView {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) -> Option<&mut KubeForm> {
+        // A change from elsewhere, such as a snapshot restore, rebuilds the form so
+        // it never shows, or saves back, old values.
+        if self.kube_form_source.as_ref() != Some(settings) {
+            self.kube_form = None;
+        }
         if self.kube_form.is_none() && self.kubernetes.is_some() {
+            self.kube_form_source = Some(settings.clone());
             let form = KubeForm::new(settings, window, cx);
             let picked = cx.subscribe_in(
                 &form.version,

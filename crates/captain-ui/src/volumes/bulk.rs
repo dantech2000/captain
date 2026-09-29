@@ -55,6 +55,7 @@ impl VolumesView {
     /// Asks once, listing the names, then deletes the selected volumes.
     pub(super) fn confirm_bulk_delete(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         let names = self.checked.keys().to_vec();
+        let generation = self.generation;
         let title = SharedString::from(format!("Delete {}?", count_label(names.len(), "volume")));
         let description = SharedString::from(format!(
             "{}\n\nThis deletes their data. The engine refuses a volume that a container uses.",
@@ -72,16 +73,21 @@ impl VolumesView {
                 .ok_variant(ButtonVariant::Danger)
                 .on_ok(move |_, _, cx| {
                     let names = names.clone();
-                    view.update(cx, |view, cx| view.remove_many(names, cx));
+                    view.update(cx, |view, cx| view.remove_many(names, generation, cx));
                     true
                 })
         });
     }
 
     /// Removes each volume, then reports the result on the page: a notice, or an
-    /// error line with each volume that failed.
-    fn remove_many(&mut self, names: Vec<String>, cx: &mut Context<Self>) {
-        let Some(engine) = self.engine.clone() else {
+    /// error line with each volume that failed. Does nothing after an engine switch
+    /// since the confirmation opened.
+    fn remove_many(&mut self, names: Vec<String>, generation: u64, cx: &mut Context<Self>) {
+        let Some(engine) = self
+            .engine
+            .clone()
+            .filter(|_| generation == self.generation)
+        else {
             return;
         };
         let names: Vec<_> = names

@@ -8,8 +8,12 @@ use super::NetworksView;
 impl NetworksView {
     /// Removes custom networks without containers and shows how many went as a notice.
     /// Networks hold no data, so this does not ask first.
-    pub(super) fn prune(&mut self, cx: &mut Context<Self>) {
-        let Some(engine) = self.engine.clone() else {
+    pub(super) fn prune(&mut self, generation: u64, cx: &mut Context<Self>) {
+        let Some(engine) = self
+            .engine
+            .clone()
+            .filter(|_| generation == self.generation)
+        else {
             return;
         };
         if self.pruning {

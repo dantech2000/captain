@@ -60,14 +60,24 @@ pub fn write_config(path: &Path, config: &Value) -> Result<(), String> {
 }
 
 /// Merges the `captain` entries into the first file that has a `captain` context,
-/// or else the first file, as `kubectl config` does. Returns the file.
+/// or else the first file, as `kubectl config` does. Returns the file. `captain`
+/// becomes the current context only when no file sets another one, because kubectl
+/// takes the current context from the first file that sets it.
 pub fn install_captain(paths: &[PathBuf], captain: &Value) -> Result<PathBuf, String> {
     let target = first_where(paths, |config| {
         kubeconfig::contexts(config)
             .iter()
             .any(|name| name == CONTEXT)
     })?;
-    let merged = kubeconfig::merge(&read_config(&target)?, captain);
+    let existing = read_config(&target)?;
+    let mut merged = kubeconfig::merge(&existing, captain);
+    if load_contexts(paths)
+        .current
+        .is_some_and(|current| current != CONTEXT)
+    {
+        let current = kubeconfig::current_context(&existing).unwrap_or_default();
+        merged = kubeconfig::set_current(&merged, &current);
+    }
     write_config(&target, &merged)?;
     Ok(target)
 }

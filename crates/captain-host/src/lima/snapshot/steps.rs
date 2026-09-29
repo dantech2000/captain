@@ -8,8 +8,8 @@ use captain_core::HostError;
 use captain_core::snapshot::{Snapshot, SnapshotList, SnapshotMetadata, check_name, check_space};
 
 use super::copy::{allocated, copy_file, same_volume};
-use super::plan::{DISK, files, source_of};
-use super::swap::{Replace, swap};
+use super::plan::{DISK, files, restorable, source_of};
+use super::swap::swap;
 use super::{folder, plan};
 use crate::LimaHost;
 use crate::lima::instance::LimaInstance;
@@ -49,6 +49,8 @@ pub fn create(host: &LimaHost, name: &str, description: &str) -> Result<Snapshot
     let dir = root.join(&id);
     let metadata = SnapshotMetadata {
         disk_allocated,
+        daemon: Some(host.daemon_settings()),
+        kubernetes: Some(host.kubernetes_settings()),
         ..metadata(&paths.instance_dir(), &instance, name, description)
     };
     let written = std::fs::create_dir(&dir)
@@ -84,19 +86,13 @@ pub fn restore(host: &LimaHost, id: &str) -> Result<Snapshot, HostError> {
     )
     .map_err(HostError)?;
 
+    let replace = restorable(files(paths), &dir).map_err(HostError)?;
     // An old instance's `disk` links to `diffdisk`; the restored `disk` is a file.
+    // `diffdisk` goes only once the swap put that file in place of the link.
     let live_disk = instance_dir.join(DISK);
     let legacy = source_of(&live_disk);
-    let replace: Vec<Replace> = files(paths)
-        .into_iter()
-        .map(|file| Replace {
-            from: dir.join(file.name),
-            live: file.live,
-        })
-        .filter(|file| file.from.exists())
-        .collect();
     swap(&replace, &instance_dir, &copy_file).map_err(HostError)?;
-    if legacy != live_disk {
+    if legacy != live_disk && live_disk.is_file() && !live_disk.is_symlink() {
         std::fs::remove_file(&legacy).ok();
     }
     tracing::info!(id, name = %snapshot.metadata.name, "restored a snapshot");
@@ -160,6 +156,8 @@ fn metadata(
         lima_version,
         disk_allocated: 0,
         resources: instance.resources(),
+        daemon: None,
+        kubernetes: None,
     }
 }
 

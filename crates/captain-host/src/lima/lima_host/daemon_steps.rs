@@ -1,10 +1,11 @@
 //! Applies the Docker daemon settings after a start, and learns what a running
 //! engine uses, for "Restart to apply". See feature 0020.
 
-use captain_core::daemon::DaemonState;
+use captain_core::daemon::{DaemonSettings, DaemonState};
 use captain_core::{HostError, HostStatus};
 
 use super::{Inner, lock};
+use crate::LimaHost;
 use crate::lima::daemon;
 use crate::lima::limactl::Limactl;
 
@@ -49,4 +50,11 @@ pub fn track(inner: &Inner, limactl: &Limactl, status: &HostStatus) {
 fn read(inner: &Inner, limactl: &Limactl) -> Option<DaemonState> {
     let output = limactl.output(&daemon::read_args(&inner.paths.instance));
     daemon::parse_state(&output.ok()?)
+}
+
+impl LimaHost {
+    /// The daemon settings for the next start, for a snapshot's metadata.
+    pub(crate) fn daemon_settings(&self) -> DaemonSettings {
+        lock(&self.inner.daemon).clone()
+    }
 }

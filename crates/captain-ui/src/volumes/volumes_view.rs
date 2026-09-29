@@ -23,6 +23,9 @@ use crate::workspace::{Connection, Workspace};
 pub struct VolumesView {
     pub(super) workspace: Entity<Workspace>,
     pub(super) engine: Option<Arc<dyn Engine>>,
+    /// Counts engine switches. Destructive actions carry the number they were shown
+    /// for, and do nothing after a switch.
+    pub(super) generation: u64,
     pub(super) store: VolumeStore,
     pub(super) loaded: bool,
     pub(super) filter: UsageFilter,
@@ -63,6 +66,7 @@ impl VolumesView {
         let mut view = Self {
             workspace,
             engine: None,
+            generation: 0,
             store: VolumeStore::default(),
             loaded: false,
             filter: UsageFilter::default(),

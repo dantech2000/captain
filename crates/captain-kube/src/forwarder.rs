@@ -88,8 +88,7 @@ impl PortForwarding for KubeForwarder {
             let task = handle
                 .spawn(forward::serve(listener, client, key.clone()))
                 .abort_handle();
-            lock(&table).insert(key.clone(), Running { local_port, task });
-            Ok(Forward { key, local_port })
+            Ok(claim(&table, key, Running { local_port, task }))
         })
     }
 
@@ -110,6 +109,22 @@ impl PortForwarding for KubeForwarder {
     }
 }
 
+/// Records `running` under `key`. When a concurrent request for the same key got
+/// there first, stops `running` and returns the recorded forward instead.
+fn claim(table: &Table, key: ForwardKey, running: Running) -> Forward {
+    let mut forwards = lock(table);
+    if let Some(first) = forwards.get(&key) {
+        running.task.abort();
+        return Forward {
+            local_port: first.local_port,
+            key,
+        };
+    }
+    let local_port = running.local_port;
+    forwards.insert(key.clone(), running);
+    Forward { key, local_port }
+}
+
 /// Runs `future` on tokio. Any executor can await the returned future.
 fn spawn<T, F>(handle: &Handle, future: F) -> HostFuture<T>
 where
@@ -127,3 +142,6 @@ fn lock<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
 }
+
+#[cfg(test)]
+mod tests;

@@ -73,4 +73,11 @@ fn description(stops: &[Stop], source: &str, palette: &Palette) -> Div {
             "Then it copies their data again and starts them here. Each item is down \
              for a few seconds. You can roll back from the summary.",
         )
+        .child(div().text_color(palette.text2).child(
+            "Before it stops anything, Captain checks each item. It refuses a \
+                 container started with --rm, because the old engine deletes it when it \
+                 stops. It refuses when another running container writes to the item's \
+                 volumes, and when a volume or container of the same name is already \
+                 here and Captain did not copy it.",
+        ))
 }

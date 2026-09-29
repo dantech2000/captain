@@ -11,6 +11,7 @@ mod image;
 mod in_flight;
 mod migrator;
 mod network;
+mod owner;
 mod progress;
 mod scan;
 mod session;

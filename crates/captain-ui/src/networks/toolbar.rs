@@ -7,6 +7,7 @@ use crate::widgets::{ButtonTone, Segment, segmented, text_button};
 
 /// The right side of the page header: the prune button and the usage filter.
 pub fn render(view: &NetworksView, cx: &mut Context<NetworksView>, palette: &Palette) -> Div {
+    let generation = view.generation;
     let prune = text_button(
         "prune-networks",
         if view.pruning {
@@ -17,7 +18,7 @@ pub fn render(view: &NetworksView, cx: &mut Context<NetworksView>, palette: &Pal
         ButtonTone::Accent,
         view.engine.is_some() && !view.pruning,
         palette,
-        cx.listener(|this, _, _, cx| this.prune(cx)),
+        cx.listener(move |this, _, _, cx| this.prune(generation, cx)),
     );
 
     div()

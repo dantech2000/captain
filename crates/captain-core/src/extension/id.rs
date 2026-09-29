@@ -7,9 +7,11 @@ use crate::model::ImageReference;
 pub const PROJECT_PREFIX: &str = "captain-ext-";
 
 /// The extension ID for an image reference: the repository without tag or digest,
-/// in lowercase, with every other character than a letter or digit as `-`. It names
-/// the folder in `~/.captain/extensions` and the host of the `captain-ext://` URL, so
-/// it is a valid host name. `None` for input that is not an image reference.
+/// in lowercase, with every other character than a letter or digit as `-`, then `-`
+/// and 8 hex digits of a hash of the repository. The hash keeps `acme/foo-bar` and
+/// `acme/foo_bar` apart. The ID names the folder in `~/.captain/extensions` and the
+/// host of the `captain-ext://` URL, so it is a valid host name. `None` for input
+/// that is not an image reference.
 pub fn extension_id(reference: &str) -> Option<String> {
     let parsed = ImageReference::parse(reference)?;
     let repository = parsed.name.split('@').next().unwrap_or_default();
@@ -22,8 +24,9 @@ pub fn extension_id(reference: &str) -> Option<String> {
             id.push('-');
         }
     }
-    let id = id.trim_end_matches('-').to_string();
-    (!id.is_empty()).then_some(id)
+    let id = id.trim_end_matches('-');
+    let hash = fnv1a(repository, FNV_OFFSET) >> 32;
+    (!id.is_empty()).then(|| format!("{id}-{hash:08x}"))
 }
 
 /// The Compose project that runs the backend of the extension `id`.
@@ -35,16 +38,20 @@ pub fn project_name(id: &str) -> String {
 /// cookies and storage in WebKit (`WKWebsiteDataStore(forIdentifier:)`). Two
 /// FNV-1a hashes with different offsets make the 16 bytes.
 pub fn data_store_id(id: &str) -> [u8; 16] {
-    const PRIME: u64 = 0x0100_0000_01b3;
-    let hash = |offset: u64| {
-        id.bytes().fold(offset, |hash, byte| {
-            (hash ^ u64::from(byte)).wrapping_mul(PRIME)
-        })
-    };
     let mut bytes = [0; 16];
-    bytes[..8].copy_from_slice(&hash(0xcbf2_9ce4_8422_2325).to_be_bytes());
-    bytes[8..].copy_from_slice(&hash(0x6c62_272e_07bb_0142).to_be_bytes());
+    bytes[..8].copy_from_slice(&fnv1a(id, FNV_OFFSET).to_be_bytes());
+    bytes[8..].copy_from_slice(&fnv1a(id, 0x6c62_272e_07bb_0142).to_be_bytes());
     bytes
+}
+
+const FNV_OFFSET: u64 = 0xcbf2_9ce4_8422_2325;
+
+/// The 64-bit FNV-1a hash of `text`, starting from `offset`.
+fn fnv1a(text: &str, offset: u64) -> u64 {
+    const PRIME: u64 = 0x0100_0000_01b3;
+    text.bytes().fold(offset, |hash, byte| {
+        (hash ^ u64::from(byte)).wrapping_mul(PRIME)
+    })
 }
 
 #[cfg(test)]

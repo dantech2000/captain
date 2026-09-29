@@ -6,7 +6,9 @@ use std::time::{Duration, Instant};
 
 use captain_core::ssh::SshTarget;
 
-use super::SshTunnel;
+use std::sync::Mutex;
+
+use super::{Slot, SshTunnel, open_in};
 
 /// A temp dir with a stub `ssh` script. The stub logs its arguments to `calls`.
 struct Stub(PathBuf);
@@ -28,8 +30,11 @@ impl Stub {
     }
 
     fn start(&self) -> Result<SshTunnel, String> {
-        let target = SshTarget::parse("ssh://me@box").unwrap();
-        SshTunnel::start(self.0.join("ssh").into(), target, &self.0)
+        self.start_to(&target("box"))
+    }
+
+    fn start_to(&self, target: &SshTarget) -> Result<SshTunnel, String> {
+        SshTunnel::start(self.0.join("ssh").into(), target.clone(), &self.0)
     }
 
     fn calls(&self) -> Vec<String> {
@@ -45,6 +50,10 @@ impl Drop for Stub {
     fn drop(&mut self) {
         let _ = fs::remove_dir_all(&self.0);
     }
+}
+
+fn target(host: &str) -> SshTarget {
+    SshTarget::parse(&format!("ssh://me@{host}")).unwrap()
 }
 
 /// Makes the `-L` socket, then waits like `ssh -N`.
@@ -101,4 +110,23 @@ fn failed_login_explains_keys() {
     );
     let error = stub.start().err().unwrap();
     assert!(error.contains("ssh-add"), "{error}");
+}
+
+#[test]
+fn stale_start_stops_its_own_tunnel() {
+    let stub = Stub::new("stale", TUNNEL);
+    let slot = Mutex::new(Slot::new());
+    let (old, new) = (target("old"), target("new"));
+    let mut newer = None;
+    // The start for `old` finishes after a start for `new` began and finished.
+    let stale = open_in(&slot, &old, || {
+        newer = Some(open_in(&slot, &new, || stub.start_to(&new)).unwrap());
+        stub.start_to(&old)
+    });
+    assert!(stale.is_err());
+    let slot = slot.lock().unwrap();
+    let tunnel = slot.tunnel.as_ref().unwrap();
+    assert_eq!(tunnel.target, new);
+    assert_eq!(Some(tunnel.socket.clone()), newer);
+    assert!(tunnel.socket.exists());
 }

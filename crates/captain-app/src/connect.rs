@@ -29,12 +29,12 @@ fn connector(endpoint: Option<String>) -> Connector {
         let endpoint = Endpoint::resolve(&host).map_err(EngineError::Unreachable)?;
         tracing::info!(%host, %endpoint, "connecting");
         let engine: Arc<dyn Engine> =
-            Arc::new(DockerEngine::connect(endpoint.clone())?.with_label(host));
+            Arc::new(DockerEngine::connect(endpoint.clone())?.with_label(host.clone()));
         Ok((
             engine,
             compose(&endpoint),
             builder(&endpoint),
-            extensions(&endpoint),
+            extensions(&endpoint, host),
         ))
     })
 }
@@ -64,11 +64,11 @@ fn builder(endpoint: &Endpoint) -> Option<Arc<dyn ImageBuilder>> {
 }
 
 /// The extension manager for `endpoint`, with extensions in `~/.captain/extensions`.
-/// See docs/adr/0011-extensions.md.
-fn extensions(endpoint: &Endpoint) -> Option<Arc<dyn ExtensionManager>> {
+/// Extensions record `host` as their engine. See docs/adr/0011-extensions.md.
+fn extensions(endpoint: &Endpoint, host: String) -> Option<Arc<dyn ExtensionManager>> {
     let paths = ExtensionPaths::in_home(&dirs::home_dir()?);
     match DockerExtensions::connect(endpoint, paths) {
-        Ok(manager) => Some(Arc::new(manager)),
+        Ok(manager) => Some(Arc::new(manager.with_label(host))),
         Err(error) => {
             tracing::warn!(%error, "extensions are not available");
             None

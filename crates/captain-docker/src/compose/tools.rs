@@ -1,13 +1,13 @@
 //! Finds the `docker` CLI and the Compose plugin for the Diagnostics page.
 
-use std::process::{Output, Stdio};
-use std::sync::mpsc;
+use std::process::Output;
 use std::time::Duration;
 
 use captain_core::diagnostics::ToolProbe;
 
 use super::docker_cli::DockerCli;
 use super::output::{error_message, parse_cli_version, parse_version};
+use crate::process;
 
 /// How long each command may take.
 const TIMEOUT: Duration = Duration::from_secs(5);
@@ -48,19 +48,12 @@ fn probe(docker: &DockerCli, args: &[&str], parse: fn(&str) -> Option<String>) -
     }
 }
 
-/// Runs `docker args` and waits at most [`TIMEOUT`]. A command that hangs keeps its
-/// thread, which is fine for a one-off check.
+/// Runs `docker args` and waits at most [`TIMEOUT`]. A command that hangs is killed.
 fn output_within(docker: &DockerCli, args: &[&str]) -> Result<Output, String> {
     let mut command = docker.command();
     command
         .args(args)
         .env_remove("DOCKER_HOST")
-        .env_remove("DOCKER_CONTEXT")
-        .stdin(Stdio::null());
-    let (tx, rx) = mpsc::channel();
-    std::thread::spawn(move || tx.send(command.output()).ok());
-    match rx.recv_timeout(TIMEOUT) {
-        Ok(result) => result.map_err(|err| err.to_string()),
-        Err(_) => Err(format!("{} did not answer.", docker.binary.display())),
-    }
+        .env_remove("DOCKER_CONTEXT");
+    process::output_within(command, TIMEOUT)
 }

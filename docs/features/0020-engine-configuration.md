@@ -59,6 +59,7 @@ A change applies on the next start of Captain Engine. After `limactl start` fini
    1. Runs `dockerd --validate --config-file=<new file>`. If `dockerd` rejects it, nothing changes and the start fails with `dockerd`'s message.
    2. Keeps a copy of the old files, installs the new `daemon.json`, and writes or removes the drop-in `/etc/systemd/system/docker.service.d/captain-tcp.conf`.
    3. Runs `systemctl daemon-reload` and `systemctl restart docker`. If the restart fails, it puts the old files back and restarts Docker again.
+   4. From the copy until the end, an `EXIT` trap puts both old files back and runs `systemctl daemon-reload` on any other failure, for example a full disk while it writes the drop-in ([POSIX trap](https://pubs.opengroup.org/onlinepubs/9799919799/utilities/V3_chap02.html#trap)). A hangup or termination exits through the same trap. The trap is cleared when the new settings run.
 
 Why this and not the Lima template:
 

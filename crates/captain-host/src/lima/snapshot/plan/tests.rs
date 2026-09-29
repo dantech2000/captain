@@ -44,3 +44,17 @@ fn a_legacy_disk_link_resolves_to_diffdisk() {
     assert_eq!(source_of(&dir.join("diffdisk")), dir.join("diffdisk"));
     std::fs::remove_dir_all(&dir).ok();
 }
+
+#[test]
+fn a_snapshot_without_a_required_file_is_not_restorable() {
+    let dir = std::env::temp_dir().join(format!("captain-plan-damaged-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    std::fs::write(dir.join("lima.yaml"), "").unwrap();
+    let paths = LimaPaths::for_home(Path::new("/Users/ada"));
+    let error = super::restorable(files(&paths), &dir).expect_err("refuses");
+    assert!(error.contains("disk"), "{error}");
+    std::fs::write(dir.join(DISK), "").unwrap();
+    let replace = super::restorable(files(&paths), &dir).expect("restorable");
+    assert_eq!(replace.len(), 2);
+    std::fs::remove_dir_all(&dir).ok();
+}

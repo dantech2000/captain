@@ -8,7 +8,7 @@ use std::path::PathBuf;
 
 use captain_core::extension::{
     BridgeEvent, BridgeRequest, ExecRequest, ExecScope, ExtensionManager, ExtensionPaths,
-    InstalledExtension, ListOptions, ServiceRequest,
+    InstalledExtension, ListOptions, ServiceRequest, UpdateCheck,
 };
 use captain_core::model::BuildSpec;
 use captain_core::{ImageApi, ImageBuilder};
@@ -19,6 +19,8 @@ use futures::executor::block_on;
 const UI_SOURCE: &str = "docker/disk-usage-extension:0.2.9";
 const UI_IMAGE: &str = "captain-agent-ext-ui:latest";
 const VM_IMAGE: &str = "captain-agent-ext-vm:test";
+/// The same repository, with a backend image that does not exist.
+const BROKEN_IMAGE: &str = "captain-agent-ext-vm:broken";
 
 /// Removes the installed extensions, the temp folder, and the test images when
 /// dropped, so a failed assertion leaves nothing behind.
@@ -144,16 +146,14 @@ fn installs_and_removes_a_ui_only_extension() {
 }
 
 const METADATA: &str = r#"{"vm":{"image":"${DESKTOP_PLUGIN_IMAGE}","exposes":{"socket":"backend.sock"}},"ui":{"dashboard-tab":{"title":"Agent","root":"/ui","src":"index.html"}}}"#;
+const BROKEN_METADATA: &str = r#"{"vm":{"image":"captain-agent-ext-missing:none","exposes":{"socket":"backend.sock"}},"ui":{"dashboard-tab":{"title":"Agent","root":"/ui","src":"index.html"}}}"#;
 
-#[test]
-#[ignore = "needs a running Docker engine, the docker CLI with Compose and buildx, and Docker Hub"]
-fn installs_an_extension_with_a_backend() {
-    let mut fixture = setup("captain-agent-ext-vm");
-    fixture.images.push(VM_IMAGE);
-    let context = fixture.dir.join("build");
+/// Builds an extension image `tag` on socat that answers HTTP on the backend socket.
+fn build_vm(fixture: &Fixture, tag: &str, metadata: &str) {
+    let context = fixture.dir.join("build").join(tag.replace(':', "-"));
     std::fs::create_dir_all(context.join("ui")).expect("context");
     std::fs::write(context.join("ui/index.html"), "<h1>agent</h1>").expect("page");
-    std::fs::write(context.join("metadata.json"), METADATA).expect("metadata");
+    std::fs::write(context.join("metadata.json"), metadata).expect("metadata");
     let dockerfile = "FROM alpine/socat:1.8.1.3\n\
         LABEL com.docker.desktop.extension.api.version=\">= 0.3.0\" org.opencontainers.image.vendor=\"Captain tests\"\n\
         COPY metadata.json /metadata.json\nCOPY ui /ui\n\
@@ -164,17 +164,16 @@ fn installs_an_extension_with_a_backend() {
     let spec = BuildSpec {
         context: context.clone(),
         dockerfile: "Dockerfile".into(),
-        tag: VM_IMAGE.into(),
+        tag: tag.into(),
         build_args: Vec::new(),
         target: None,
     };
     let built: Vec<_> = block_on(builder.build(&spec).collect());
     assert!(built.iter().all(Result::is_ok), "{built:?}");
+}
 
-    let candidate = block_on(fixture.manager.prepare(VM_IMAGE)).expect("prepare");
-    let extension = block_on(fixture.manager.install(candidate)).expect("install");
-    fixture.installed.push(extension.clone());
-    let manager = &fixture.manager;
+/// Calls the backend through the proxy until it answers, and returns the answer.
+fn hello(manager: &DockerExtensions, extension: &InstalledExtension) -> Vec<BridgeEvent> {
     let service = ServiceRequest {
         method: "GET".into(),
         path: "/hello".into(),
@@ -184,16 +183,32 @@ fn installs_an_extension_with_a_backend() {
     let mut answer = Vec::new();
     // The proxy may need a moment before it accepts connections.
     for _ in 0..20 {
-        answer = call(manager, &extension, BridgeRequest::Service(service.clone()));
+        answer = call(manager, extension, BridgeRequest::Service(service.clone()));
         if matches!(&answer[..], [BridgeEvent::Resolve(_)]) {
             break;
         }
         std::thread::sleep(std::time::Duration::from_millis(500));
     }
-    assert!(
-        matches!(&answer[..], [BridgeEvent::Resolve(body)] if body.as_str().unwrap_or("").contains("hello")),
-        "{answer:?}"
-    );
+    answer
+}
+
+fn answers_hello(answer: &[BridgeEvent]) -> bool {
+    matches!(answer, [BridgeEvent::Resolve(body)] if body.as_str().unwrap_or("").contains("hello"))
+}
+
+#[test]
+#[ignore = "needs a running Docker engine, the docker CLI with Compose and buildx, and Docker Hub"]
+fn installs_an_extension_with_a_backend() {
+    let mut fixture = setup("captain-agent-ext-vm");
+    fixture.images.extend([VM_IMAGE, BROKEN_IMAGE]);
+    build_vm(&fixture, VM_IMAGE, METADATA);
+
+    let candidate = block_on(fixture.manager.prepare(VM_IMAGE)).expect("prepare");
+    let extension = block_on(fixture.manager.install(candidate)).expect("install");
+    fixture.installed.push(extension.clone());
+    let manager = &fixture.manager;
+    let answer = hello(manager, &extension);
+    assert!(answers_hello(&answer), "{answer:?}");
     let listed = call(
         manager,
         &extension,
@@ -203,6 +218,38 @@ fn installs_an_extension_with_a_backend() {
         matches!(&listed[..], [BridgeEvent::Resolve(r)] if r["stdout"].as_str().unwrap_or("").contains("backend.sock")),
         "{listed:?}"
     );
+
+    // Installing the same repository again is refused, and the backend keeps running.
+    let again = block_on(manager.prepare(VM_IMAGE)).expect("prepare");
+    let refused = block_on(manager.install(again)).expect_err("a second install");
+    assert!(
+        refused.to_string().contains("already installed"),
+        "{refused}"
+    );
+    assert!(answers_hello(&hello(manager, &extension)));
+
+    // Another engine neither lists nor removes it.
+    let endpoint = discover(&DiscoveryInput::from_env(), |path| path.exists()).expect("discover");
+    let other = DockerExtensions::connect(&endpoint, manager.paths().clone())
+        .expect("extensions")
+        .with_label("unix:///captain-agent-other.sock");
+    assert_eq!(block_on(other.list()).expect("list"), []);
+    assert!(block_on(other.remove(extension.clone())).is_err());
+
+    // An update whose backend cannot start puts the old version back.
+    build_vm(&fixture, BROKEN_IMAGE, BROKEN_METADATA);
+    let check = block_on(manager.check_update(extension.clone(), "broken".into())).expect("check");
+    let UpdateCheck::Available(update) = check else {
+        panic!("no update: {check:?}");
+    };
+    let failed = block_on(manager.update(update.extension, update.candidate)).expect_err("update");
+    assert!(!failed.to_string().contains("restore"), "{failed}");
+    assert_eq!(
+        block_on(manager.list()).expect("list"),
+        std::slice::from_ref(&extension)
+    );
+    let answer = hello(manager, &extension);
+    assert!(answers_hello(&answer), "{answer:?}");
 
     assert!(fixture.installed.pop().is_some());
     block_on(manager.remove(extension)).expect("remove");

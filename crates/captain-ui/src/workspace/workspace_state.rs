@@ -21,6 +21,9 @@ pub enum Connection {
 
 pub struct Workspace {
     pub(super) engine: Option<Arc<dyn Engine>>,
+    /// Counts reconnects. A confirmation carries the number it opened with, and does
+    /// nothing after a switch to another engine.
+    pub(super) generation: u64,
     pub(super) connection: Connection,
     pub(super) page: Page,
     /// Item counts that the Images, Volumes, and Networks pages report for the sidebar.
@@ -34,7 +37,10 @@ pub struct Workspace {
     pub(super) checked: MultiSelection,
     pub(super) reload_task: Option<Task<()>>,
     pub(super) events_task: Option<Task<()>>,
-    pub(super) stats_tasks: HashMap<String, Task<()>>,
+    /// The task that follows each running container's stats, and its number.
+    pub(super) stats_tasks: HashMap<String, (u64, Task<()>)>,
+    /// The number of the last stats task.
+    pub(super) stats_generation: u64,
     pub(super) pending: HashSet<String>,
     /// Cards the user folded.
     pub(super) collapsed: HashSet<GroupKey>,
@@ -58,6 +64,7 @@ impl Workspace {
     pub fn new() -> Self {
         Self {
             engine: None,
+            generation: 0,
             connection: Connection::Connecting,
             page: Page::default(),
             page_counts: HashMap::new(),
@@ -70,6 +77,7 @@ impl Workspace {
             reload_task: None,
             events_task: None,
             stats_tasks: HashMap::new(),
+            stats_generation: 0,
             pending: HashSet::new(),
             collapsed: HashSet::new(),
             show_kubernetes: false,
@@ -83,6 +91,11 @@ impl Workspace {
 
     pub fn engine(&self) -> Option<Arc<dyn Engine>> {
         self.engine.clone()
+    }
+
+    /// The number of the current connection. See [`Workspace::generation`].
+    pub fn engine_generation(&self) -> u64 {
+        self.generation
     }
 
     /// The image builder, once connected, if `docker buildx` is installed.

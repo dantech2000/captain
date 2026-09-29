@@ -14,7 +14,7 @@ mod volume;
 
 pub use container::container;
 pub use detail::detail;
-pub use error::engine_error;
+pub use error::{engine_error, found};
 pub use event::event;
 pub use files::{processes, stat_listing, tar_listing, tar_preview};
 #[allow(unused_imports)]

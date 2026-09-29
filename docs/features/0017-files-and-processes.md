@@ -14,7 +14,7 @@ Finish M3. The Files tab browses a running container's filesystem, previews smal
 - Engine: four `ContainerApi` methods, in the Docker engine and the fake engine.
   - `list_files(id, path)`: the entries of one folder, with name, kind, size, mode, and modified time.
   - `read_file(id, path, limit)`: the first `limit` bytes of a file and its full size.
-  - `save_path(id, path, dir)`: copies a file into `dir`, or a folder as `name.tar`, and returns the new path. It never overwrites; it picks `name (1).ext` instead.
+  - `save_path(id, path, dir)`: copies a file into `dir`, or a folder as `name.tar`, and returns the new path. It never overwrites; it picks `name (1).ext` instead. The name comes from the container, so `/`, `\`, `:`, the other characters Windows refuses, and control characters become `_`, trailing dots and spaces go, and a Windows device name such as `CON` gets a leading `_` ([naming files](https://learn.microsoft.com/windows/win32/fileio/naming-a-file)). The tar streams to a new hidden file with a unique name first.
   - `top(id)`: `docker top`, as column titles and rows.
 - Files tab:
   - A path bar with Up and breadcrumbs. A click on a breadcrumb opens that folder.

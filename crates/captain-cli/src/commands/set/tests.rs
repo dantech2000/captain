@@ -1,5 +1,5 @@
 use captain_core::GIB;
-use captain_core::process_lock::{ProcessLock, app_lock_path};
+use captain_core::process_lock::{ProcessLock, app_lock_path, settings_lock_path};
 use captain_core::settings::Settings;
 
 use super::run;
@@ -37,5 +37,30 @@ fn set_refuses_while_the_app_runs() {
         .expect("free");
     assert!(run(&context, SettingKey::DebugLogging, "true").is_err());
     assert!(!context.settings_path.exists());
+    std::fs::remove_dir_all(context.settings_path.parent().unwrap()).ok();
+}
+
+#[test]
+fn set_waits_for_another_writer_and_keeps_its_change() {
+    let context = context("lock");
+    let lock = ProcessLock::acquire(&settings_lock_path(&context.settings_path)).expect("lock");
+    std::thread::scope(|scope| {
+        let set = scope.spawn(|| run(&context, SettingKey::DebugLogging, "true"));
+        std::thread::sleep(std::time::Duration::from_millis(200));
+        assert!(!set.is_finished(), "set waits for the lock");
+        let other = Settings {
+            engine_endpoint: Some("unix:///tmp/other.sock".into()),
+            ..Settings::default()
+        };
+        other.save(&context.settings_path).expect("save");
+        drop(lock);
+        set.join().unwrap().expect("set");
+    });
+    let saved = Settings::load(&context.settings_path).expect("load");
+    assert!(saved.debug_logging);
+    assert_eq!(
+        saved.engine_endpoint.as_deref(),
+        Some("unix:///tmp/other.sock")
+    );
     std::fs::remove_dir_all(context.settings_path.parent().unwrap()).ok();
 }

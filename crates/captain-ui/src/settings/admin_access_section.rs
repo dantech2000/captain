@@ -58,7 +58,7 @@ pub fn render(
             if link.needs_confirmation() {
                 confirm(this.clone(), &link, captain.clone(), window, cx);
             } else {
-                run(this.clone(), action, captain.clone(), cx);
+                run(this.clone(), action, link.clone(), captain.clone(), cx);
             }
         },
     );
@@ -82,8 +82,10 @@ fn confirm(
          The other engine keeps running.",
         link.describe()
     );
+    let link = link.clone();
     window.open_alert_dialog(cx, move |alert, _, _| {
         let view = view.clone();
+        let link = link.clone();
         let captain = captain.clone();
         alert
             .title("Replace the Docker socket?")
@@ -92,14 +94,27 @@ fn confirm(
             .ok_text("Replace")
             .ok_variant(ButtonVariant::Danger)
             .on_ok(move |_, _, cx| {
-                run(view.clone(), LinkAction::Link, captain.clone(), cx);
+                run(
+                    view.clone(),
+                    LinkAction::Link,
+                    link.clone(),
+                    captain.clone(),
+                    cx,
+                );
                 true
             })
     });
 }
 
 /// Runs the privileged command in the background; it waits for the password prompt.
-fn run(view: WeakEntity<SettingsView>, action: LinkAction, captain: PathBuf, cx: &mut App) {
+/// The command acts only if the socket is still `seen`, the state the user acted on.
+fn run(
+    view: WeakEntity<SettingsView>,
+    action: LinkAction,
+    seen: SocketLink,
+    captain: PathBuf,
+    cx: &mut App,
+) {
     let Some(system) = system::system(cx) else {
         return;
     };
@@ -118,8 +133,8 @@ fn run(view: WeakEntity<SettingsView>, action: LinkAction, captain: PathBuf, cx:
             .background_executor()
             .spawn(async move {
                 match action {
-                    LinkAction::Link => system.link_docker_socket(&captain),
-                    LinkAction::Unlink => system.unlink_docker_socket(),
+                    LinkAction::Link => system.link_docker_socket(&captain, &seen),
+                    LinkAction::Unlink => system.unlink_docker_socket(&captain),
                 }
             })
             .await;

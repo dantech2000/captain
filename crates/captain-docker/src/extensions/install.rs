@@ -41,7 +41,8 @@ pub async fn prepare(
         .and_then(|config| config.labels)
         .unwrap_or_default();
     let labels = ExtensionLabels::from_image(&labels).map_err(EngineError::Api)?;
-    let container = files::create(docker, &image, &id).await?;
+    // Read the image that was inspected, even if a pull moves the tag meanwhile.
+    let container = files::create(docker, &image_id, &id).await?;
     let tar = files::archive(docker, &container, "/metadata.json").await;
     files::remove(docker, &container).await;
     let json = files::file_content(&tar?)?;
@@ -68,8 +69,9 @@ pub(super) async fn pull(docker: &Docker, reference: &ImageReference) -> Result<
     Ok(())
 }
 
-/// Copies the files, starts the backend, and writes `extension.json` last. On a
-/// failure, it removes the backend and the folder again.
+/// Copies the files, starts the backend, and writes `extension.json` last. Refuses
+/// an ID that is installed already. On a failure, it removes the folder and what
+/// this install started; it keeps the volumes of a project that was there before.
 pub async fn install(
     context: &Context,
     candidate: ExtensionCandidate,
@@ -77,18 +79,43 @@ pub async fn install(
     let installed = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .map_or(0, |d| d.as_secs());
-    let extension = InstalledExtension::new(candidate, installed);
+    let mut extension = InstalledExtension::new(candidate, installed);
+    extension.engine = context.engine.clone();
+    if let Some(present) = read_manifest(&context.paths, &extension.id) {
+        return Err(already_installed(&present));
+    }
     let dir = context.paths.dir(&extension.id);
+    // A folder without `extension.json` is left from an install that stopped.
     if dir.exists() {
         std::fs::remove_dir_all(&dir).map_err(files::io_error)?;
     }
+    let fresh = !backend::exists(&context.docker, &extension.id).await?;
     let result = install_steps(context, &extension).await;
     if let Err(error) = &result {
         tracing::warn!(%error, id = %extension.id, "extension install failed; cleaning up");
-        backend::down(context, &extension.id, true).await.ok();
+        if extension.metadata.vm.is_some() {
+            backend::down(context, &extension.id, fresh).await.ok();
+        }
         std::fs::remove_dir_all(&dir).ok();
     }
     result.map(|()| extension)
+}
+
+fn read_manifest(paths: &ExtensionPaths, id: &str) -> Option<InstalledExtension> {
+    let json = std::fs::read_to_string(paths.manifest(id)).ok()?;
+    InstalledExtension::from_json(&json).ok()
+}
+
+fn already_installed(present: &InstalledExtension) -> EngineError {
+    let on = match present.engine.as_str() {
+        "" => String::new(),
+        engine => format!(" on {engine}"),
+    };
+    EngineError::Api(format!(
+        "{} is already installed{on} from {}. Use Update to replace it.",
+        present.title(),
+        present.image
+    ))
 }
 
 async fn install_steps(
@@ -96,11 +123,11 @@ async fn install_steps(
     extension: &InstalledExtension,
 ) -> Result<(), EngineError> {
     let (docker, paths, id) = (&context.docker, &context.paths, &extension.id);
-    let container = files::create(docker, &extension.image, id).await?;
+    let container = files::create(docker, extension.pinned_image(), id).await?;
     let copied = copy_files(docker, &container, paths, extension).await;
     files::remove(docker, &container).await;
     copied?;
-    if let Some(backend) = extension.metadata.backend(&extension.image) {
+    if let Some(backend) = extension.metadata.backend(extension.pinned_image()) {
         backend::up(context, extension, backend).await?;
     }
     std::fs::write(paths.manifest(id), extension.to_json()).map_err(files::io_error)
@@ -157,8 +184,9 @@ pub async fn remove(context: &Context, extension: &InstalledExtension) -> Result
     Ok(())
 }
 
-/// Every folder with a readable `extension.json`, sorted by title.
-pub fn list(paths: &ExtensionPaths) -> Result<Vec<InstalledExtension>, EngineError> {
+/// Every folder with a readable `extension.json` installed on `engine`, or on an
+/// unknown engine, sorted by title.
+pub fn list(paths: &ExtensionPaths, engine: &str) -> Result<Vec<InstalledExtension>, EngineError> {
     let entries = match std::fs::read_dir(paths.root()) {
         Ok(entries) => entries,
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(Vec::new()),
@@ -172,7 +200,11 @@ pub fn list(paths: &ExtensionPaths) -> Result<Vec<InstalledExtension>, EngineErr
                 .inspect_err(|error| tracing::warn!(%error, "cannot read an extension manifest"))
                 .ok()
         })
+        .filter(|extension| extension.engine.is_empty() || extension.engine == engine)
         .collect();
     extensions.sort_by_key(|extension| extension.title().to_lowercase());
     Ok(extensions)
 }
+
+#[cfg(test)]
+mod tests;

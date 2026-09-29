@@ -10,6 +10,7 @@ use crate::widgets::{ButtonTone, Segment, segmented, text_button};
 /// named volumes too.
 pub fn render(view: &VolumesView, cx: &mut Context<VolumesView>, palette: &Palette) -> Div {
     let enabled = view.engine.is_some() && !view.pruning;
+    let generation = view.generation;
     let prune = text_button(
         "prune-volumes",
         if view.pruning {
@@ -20,7 +21,7 @@ pub fn render(view: &VolumesView, cx: &mut Context<VolumesView>, palette: &Palet
         ButtonTone::Accent,
         enabled,
         palette,
-        cx.listener(|this, _, _, cx| this.prune(false, cx)),
+        cx.listener(move |this, _, _, cx| this.prune(false, generation, cx)),
     );
     let prune_all = text_button(
         "prune-all-volumes",

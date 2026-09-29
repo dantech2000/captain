@@ -1,46 +1,57 @@
-//! Runs the commands of `*.cli.exec` on plain threads: to the end, or line by line
-//! with the process killed when the page closes the stream.
+//! Runs the commands of `*.cli.exec` on plain threads: to the end, or line by line.
+//! The process is killed and reaped when the page drops the stream.
 
 use std::io::{BufRead, BufReader, Read};
-use std::pin::Pin;
-use std::process::{Child, Command, Stdio};
-use std::sync::{Arc, Mutex};
-use std::task::{Context, Poll};
+use std::process::{Command, Stdio};
+use std::thread::JoinHandle;
 
 use captain_core::extension::{BridgeEvent, BridgeStream, exec_result};
-use futures::channel::mpsc::{self, UnboundedReceiver, UnboundedSender};
+use futures::channel::mpsc::{self, UnboundedSender};
 use futures::channel::oneshot;
-use futures::{FutureExt, Stream, StreamExt};
+use futures::{FutureExt, StreamExt};
+
+use crate::child::{Guarded, SharedChild};
+use crate::process::drain;
 
 /// Runs `command` to the end and answers with an `ExecResult`.
 pub fn run(mut command: Command, cmd: String) -> BridgeStream {
     let (tx, rx) = oneshot::channel();
+    let answer = rx
+        .map(|event| event.unwrap_or_else(|_| BridgeEvent::error("the command stopped")))
+        .into_stream();
+    let mut child = match spawn(&mut command) {
+        Ok(child) => child,
+        Err(error) => {
+            tx.send(BridgeEvent::error(format!("cannot run {cmd}: {error}")))
+                .ok();
+            return answer.boxed();
+        }
+    };
+    let stdout = drain(child.stdout.take());
+    let stderr = drain(child.stderr.take());
+    let child = SharedChild::new(child);
+    let waiter = child.clone();
     std::thread::spawn(move || {
-        command.stdin(Stdio::null());
-        let event = match command.output() {
-            Ok(output) => exec_result(
+        let stdout = stdout.join().unwrap_or_default();
+        let stderr = stderr.join().unwrap_or_default();
+        let event = match waiter.wait() {
+            Ok(status) => exec_result(
                 &cmd,
-                output.status.code().unwrap_or(-1),
-                String::from_utf8_lossy(&output.stdout).into_owned(),
-                String::from_utf8_lossy(&output.stderr).into_owned(),
+                status.code().unwrap_or(-1),
+                String::from_utf8_lossy(&stdout).into_owned(),
+                String::from_utf8_lossy(&stderr).into_owned(),
             ),
-            Err(error) => BridgeEvent::error(format!("cannot run {cmd}: {error}")),
+            Err(error) => BridgeEvent::error(format!("{cmd} stopped: {error}")),
         };
         tx.send(event).ok();
     });
-    rx.map(|event| event.unwrap_or_else(|_| BridgeEvent::error("the command stopped")))
-        .into_stream()
-        .boxed()
+    Guarded::new(answer, child).boxed()
 }
 
 /// Runs `command` and answers with each output line, then the exit code.
 pub fn stream(mut command: Command, cmd: String) -> BridgeStream {
     let (tx, rx) = mpsc::unbounded();
-    command
-        .stdin(Stdio::null())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped());
-    let mut child = match command.spawn() {
+    let mut child = match spawn(&mut command) {
         Ok(child) => child,
         Err(error) => {
             tx.unbounded_send(BridgeEvent::error(format!("cannot run {cmd}: {error}")))
@@ -58,27 +69,35 @@ pub fn stream(mut command: Command, cmd: String) -> BridgeStream {
             .take()
             .map(|pipe| forward(pipe, true, tx.clone())),
     ];
-    let child = Arc::new(Mutex::new(Some(child)));
+    let child = SharedChild::new(child);
     let waiter = child.clone();
     std::thread::spawn(move || {
         for reader in readers.into_iter().flatten() {
             reader.join().ok();
         }
-        let child = waiter.lock().ok().and_then(|mut child| child.take());
-        let code = child
-            .and_then(|mut child| child.wait().ok())
+        let code = waiter
+            .wait()
+            .ok()
             .and_then(|status| status.code())
             .unwrap_or(-1);
         tx.unbounded_send(BridgeEvent::Exit(code)).ok();
     });
-    Running { rx, child }.boxed()
+    Guarded::new(rx, child).boxed()
+}
+
+fn spawn(command: &mut Command) -> std::io::Result<std::process::Child> {
+    command
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
 }
 
 fn forward(
     pipe: impl Read + Send + 'static,
     stderr: bool,
     tx: UnboundedSender<BridgeEvent>,
-) -> std::thread::JoinHandle<()> {
+) -> JoinHandle<()> {
     std::thread::spawn(move || {
         for line in BufReader::new(pipe).lines() {
             let Ok(line) = line else {
@@ -92,30 +111,4 @@ fn forward(
             }
         }
     })
-}
-
-/// The events of a streaming command. Dropping it kills the command.
-struct Running {
-    rx: UnboundedReceiver<BridgeEvent>,
-    child: Arc<Mutex<Option<Child>>>,
-}
-
-impl Stream for Running {
-    type Item = BridgeEvent;
-
-    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        self.rx.poll_next_unpin(cx)
-    }
-}
-
-impl Drop for Running {
-    fn drop(&mut self) {
-        // The waiting thread takes the child after it exits; a running one is killed
-        // here, which ends its pipes and lets that thread reap it.
-        if let Ok(mut child) = self.child.lock()
-            && let Some(child) = child.as_mut()
-        {
-            child.kill().ok();
-        }
-    }
 }

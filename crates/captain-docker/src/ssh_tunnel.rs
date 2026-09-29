@@ -15,6 +15,10 @@ use std::time::{Duration, Instant};
 
 use captain_core::ssh::SshTarget;
 
+mod slot;
+
+use slot::{Slot, open_in};
+
 /// How long `ssh` may take to log in and open the local socket.
 const READY_TIMEOUT: Duration = Duration::from_secs(40);
 /// How often the supervisor checks that `ssh` still runs.
@@ -24,7 +28,7 @@ const FIRST_RESTART: Duration = Duration::from_secs(1);
 const MAX_RESTART: Duration = Duration::from_secs(30);
 
 /// The one tunnel Captain keeps open.
-static ACTIVE: Mutex<Option<SshTunnel>> = Mutex::new(None);
+static ACTIVE: Mutex<Slot> = Mutex::new(Slot::new());
 /// Numbers the tunnel directories of this process.
 static NEXT_DIR: AtomicU32 = AtomicU32::new(0);
 
@@ -35,27 +39,18 @@ pub fn open_ssh_tunnel(target: &SshTarget) -> Result<PathBuf, String> {
     if !cfg!(unix) {
         return Err("Captain reaches engines over SSH on macOS and Linux only.".into());
     }
-    let old = {
-        let mut active = ACTIVE.lock().unwrap_or_else(PoisonError::into_inner);
-        if let Some(tunnel) = active.as_ref().filter(|tunnel| tunnel.target == *target) {
-            return Ok(tunnel.socket.clone());
-        }
-        active.take()
-    };
-    drop(old);
-    let tunnel = SshTunnel::start("ssh".into(), target.clone(), &std::env::temp_dir())?;
-    let socket = tunnel.socket.clone();
-    let replaced = ACTIVE
-        .lock()
-        .unwrap_or_else(PoisonError::into_inner)
-        .replace(tunnel);
-    drop(replaced);
-    Ok(socket)
+    open_in(&ACTIVE, target, || {
+        SshTunnel::start("ssh".into(), target.clone(), &std::env::temp_dir())
+    })
 }
 
-/// Stops the open tunnel, if there is one.
+/// Stops the open tunnel, if there is one. A start still in progress stops too.
 pub fn close_ssh_tunnel() {
-    let tunnel = ACTIVE.lock().unwrap_or_else(PoisonError::into_inner).take();
+    let tunnel = {
+        let mut slot = Slot::lock(&ACTIVE);
+        slot.generation += 1;
+        slot.tunnel.take()
+    };
     drop(tunnel);
 }
 

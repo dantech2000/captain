@@ -20,6 +20,6 @@ pub use extensions_view::ExtensionsView;
 mod unsupported;
 
 #[cfg(not(target_os = "macos"))]
-use unsupported::{CAN_OPEN, close_window, open_window};
+use unsupported::{CAN_OPEN, close_all_windows, close_window, open_window};
 #[cfg(target_os = "macos")]
-use window::{CAN_OPEN, close_window, open_window};
+use window::{CAN_OPEN, close_all_windows, close_window, open_window};

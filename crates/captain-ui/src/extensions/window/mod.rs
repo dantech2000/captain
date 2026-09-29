@@ -7,4 +7,4 @@ mod protocol;
 mod registry;
 mod webview;
 
-pub use registry::{CAN_OPEN, close_window, open_window};
+pub use registry::{CAN_OPEN, close_all_windows, close_window, open_window};

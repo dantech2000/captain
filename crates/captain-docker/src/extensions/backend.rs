@@ -6,7 +6,7 @@ use std::path::Path;
 use std::process::Command;
 
 use bollard::Docker;
-use bollard::query_parameters::ListContainersOptionsBuilder;
+use bollard::query_parameters::{ListContainersOptionsBuilder, ListVolumesOptionsBuilder};
 use captain_core::EngineError;
 use captain_core::extension::{
     Backend, COMPOSE_FILE, InstalledExtension, PROXY_PORT, PROXY_SERVICE, image_project,
@@ -38,7 +38,7 @@ pub async fn up(
         Backend::Image(image) => image_project(id, &image, socket),
         Backend::Compose(file) => {
             let name = captain_core::extension::binary_name(&file).to_string();
-            let mut command = compose(context, &extension.image, &dir)?;
+            let mut command = compose(context, extension.pinned_image(), &dir)?;
             command.args(["-f", &name, "config", "--format", "json"]);
             let config: Value = serde_json::from_str(&run(command).await?).map_err(|error| {
                 EngineError::Api(format!("cannot read the Compose file: {error}"))
@@ -48,7 +48,7 @@ pub async fn up(
     };
     let text = serde_json::to_string_pretty(&project).unwrap_or_default();
     std::fs::write(dir.join(COMPOSE_FILE), text).map_err(files::io_error)?;
-    let mut command = compose(context, &extension.image, &dir)?;
+    let mut command = compose(context, extension.pinned_image(), &dir)?;
     command.args([
         "-p",
         &project_name(id),
@@ -76,6 +76,28 @@ pub async fn down(context: &Context, id: &str, volumes: bool) -> Result<(), Engi
         command.arg("--volumes");
     }
     run(command).await.map(drop)
+}
+
+/// Whether the engine has a container or a volume of the extension's project.
+pub async fn exists(docker: &Docker, id: &str) -> Result<bool, EngineError> {
+    let label = format!("{PROJECT_LABEL}={}", project_name(id));
+    let filters = HashMap::from([("label", vec![label.as_str()])]);
+    let options = ListContainersOptionsBuilder::default()
+        .all(true)
+        .filters(&filters)
+        .build();
+    let containers = docker
+        .list_containers(Some(options))
+        .await
+        .map_err(mapping::engine_error)?;
+    let options = ListVolumesOptionsBuilder::default()
+        .filters(&filters)
+        .build();
+    let volumes = docker
+        .list_volumes(Some(options))
+        .await
+        .map_err(mapping::engine_error)?;
+    Ok(!containers.is_empty() || volumes.volumes.is_some_and(|v| !v.is_empty()))
 }
 
 fn compose(context: &Context, image: &str, dir: &Path) -> Result<Command, EngineError> {

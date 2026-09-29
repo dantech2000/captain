@@ -43,6 +43,10 @@ pub struct InstalledExtension {
     /// Unix seconds.
     #[serde(default)]
     pub installed: u64,
+    /// The engine that runs the backend, as a `DOCKER_HOST` value or the `ssh://`
+    /// URL. Empty for older installs, which every engine lists.
+    #[serde(default)]
+    pub engine: String,
 }
 
 impl InstalledExtension {
@@ -56,6 +60,17 @@ impl InstalledExtension {
             metadata: candidate.metadata,
             binaries,
             installed,
+            engine: String::new(),
+        }
+    }
+
+    /// The image ID when Captain recorded one, else the reference. Install copies
+    /// files from it and the backend runs it, so a pull that moves the tag later
+    /// does not change the extension.
+    pub fn pinned_image(&self) -> &str {
+        match self.image_id.as_str() {
+            "" => &self.image,
+            id => id,
         }
     }
 
@@ -92,3 +107,6 @@ impl InstalledExtension {
 pub fn binary_name(path: &str) -> &str {
     path.rsplit(['/', '\\']).next().unwrap_or(path)
 }
+
+#[cfg(test)]
+mod tests;

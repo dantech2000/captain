@@ -8,3 +8,15 @@ pub fn engine_error(error: Error) -> EngineError {
         other => EngineError::Unreachable(other.to_string()),
     }
 }
+
+/// `None` when the engine answers 404 because the object does not exist. Any other
+/// error stays an error.
+pub fn found<T>(result: Result<T, Error>) -> Result<Option<T>, EngineError> {
+    match result {
+        Ok(value) => Ok(Some(value)),
+        Err(Error::DockerResponseServerError {
+            status_code: 404, ..
+        }) => Ok(None),
+        Err(error) => Err(engine_error(error)),
+    }
+}

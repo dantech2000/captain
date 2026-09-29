@@ -94,7 +94,15 @@ fn card(
     let rows = group.items.iter().map(|network| {
         let selected = view.selected.as_deref() == Some(network.id.as_str());
         let removing = view.removing.contains(&network.id);
-        network_row::render(network, selected, removing, handle, palette).into_any_element()
+        network_row::render(
+            network,
+            selected,
+            removing,
+            view.generation,
+            handle,
+            palette,
+        )
+        .into_any_element()
     });
     group_card(group.project.as_deref(), summary, rows, palette)
 }
