@@ -3,23 +3,15 @@ use std::path::PathBuf;
 use super::Endpoint;
 
 #[test]
-fn parses_unix_socket() {
+fn parses_each_supported_scheme() {
     assert_eq!(
         Endpoint::parse("unix:///var/run/docker.sock"),
         Ok(Endpoint::Unix(PathBuf::from("/var/run/docker.sock")))
     );
-}
-
-#[test]
-fn parses_named_pipe() {
     assert_eq!(
         Endpoint::parse("npipe:////./pipe/docker_engine"),
         Ok(Endpoint::NamedPipe("//./pipe/docker_engine".into()))
     );
-}
-
-#[test]
-fn parses_tcp() {
     assert_eq!(
         Endpoint::parse("tcp://10.0.0.5:2375"),
         Ok(Endpoint::Tcp("tcp://10.0.0.5:2375".into()))

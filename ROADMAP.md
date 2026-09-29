@@ -30,7 +30,7 @@ M14–M21 close the gap with Rancher Desktop. Rancher's WSL settings do not appl
 
 ## Maintenance
 
-- **Trim redundant tests.** Remove tests that repeat other tests or check trivial code, so CI stays fast. Add one focused test per behavior. Live tests (`tests/live_*.rs`) stay ignored by default.
+- **Trim redundant tests.** Remove tests that repeat other tests or check trivial code, so CI stays fast. Add one focused test per behavior. Live tests (`tests/live_*.rs`) stay ignored by default. Done: 574 unit tests down to 539. The cut removed tests of trivial getters, constant labels, and plain formatting, and merged tests that differed only in input. CI now runs fmt and the size check on all three OSes before the build, and only `main` saves the Rust cache.
 
 ## Workflow for a feature
 

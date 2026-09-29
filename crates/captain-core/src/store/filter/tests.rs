@@ -17,12 +17,6 @@ fn container(state: ContainerState) -> Container {
 }
 
 #[test]
-fn all_matches_everything() {
-    assert!(ContainerFilter::All.matches(&container(ContainerState::Exited)));
-    assert!(ContainerFilter::All.matches(&container(ContainerState::Running)));
-}
-
-#[test]
 fn running_matches_active_states() {
     assert!(ContainerFilter::Running.matches(&container(ContainerState::Paused)));
     assert!(!ContainerFilter::Running.matches(&container(ContainerState::Exited)));

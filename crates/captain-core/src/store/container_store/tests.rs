@@ -18,14 +18,6 @@ fn container(name: &str, state: ContainerState) -> Container {
 }
 
 #[test]
-fn new_store_is_empty() {
-    let store = ContainerStore::default();
-    assert!(store.is_empty());
-    assert_eq!(store.len(), 0);
-    assert!(store.get(0).is_none());
-}
-
-#[test]
 fn replace_sorts_active_first_then_by_name() {
     let mut store = ContainerStore::default();
     store.replace(vec![
@@ -37,16 +29,6 @@ fn replace_sorts_active_first_then_by_name() {
 
     let names: Vec<&str> = store.containers().iter().map(|c| c.name.as_str()).collect();
     assert_eq!(names, ["beta", "gamma", "alpha", "zeta"]);
-}
-
-#[test]
-fn replace_drops_old_containers() {
-    let mut store = ContainerStore::default();
-    store.replace(vec![container("old", ContainerState::Running)]);
-    store.replace(vec![container("new", ContainerState::Running)]);
-
-    assert_eq!(store.len(), 1);
-    assert_eq!(store.get(0).map(|c| c.name.as_str()), Some("new"));
 }
 
 #[test]

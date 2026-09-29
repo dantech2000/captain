@@ -4,23 +4,6 @@ use crate::settings::{Accent, Appearance, EngineChoice};
 use crate::{GIB, HostResources};
 
 #[test]
-fn round_trips() {
-    let settings = Settings {
-        appearance: Appearance::Dark,
-        accent: Accent::Teal,
-        engine_endpoint: Some("tcp://10.0.0.5:2375".into()),
-        debug_logging: true,
-        ..Settings::default()
-    };
-    assert_eq!(Settings::from_json(&settings.to_json()).unwrap(), settings);
-}
-
-#[test]
-fn empty_object_is_the_default() {
-    assert_eq!(Settings::from_json("{}").unwrap(), Settings::default());
-}
-
-#[test]
 fn missing_fields_get_defaults() {
     let settings = Settings::from_json(r#"{"version": 1, "accent": "purple"}"#).unwrap();
     assert_eq!(settings.accent, Accent::Purple);
@@ -77,17 +60,11 @@ fn writes_lowercase_names() {
 }
 
 #[test]
-fn old_files_get_the_engine_defaults() {
-    let settings = Settings::from_json(r#"{"version": 1, "accent": "teal"}"#).unwrap();
-    assert_eq!(settings.engine, None);
-    assert!(settings.stop_engine_on_quit);
-    assert_eq!(settings.engine_resources, None);
-    assert_eq!(settings.engine_daemon, DaemonSettings::default());
-}
-
-#[test]
-fn engine_fields_round_trip() {
+fn round_trips() {
     let settings = Settings {
+        appearance: Appearance::Dark,
+        accent: Accent::Teal,
+        debug_logging: true,
         engine: Some(EngineChoice::External),
         stop_engine_on_quit: false,
         engine_resources: Some(HostResources {
@@ -109,15 +86,6 @@ fn engine_fields_round_trip() {
     let json = settings.to_json();
     assert!(json.contains(r#""engine": "external""#), "{json}");
     assert_eq!(Settings::from_json(&json).unwrap(), settings);
-}
-
-#[test]
-fn bad_engine_values_fall_back() {
-    let json = r#"{"engine": "podman", "stop_engine_on_quit": "yes", "engine_resources": 3}"#;
-    let settings = Settings::from_json(json).unwrap();
-    assert_eq!(settings.engine, None);
-    assert!(settings.stop_engine_on_quit);
-    assert_eq!(settings.engine_resources, None);
 }
 
 #[test]

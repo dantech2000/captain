@@ -5,21 +5,19 @@ on:
     branches: [main]
   pull_request:
 
+# A new push to a pull request cancels the run for the older commit.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 env:
   CARGO_TERM_COLOR: always
   RUSTFLAGS: -D warnings
+  # Line tables keep file:line in test backtraces but make the target dir, and so
+  # the cache, much smaller than full debug info.
+  CARGO_PROFILE_DEV_DEBUG: line-tables-only
 
 jobs:
-  lint:
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@1.98
-        with:
-          components: rustfmt
-      - run: cargo fmt --all --check
-      - run: scripts/check-file-size.sh
-
   check:
     strategy:
       fail-fast: false
@@ -30,7 +28,11 @@ jobs:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@1.98
         with:
-          components: clippy
+          components: rustfmt, clippy
+      # The fast checks run first, so a format or size error fails in seconds.
+      - run: cargo fmt --all --check
+      - run: scripts/check-file-size.sh
+        shell: bash
       - name: Install Linux dependencies
         if: runner.os == 'Linux'
         run: |
@@ -38,6 +40,10 @@ jobs:
           sudo apt-get install -y gcc g++ clang libfontconfig-dev libwayland-dev \
             libwebkit2gtk-4.1-dev libxkbcommon-x11-dev libx11-xcb-dev \
             libssl-dev libzstd-dev vulkan-validationlayers libvulkan1
+      # One cache per OS. Only main saves it, so pull requests restore main's cache
+      # and do not evict it from the 10 GB limit.
       - uses: Swatinem/rust-cache@v2
+        with:
+          save-if: ${{ github.ref == 'refs/heads/main' }}
       - run: cargo clippy --workspace --all-targets
       - run: cargo test --workspace

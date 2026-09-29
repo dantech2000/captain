@@ -17,9 +17,3 @@ fn groups_by_project_with_standalone_last() {
     let standalone: Vec<_> = groups[2].items.iter().map(|i| i.0).collect();
     assert_eq!(standalone, ["a", "e"]);
 }
-
-#[test]
-fn no_items_give_no_groups() {
-    let items: [(&str, Option<&str>); 0] = [];
-    assert!(group_by_project(&items, |item| item.1).is_empty());
-}

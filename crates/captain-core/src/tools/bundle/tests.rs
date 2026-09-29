@@ -58,11 +58,6 @@ fn falls_back_when_the_bundled_copy_is_missing() {
 }
 
 #[test]
-fn nothing_found() {
-    assert_eq!(locate_tool("docker", None, None, [], |_| false), None);
-}
-
-#[test]
 fn the_cli_in_resources_bin_finds_the_same_bundle() {
     let cli = Path::new("/Applications/Captain.app/Contents/Resources/bin/captain");
     assert_eq!(Bundle::from_exe(cli), Some(bundle()));

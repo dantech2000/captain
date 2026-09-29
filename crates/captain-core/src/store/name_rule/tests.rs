@@ -26,11 +26,3 @@ fn rejects_bad_characters_and_names_the_first_one() {
     assert_eq!(validate_name("a/b:c"), Err(NameError::BadChar('/')));
     assert_eq!(validate_name("café"), Err(NameError::BadChar('é')));
 }
-
-#[test]
-fn errors_read_as_hints() {
-    assert_eq!(
-        NameError::BadChar('/').to_string(),
-        "\"/\" is not allowed. Use letters, digits, _, ., or -"
-    );
-}

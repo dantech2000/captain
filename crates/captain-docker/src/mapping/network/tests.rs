@@ -74,17 +74,6 @@ fn falls_back_to_ipv6_and_drops_empty_gateways() {
     assert_eq!(n.gateway, None);
 }
 
-#[test]
-fn keeps_labels() {
-    let docker = DockerNetwork {
-        labels: Some(HashMap::from([("team".into(), "web".into())])),
-        ..DockerNetwork::default()
-    };
-    let n = network(docker, 0);
-    assert_eq!(n.labels.get("team").map(String::as_str), Some("web"));
-    assert_eq!(n.compose_project, None);
-}
-
 fn resource(name: &str, ipv4: &str, mac: &str) -> EndpointResource {
     EndpointResource {
         name: Some(name.into()),

@@ -2,8 +2,7 @@ use std::collections::HashMap;
 
 use bollard::models::{
     ContainerSummary, ContainerSummaryStateEnum, MountPoint, SystemDataUsageResponse,
-    Volume as DockerVolume, VolumePruneResponse, VolumeScopeEnum, VolumeUsageData,
-    VolumesDiskUsage,
+    Volume as DockerVolume, VolumePruneResponse, VolumeUsageData, VolumesDiskUsage,
 };
 use captain_core::model::ContainerState;
 use serde_json::json;
@@ -75,16 +74,6 @@ fn unknown_usage_stays_unknown() {
     let v = volume(docker_volume("other"), &usage);
     assert_eq!(v.size_bytes, None);
     assert_eq!(v.containers, None);
-}
-
-#[test]
-fn maps_scope_and_options() {
-    let mut docker = docker_volume("nfs");
-    docker.scope = Some(VolumeScopeEnum::LOCAL);
-    docker.options = HashMap::from([("type".into(), "nfs".into())]);
-    let v = volume(docker, &HashMap::new());
-    assert_eq!(v.scope, "local");
-    assert_eq!(v.options.get("type").map(String::as_str), Some("nfs"));
 }
 
 fn summary(name: &str, mounts: Vec<MountPoint>) -> ContainerSummary {

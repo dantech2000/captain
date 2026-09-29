@@ -20,8 +20,3 @@ fn rejects_bad_ports() {
         assert_eq!(ExposedPort::parse(text), None, "{text}");
     }
 }
-
-#[test]
-fn displays_like_the_engine() {
-    assert_eq!(port(443, "tcp").to_string(), "443/tcp");
-}

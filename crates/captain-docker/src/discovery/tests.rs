@@ -110,9 +110,3 @@ fn candidates_drop_duplicates() {
     assert_eq!(found.len(), 1);
     assert_eq!(found[0].source, CandidateSource::DockerHost);
 }
-
-#[cfg(unix)]
-#[test]
-fn candidates_empty_when_nothing_exists() {
-    assert!(candidates(&input(None), |_| false).is_empty());
-}

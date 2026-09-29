@@ -2,14 +2,6 @@ use super::ContainerAction;
 use crate::model::ContainerState;
 
 #[test]
-fn labels_match_the_buttons() {
-    assert_eq!(ContainerAction::Pause.label(), "Pause");
-    assert_eq!(ContainerAction::Unpause.label(), "Resume");
-    assert_eq!(ContainerAction::Remove.label(), "Delete");
-    assert_eq!(ContainerAction::ForceRemove.label(), "Stop and delete");
-}
-
-#[test]
 fn toggle_stops_live_containers_and_starts_the_rest() {
     assert_eq!(
         ContainerAction::toggle_for(ContainerState::Running),

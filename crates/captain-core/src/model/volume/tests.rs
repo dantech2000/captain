@@ -42,15 +42,6 @@ fn usage_follows_the_container_count() {
 }
 
 #[test]
-fn created_date_is_the_date_part() {
-    let mut v = volume("a", None);
-    v.created = "2026-09-28T10:11:12Z".into();
-    assert_eq!(v.created_date(), "2026-09-28");
-    v.created = "bad".into();
-    assert_eq!(v.created_date(), "bad");
-}
-
-#[test]
 fn anonymous_label_or_hex_name_means_pruned_by_default() {
     let mut labelled = volume("tmp", Some(0));
     labelled

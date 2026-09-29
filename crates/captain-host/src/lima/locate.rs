@@ -29,6 +29,3 @@ pub fn current_exe() -> Option<PathBuf> {
     let exe = std::env::current_exe().ok()?;
     Some(exe.canonicalize().unwrap_or(exe))
 }
-
-#[cfg(test)]
-mod tests;

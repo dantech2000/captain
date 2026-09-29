@@ -26,13 +26,6 @@ fn store() -> ImageStore {
 }
 
 #[test]
-fn new_store_is_empty() {
-    let store = ImageStore::default();
-    assert!(store.is_empty());
-    assert_eq!(store.total_size(), 0);
-}
-
-#[test]
 fn tagged_images_come_first_by_name_then_untagged_newest_first() {
     let store = store();
     let ids: Vec<_> = store.images().iter().map(|i| i.id.as_str()).collect();
@@ -60,11 +53,4 @@ fn sizes_add_up() {
     assert_eq!(store.total_size(), 275);
     // `e` is dangling but in use, so pruning keeps it.
     assert_eq!(store.dangling_size(), 30);
-}
-
-#[test]
-fn find_by_id() {
-    let store = store();
-    assert_eq!(store.find("b").map(|i| i.size), Some(200));
-    assert!(store.find("z").is_none());
 }

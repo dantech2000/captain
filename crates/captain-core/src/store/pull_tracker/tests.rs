@@ -6,14 +6,6 @@ fn close(a: f32, b: f32) -> bool {
 }
 
 #[test]
-fn starts_empty() {
-    let tracker = PullTracker::new("busybox:latest");
-    assert_eq!(tracker.reference(), "busybox:latest");
-    assert_eq!(tracker.fraction(), 0.0);
-    assert_eq!(tracker.layer_counts(), (0, 0));
-}
-
-#[test]
 fn status_messages_update_the_status_line() {
     let mut tracker = PullTracker::new("nginx:latest");
     tracker.apply(&PullProgress {

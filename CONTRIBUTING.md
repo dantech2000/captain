@@ -30,6 +30,16 @@ Small files are easier to read and review.
 - Put unit tests in a sibling file: `foo.rs` declares `#[cfg(test)] mod tests;` and the tests live in `foo/tests.rs`.
 - Split a large view into sub-components, each in its own file.
 
+## Tests
+
+CI runs every test on three OSes, so keep the suite small and fast.
+
+- Write one focused test per behavior. Put the edge cases of that behavior in the same test.
+- Do not test derives, plain getters, constant labels, or formatting that a higher-level test already checks.
+- Do not repeat a `captain-core` test in `captain-docker`, `captain-host`, or `captain-ui`. Test only what that layer adds.
+- Always test parsing, merge rules, and safety checks: privileged commands, deletion, `daemon.json`, migration, switch-over, snapshots, and locks.
+- Live tests that need an engine or a VM go in `crates/*/tests/live_*.rs` and stay `#[ignore]`d. Run them by hand with `cargo test -- --ignored`.
+
 ## Docs
 
 - A new feature starts with a spec in `docs/features/`. Copy the format of an existing one.
