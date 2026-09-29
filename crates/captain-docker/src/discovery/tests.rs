@@ -1,4 +1,6 @@
-use std::path::{Path, PathBuf};
+#[cfg(unix)]
+use std::path::Path;
+use std::path::PathBuf;
 
 use super::{DiscoveryError, DiscoveryInput, discover};
 use crate::Endpoint;
@@ -45,5 +47,15 @@ fn nothing_found_is_an_error() {
     assert_eq!(
         discover(&input(None), |_| false),
         Err(DiscoveryError::NotFound)
+    );
+}
+
+#[cfg(windows)]
+#[test]
+fn windows_falls_back_to_named_pipe() {
+    let endpoint = discover(&input(None), |_| false);
+    assert_eq!(
+        endpoint,
+        Ok(Endpoint::NamedPipe("//./pipe/docker_engine".into()))
     );
 }
