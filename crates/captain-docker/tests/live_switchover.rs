@@ -18,7 +18,8 @@ use bollard::query_parameters::{
 };
 use bollard::{API_DEFAULT_VERSION, Docker};
 use captain_core::migration::{MigrationItem, MigrationSession, SwitchOverStep, TransferEvent};
-use captain_docker::{DiscoveryInput, DockerSession, Endpoint, discover};
+use captain_core::model::ComposeProject;
+use captain_docker::{ComposeCli, DiscoveryInput, DockerSession, Endpoint, discover};
 use futures::executor::block_on;
 use futures::{StreamExt, TryStreamExt};
 use tokio::runtime::Runtime;
@@ -168,6 +169,30 @@ impl Fixture {
             docker.create_volume(request).await.map(|_| ())
         })
         .expect("volume");
+    }
+
+    /// `compose up` the way a Captain copy does: every container gets the label.
+    fn up_labeled(&self) {
+        let cli = ComposeCli::detect(&endpoint()).expect("compose CLI");
+        let project = ComposeProject {
+            name: PROJECT.into(),
+            working_dir: Some(self.dir.display().to_string()),
+            config_files: vec!["compose.yaml".into()],
+            services: Vec::new(),
+        };
+        let id = self.block(self.docker.info()).expect("info").id;
+        let labels = HashMap::from([(MIGRATED_FROM.to_string(), id.unwrap_or_default())]);
+        block_on(cli.up_labeled(&project, &[], labels)).expect("labeled up");
+        let web = self.block(
+            self.docker
+                .inspect_container(&format!("{PROJECT}-web-1"), None),
+        );
+        let labels = web
+            .expect("web")
+            .config
+            .and_then(|c| c.labels)
+            .unwrap_or_default();
+        assert!(labels.contains_key(MIGRATED_FROM));
     }
 
     fn running(&self, name: &str) -> Option<bool> {
@@ -343,7 +368,16 @@ fn switches_a_project_over_without_its_profile_services() {
         .expect("the project");
     assert!(item.can_switch_over());
 
-    // One engine is both sides, so the project's own containers stop and start.
+    // One engine is both sides. Its containers came from `compose up`, not from
+    // Captain, so the switch-over refuses them and stops nothing.
+    let refused: Result<Vec<TransferEvent>, _> =
+        block_on(session.switch_over(&item, false).try_collect());
+    let error = refused.expect_err("refused").to_string();
+    assert!(error.contains("Captain did not copy it"), "{error}");
+    assert_eq!(fixture.running(&format!("{PROJECT}-web-1")), Some(true));
+
+    // Recreated with Captain's label, as a Compose copy does, it switches over.
+    fixture.up_labeled();
     let events: Vec<TransferEvent> =
         block_on(session.switch_over(&item, false).try_collect()).expect("switch over");
     assert_eq!(steps(&events), (SwitchOverStep::SEQUENCE.to_vec(), true));

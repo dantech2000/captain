@@ -126,7 +126,9 @@ impl RunDialog {
                 return;
             }
         };
-        let Some(engine) = self.state.read(cx).engine.clone() else {
+        let state = self.state.read(cx);
+        let generation = state.generation();
+        let Some(engine) = state.engine.clone() else {
             return;
         };
         self.busy = true;
@@ -142,7 +144,8 @@ impl RunDialog {
                 match result {
                     Ok(id) => {
                         let name = name.unwrap_or_else(|| id[..id.len().min(12)].to_string());
-                        state.update(cx, |state, cx| state.set_started(Started { id, name }, cx));
+                        let started = Started { id, name };
+                        state.update(cx, |state, cx| state.set_started(started, generation, cx));
                         window.close_dialog(cx);
                     }
                     Err(error) => {

@@ -150,4 +150,18 @@ fn runs_an_interactive_shell() {
         .expect("the shell exits")
     });
     assert_eq!(code, Ok(Some(3)));
+
+    // Dropping the output of an idle shell stops its reader at once, so the exit
+    // resolves as cancelled without waiting for more output.
+    let idle = fixture
+        .runtime
+        .block_on(engine.exec(&id, ExecSpec::shell(80, 24)))
+        .expect("exec");
+    drop(idle.output);
+    let exit = fixture
+        .runtime
+        .block_on(async { tokio::time::timeout(WAIT, idle.exit).await })
+        .expect("the reader stops");
+    assert!(exit.is_err(), "{exit:?}");
+    drop(idle.input);
 }

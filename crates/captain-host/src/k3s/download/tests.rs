@@ -1,6 +1,7 @@
 use captain_core::kubernetes::{K3sAssets, K3sVersion};
 
 use super::{ensure, sha256};
+use crate::cancel::Cancel;
 
 #[test]
 fn hashes_a_file() {
@@ -23,7 +24,10 @@ fn a_complete_folder_needs_no_download() {
     std::fs::write(folder.join(assets.binary), "").unwrap();
     std::fs::write(folder.join(assets.images), "").unwrap();
     let mut lines = Vec::new();
-    let found = ensure(&cache, &version, &assets, &mut |line| lines.push(line)).unwrap();
+    let found = ensure(&cache, &version, &assets, &Cancel::default(), &mut |line| {
+        lines.push(line)
+    })
+    .unwrap();
     assert_eq!(found, folder);
     assert!(lines.is_empty());
     std::fs::remove_dir_all(&cache).ok();

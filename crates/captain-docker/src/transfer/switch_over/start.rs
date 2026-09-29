@@ -10,6 +10,7 @@ use captain_core::model::ComposeProject;
 
 use super::super::compose::Project;
 use super::super::container::copy_container;
+use super::super::owner;
 use super::super::progress::Events;
 use super::super::source::SourceEngine;
 use crate::{ComposeCli, mapping};
@@ -67,7 +68,9 @@ pub async fn start(
                 config_files: project.config_files.to_vec(),
                 services: Vec::new(),
             };
-            cli.up_services(&compose, services).await?;
+            // Labeled, so a later switch-over knows that Captain created them.
+            let labels = owner::mark(None, &owner::origin(source).await?);
+            cli.up_labeled(&compose, services, labels).await?;
             project_containers(target, project.name, services).await
         }
         Start::Project {

@@ -1,14 +1,17 @@
 //! Runs `limactl`, always with Captain's own `LIMA_HOME`, so it never sees or
 //! changes the user's Lima VMs.
 
-use std::io::{BufRead, BufReader, Read, Write};
+use std::io::{BufRead, BufReader, Read};
 use std::path::{Path, PathBuf};
-use std::process::{Child, Command, Stdio};
-use std::sync::{Mutex, mpsc};
+use std::process::{Command, Stdio};
+use std::sync::mpsc;
+use std::time::Duration;
 
 use captain_core::HostError;
 
 use super::args::progress_line;
+use crate::cancel::Cancel;
+use crate::probe::output_within;
 
 /// A `limactl` binary and the `LIMA_HOME` it runs with.
 #[derive(Debug, Clone)]
@@ -59,34 +62,34 @@ impl Limactl {
         finish(output)
     }
 
-    /// Like [`Limactl::output`], with `input` on standard input.
-    pub fn output_with_input(&self, args: &[String], input: &str) -> Result<String, HostError> {
-        let mut child = self
-            .command(args)?
-            .stdin(Stdio::piped())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .spawn()
-            .map_err(|error| spawn_error(&self.binary, error))?;
-        if let Some(mut stdin) = child.stdin.take() {
-            stdin
-                .write_all(input.as_bytes())
-                .map_err(|error| HostError(error.to_string()))?;
-        }
-        let output = child
-            .wait_with_output()
-            .map_err(|error| HostError(error.to_string()))?;
+    /// Like [`Limactl::output`], but it gives up after `timeout`, for the quick
+    /// status checks that must not hang the status.
+    pub fn output_within(&self, args: &[String], timeout: Duration) -> Result<String, HostError> {
+        let output = output_within(self.command(args)?, timeout)
+            .map_err(|error| HostError(format!("limactl {}: {error}", args.join(" "))))?;
         finish(output)
     }
 
+    /// Like [`Limactl::output`], but `cancel` can kill it, with `input` on standard
+    /// input.
+    pub fn run(
+        &self,
+        args: &[String],
+        input: Option<&str>,
+        cancel: &Cancel,
+    ) -> Result<String, HostError> {
+        finish(cancel.output(self.command(args)?, input)?)
+    }
+
     /// Runs `args`, passes each progress line to `sink`, and blocks until it exits.
-    /// The child waits in `running`, so another thread can kill it.
+    /// The child waits in `cancel`, so another thread can kill it.
     pub fn stream(
         &self,
         args: &[String],
-        running: &Mutex<Option<Child>>,
+        cancel: &Cancel,
         sink: &mut dyn FnMut(String),
     ) -> Result<(), HostError> {
+        cancel.check()?;
         let mut child = self
             .command(args)?
             .stdout(Stdio::piped())
@@ -99,7 +102,7 @@ impl Limactl {
             child.stderr.take().map(|err| read_lines(err, tx.clone())),
         ];
         drop(tx);
-        *lock(running) = Some(child);
+        cancel.hold(child);
 
         let mut last = None;
         for line in rx.iter().filter_map(|raw: String| progress_line(&raw)) {
@@ -109,7 +112,7 @@ impl Limactl {
         for reader in readers.into_iter().flatten() {
             reader.join().ok();
         }
-        let status = match lock(running).take() {
+        let status = match cancel.take() {
             Some(mut child) => child.wait().map_err(|error| HostError(error.to_string()))?,
             None => return Err(HostError("Stopped.".into())),
         };
@@ -118,13 +121,6 @@ impl Limactl {
         } else {
             Err(failure(last))
         }
-    }
-}
-
-/// Kills the child waiting in `running`, if any.
-pub fn kill(running: &Mutex<Option<Child>>) {
-    if let Some(child) = lock(running).as_mut() {
-        child.kill().ok();
     }
 }
 
@@ -140,12 +136,6 @@ fn read_lines(
             }
         }
     })
-}
-
-fn lock<T>(mutex: &Mutex<T>) -> std::sync::MutexGuard<'_, T> {
-    mutex
-        .lock()
-        .unwrap_or_else(|poisoned| poisoned.into_inner())
 }
 
 /// The standard output of a finished `limactl`, or its last error line.

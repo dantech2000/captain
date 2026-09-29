@@ -4,6 +4,7 @@
 use std::collections::HashMap;
 use std::path::Path;
 use std::process::Command;
+use std::time::Duration;
 
 use bollard::Docker;
 use bollard::query_parameters::{ListContainersOptionsBuilder, ListVolumesOptionsBuilder};
@@ -18,11 +19,14 @@ use super::files;
 use super::manager::Context;
 use crate::compose::error_message;
 use crate::mapping;
+use crate::process::output_within;
 
 const PROJECT_LABEL: &str = "com.docker.compose.project";
 const SERVICE_LABEL: &str = "com.docker.compose.service";
 /// Docker Desktop sets this for extension Compose files.
 const IMAGE_VARIABLE: &str = "DESKTOP_PLUGIN_IMAGE";
+/// How long one `compose` step may take. `up` may pull the backend's images.
+const COMPOSE_TIMEOUT: Duration = Duration::from_secs(15 * 60);
 
 /// Writes the project file and runs `compose up -d`.
 pub async fn up(
@@ -62,16 +66,19 @@ pub async fn up(
 }
 
 /// Stops the project and removes its containers, and its volumes too with
-/// `volumes`. Compose finds them by the project label, so the file is not needed.
+/// `volumes`. Compose finds them by the project label.
 pub async fn down(context: &Context, id: &str, volumes: bool) -> Result<(), EngineError> {
     let mut command = context.docker_command()?;
-    command.args([
-        "compose",
-        "-p",
-        &project_name(id),
-        "down",
-        "--remove-orphans",
-    ]);
+    command.args(["compose", "-p", &project_name(id)]);
+    // Without `-f`, Compose looks for a file in the working folder and its parents,
+    // so it runs where `up` ran, on Captain's file, or where there is none.
+    let dir = context.paths.compose_dir(id);
+    if dir.join(COMPOSE_FILE).is_file() {
+        command.current_dir(&dir).args(["-f", COMPOSE_FILE]);
+    } else {
+        command.current_dir(std::env::temp_dir());
+    }
+    command.args(["down", "--remove-orphans"]);
     if volumes {
         command.arg("--volumes");
     }
@@ -110,12 +117,12 @@ fn compose(context: &Context, image: &str, dir: &Path) -> Result<Command, Engine
 }
 
 /// Runs `command` on a blocking thread. Returns stdout, or fails with the error line.
-async fn run(mut command: Command) -> Result<String, EngineError> {
-    command.stdin(std::process::Stdio::null());
-    let output = tokio::task::spawn_blocking(move || command.output())
+/// A command that runs past [`COMPOSE_TIMEOUT`] is killed.
+async fn run(command: Command) -> Result<String, EngineError> {
+    let output = tokio::task::spawn_blocking(move || output_within(command, COMPOSE_TIMEOUT))
         .await
         .map_err(|error| EngineError::Api(error.to_string()))?
-        .map_err(|error| EngineError::Api(format!("cannot run docker compose: {error}")))?;
+        .map_err(|error| EngineError::Api(format!("docker compose: {error}")))?;
     if output.status.success() {
         return Ok(String::from_utf8_lossy(&output.stdout).into_owned());
     }

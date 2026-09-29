@@ -4,7 +4,7 @@
 use captain_core::daemon::{DaemonSettings, DaemonState};
 use captain_core::{HostError, HostStatus};
 
-use super::{Inner, lock};
+use super::{Inner, lock, steps};
 use crate::LimaHost;
 use crate::lima::daemon;
 use crate::lima::limactl::Limactl;
@@ -21,7 +21,7 @@ pub fn apply(
     if current.as_ref() != Some(&wanted) {
         sink("Applying the Docker daemon settings.".into());
         let args = daemon::write_args(&inner.paths.instance, &wanted);
-        if let Err(error) = limactl.output_with_input(&args, &daemon::write_input(&wanted)) {
+        if let Err(error) = limactl.run(&args, Some(&daemon::write_input(&wanted)), &inner.cancel) {
             *lock(&inner.running_daemon) = current;
             return Err(HostError(format!(
                 "Docker did not accept the daemon settings, so Captain Engine keeps the previous ones. {error}"
@@ -48,7 +48,8 @@ pub fn track(inner: &Inner, limactl: &Limactl, status: &HostStatus) {
 }
 
 fn read(inner: &Inner, limactl: &Limactl) -> Option<DaemonState> {
-    let output = limactl.output(&daemon::read_args(&inner.paths.instance));
+    let args = daemon::read_args(&inner.paths.instance);
+    let output = limactl.output_within(&args, steps::QUICK_TIMEOUT);
     daemon::parse_state(&output.ok()?)
 }
 

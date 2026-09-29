@@ -47,11 +47,22 @@ impl FromStr for K3sVersion {
         let bad = || format!("{text:?} is not a k3s version such as v1.36.4+k3s1.");
         let rest = text.trim().strip_prefix('v').ok_or_else(bad)?;
         let (core, build) = rest.split_once("+k3s").ok_or_else(bad)?;
-        let build = build.parse().map_err(|_| bad())?;
+        let digits = |part: &str| !part.is_empty() && part.bytes().all(|b| b.is_ascii_digit());
         let (core, pre) = match core.split_once('-') {
+            // The tag names a cache folder, so it stays one safe path component.
+            Some((_, pre))
+                if pre.is_empty()
+                    || !pre.chars().all(|c| c.is_ascii_alphanumeric() || c == '.') =>
+            {
+                return Err(bad());
+            }
             Some((core, pre)) => (core, Some(pre.to_string())),
             None => (core, None),
         };
+        if !digits(build) || !core.split('.').all(digits) {
+            return Err(bad());
+        }
+        let build = build.parse().map_err(|_| bad())?;
         let parts: Vec<u32> = core
             .split('.')
             .map(str::parse)

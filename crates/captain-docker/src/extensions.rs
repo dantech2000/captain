@@ -3,6 +3,7 @@
 
 mod backend;
 mod bridge;
+mod exec_policy;
 mod files;
 mod install;
 mod manager;

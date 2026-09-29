@@ -138,6 +138,17 @@ fn installs_and_removes_a_ui_only_extension() {
     assert!(matches!(&listed[..], [BridgeEvent::Resolve(images)] if images.is_array()));
     let refused = call(manager, &extension, exec(ExecScope::Host, "sh", &[], false));
     assert!(matches!(&refused[..], [BridgeEvent::Reject(_)]));
+    let other_daemon = exec(
+        ExecScope::Docker,
+        "--host",
+        &["tcp://127.0.0.1:1", "ps"],
+        false,
+    );
+    let refused = call(manager, &extension, other_daemon);
+    assert!(
+        matches!(&refused[..], [BridgeEvent::Reject(_)]),
+        "{refused:?}"
+    );
 
     fixture.installed.clear();
     block_on(manager.remove(extension.clone())).expect("remove");

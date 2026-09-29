@@ -103,7 +103,9 @@ impl BuildDialog {
                 return;
             }
         };
-        let Some(builder) = self.state.read(cx).builder() else {
+        let state = self.state.read(cx);
+        let generation = state.generation();
+        let Some(builder) = state.builder() else {
             return;
         };
         self.error = None;
@@ -134,7 +136,8 @@ impl BuildDialog {
                         BuildStatus::Failed(error)
                     }
                     None => {
-                        state.update(cx, |state, cx| state.set_notice(format!("Built {tag}"), cx));
+                        let notice = format!("Built {tag}");
+                        state.update(cx, |state, cx| state.set_notice(notice, generation, cx));
                         BuildStatus::Built(tag)
                     }
                 };

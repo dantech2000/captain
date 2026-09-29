@@ -6,8 +6,6 @@ mod kube_steps;
 mod steps;
 
 use std::path::{Path, PathBuf};
-use std::process::Child;
-use std::sync::atomic::AtomicBool;
 use std::sync::{Arc, Mutex, MutexGuard};
 
 use captain_core::daemon::{DaemonSettings, DaemonState};
@@ -26,6 +24,8 @@ use super::paths::LimaPaths;
 use super::snapshot::LimaSnapshots;
 use super::version::check_version;
 use crate::blocking::blocking;
+use crate::cancel::Cancel;
+use crate::probe::output_within;
 
 /// A start or a stop that Captain is running now. Lima's own status lags behind it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -58,10 +58,9 @@ struct Inner {
     kubernetes: Mutex<KubernetesSettings>,
     /// The `limactl` that passed the version check.
     checked: Mutex<Option<PathBuf>>,
-    /// The `limactl` command that is running now, so a stop can kill a start.
-    running: Mutex<Option<Child>>,
-    /// Set by a stop, so a start does not run its next step.
-    cancel: AtomicBool,
+    /// The command a start runs now, so a stop can kill it and keep the start from
+    /// running its next step.
+    cancel: Cancel,
 }
 
 impl LimaHost {
@@ -84,8 +83,7 @@ impl LimaHost {
                 running_daemon: Mutex::new(None),
                 kubernetes: Mutex::new(KubernetesSettings::default()),
                 checked: Mutex::new(None),
-                running: Mutex::new(None),
-                cancel: AtomicBool::new(false),
+                cancel: Cancel::default(),
             }),
         }
     }
@@ -141,9 +139,9 @@ impl Inner {
             .ok_or_else(|| {
                 "Captain Engine needs Lima. Install it with `brew install lima`.".to_string()
             })?;
-        let output = std::process::Command::new(&binary)
-            .arg("--version")
-            .output()
+        let mut version = std::process::Command::new(&binary);
+        version.arg("--version");
+        let output = output_within(version, steps::QUICK_TIMEOUT)
             .map_err(|error| format!("Cannot run {}: {error}", binary.display()))?;
         check_version(&String::from_utf8_lossy(&output.stdout))?;
         *lock(&self.checked) = Some(binary.clone());

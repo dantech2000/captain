@@ -13,12 +13,13 @@ pub struct ComposeLabels {
 }
 
 impl ComposeLabels {
-    /// Splits the `config_files` label value. Empty parts are dropped.
+    /// Splits the `config_files` label value. Empty parts are dropped, and so is
+    /// `-`, a file that Compose read from stdin (Captain's migration label).
     pub fn split_config_files(value: &str) -> Vec<String> {
         value
             .split(',')
             .map(str::trim)
-            .filter(|file| !file.is_empty())
+            .filter(|file| !file.is_empty() && *file != "-")
             .map(ToString::to_string)
             .collect()
     }

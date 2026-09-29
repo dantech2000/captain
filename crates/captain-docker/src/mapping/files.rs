@@ -1,44 +1,43 @@
 //! Folder listings and file reads, from the listing script's output or from the
 //! tar archives the engine's `/archive` endpoint returns.
 
-use std::collections::HashMap;
 use std::io::{self, Read};
 
 use bollard::models::ContainerTopResponse;
 use captain_core::model::{FileEntry, FilePreview, ProcessTable};
 use tar::{Archive, EntryType};
 
-/// The line between the two `stat` runs of the listing script.
+/// The line between the `stat` lines and the names.
 const STAT_SEPARATOR: &str = "---";
 
-/// Entries from the listing script: `stat -c "%f %s %Y %n"` lines, the separator,
-/// then `stat -L -c "%f %n"` lines that show where links point.
-pub fn stat_listing(output: &str) -> Vec<FileEntry> {
-    let (own, followed) = output
+/// Entries from the listing script: `stat -c "%f %s %Y"` lines, the separator,
+/// then one record per name in the same order: `1` if it opens as a folder (else
+/// `0`), the name, and a NUL. `None` when the counts differ: the folder changed
+/// between the two steps.
+pub fn stat_listing(output: &str) -> Option<Vec<FileEntry>> {
+    let (stats, names) = output
         .split_once(&format!("\n{STAT_SEPARATOR}\n"))
         .or_else(|| {
             output
                 .strip_prefix(&format!("{STAT_SEPARATOR}\n"))
                 .map(|rest| ("", rest))
-        })
-        .unwrap_or((output, ""));
-    let folders: HashMap<&str, bool> = followed
-        .lines()
-        .filter_map(|line| {
-            let (mode, name) = line.split_once(' ')?;
-            let mode = u32::from_str_radix(mode, 16).ok()?;
-            Some((name, FileEntry::new(name, mode, 0, 0).opens))
-        })
-        .collect();
-    own.lines()
-        .filter_map(|line| {
-            let mut parts = line.splitn(4, ' ');
+        })?;
+    let stats: Vec<&str> = stats.lines().collect();
+    let names: Vec<&str> = names.split_terminator('\0').collect();
+    if stats.len() != names.len() {
+        return None;
+    }
+    stats
+        .into_iter()
+        .zip(names)
+        .map(|(line, record)| {
+            let mut parts = line.splitn(3, ' ');
             let mode = u32::from_str_radix(parts.next()?, 16).ok()?;
             let size = parts.next()?.parse().ok()?;
             let modified = parts.next()?.parse().ok()?;
-            let name = parts.next()?;
+            let (opens, name) = record.split_at_checked(1)?;
             let mut entry = FileEntry::new(name, mode, size, modified);
-            entry.opens |= folders.get(name).copied().unwrap_or(false);
+            entry.opens |= opens == "1";
             Some(entry)
         })
         .collect()

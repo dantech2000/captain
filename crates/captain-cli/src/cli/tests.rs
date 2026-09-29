@@ -104,4 +104,5 @@ fn kubernetes_enable_takes_a_version_port_and_traefik_switch() {
             traefik: Some(false),
         })
     );
+    assert!(parse(&["kubernetes", "enable", "--port", "0"]).is_err());
 }

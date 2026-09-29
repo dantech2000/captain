@@ -15,7 +15,9 @@ pub struct SnapshotsModel {
     pub(super) loaded: bool,
     /// What the running step does now, for the page header.
     pub(super) step: Option<SharedString>,
-    pub(super) task: Option<Task<()>>,
+    /// True while a step of this window runs. The step's task is detached, so
+    /// closing the window does not cut it off (feature 0023).
+    pub(super) busy: bool,
     load: Option<Task<()>>,
 }
 
@@ -31,7 +33,7 @@ impl SnapshotsModel {
             list: SnapshotList::default(),
             loaded: false,
             step: None,
-            task: None,
+            busy: false,
             load: None,
         };
         model.reload(cx);
@@ -52,7 +54,7 @@ impl SnapshotsModel {
 
     /// True while a create, restore, or delete runs.
     pub fn is_busy(&self) -> bool {
-        self.task.is_some()
+        self.busy
     }
 
     pub fn step(&self) -> Option<SharedString> {

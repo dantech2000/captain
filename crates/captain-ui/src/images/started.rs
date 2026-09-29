@@ -11,8 +11,12 @@ pub struct Started {
 }
 
 impl ImagesState {
-    /// Records a started container, which shows the "Started" notice.
-    pub fn set_started(&mut self, started: Started, cx: &mut Context<Self>) {
+    /// Records a started container, which shows the "Started" notice. Does nothing
+    /// if the engine changed since `generation`.
+    pub fn set_started(&mut self, started: Started, generation: u64, cx: &mut Context<Self>) {
+        if generation != self.generation {
+            return;
+        }
         self.error = None;
         self.notice = None;
         self.started = Some(started);

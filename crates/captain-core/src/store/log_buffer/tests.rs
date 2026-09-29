@@ -11,9 +11,11 @@ fn line(text: &str) -> LogLine {
 #[test]
 fn drops_the_oldest_line_when_full() {
     let mut buffer = LogBuffer::default();
-    for i in 0..LOG_BUFFER_LEN + 1 {
-        buffer.push(line(&i.to_string()));
+    for i in 0..LOG_BUFFER_LEN {
+        assert!(buffer.push(line(&i.to_string())).is_none());
     }
+    let evicted = buffer.push(line(&LOG_BUFFER_LEN.to_string()));
+    assert_eq!(evicted.map(|l| l.text), Some("0".into()));
     assert_eq!(buffer.len(), LOG_BUFFER_LEN);
     assert_eq!(buffer.filtered(LevelFilter::All)[0].text, "1");
 }

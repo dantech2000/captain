@@ -54,6 +54,7 @@ So `captain-docker` has a `BuildCli`. It finds `docker` with the Compose locator
 docker buildx build --builder default --progress plain --load -t <tag> -f <dockerfile> [--build-arg K=V]... [--target T] <context>
 ```
 
+- A relative context becomes absolute first ([`std::path::absolute`](https://doc.rust-lang.org/std/path/fn.absolute.html)). The CLI runs in the context folder, so a relative path in the arguments would point inside it again.
 - `DOCKER_HOST` is Captain's endpoint and `DOCKER_CONTEXT` is removed, as for Compose. With `DOCKER_HOST` set, the `default` builder is the `docker` driver on that engine, so the image lands there. `--builder default` ignores a builder the user picked with `docker buildx use`. `--load` is a no-op with that driver, and it keeps the image local with any other driver.
 - `--progress plain` writes one line per step on stderr ([buildx build](https://docs.docker.com/reference/cli/docker/buildx/build/#progress)). Captain streams each line.
 - A failed build reports its `ERROR:` line.

@@ -3,21 +3,18 @@ use tar::{Builder, EntryType, Header};
 
 use super::*;
 
-/// A listing from BusyBox: `lib64` links to the folder `lib`, and a name has a space.
-const BUSYBOX: &str = "81ed 0 1790674920 .dockerenv
-41ed 12288 1778638909 bin
-a1ff 3 1778638909 lib64
-81a4 5 1778638909 my notes.txt
+/// A listing from BusyBox: `lib64` links to the folder `lib`, and names hold a
+/// space and a newline.
+const BUSYBOX: &str = "81ed 0 1790674920
+41ed 12288 1778638909
+a1ff 3 1778638909
+81a4 5 1778638909
 ---
-81ed .dockerenv
-41ed bin
-41ed lib64
-81a4 my notes.txt
-";
+0.dockerenv\x001bin\x001lib64\x000my\nnotes.txt\0";
 
 #[test]
-fn stat_listing_reads_modes_and_link_targets() {
-    let entries = stat_listing(BUSYBOX);
+fn stat_listing_reads_modes_link_targets_and_any_name() {
+    let entries = stat_listing(BUSYBOX).expect("listing");
     assert_eq!(entries.len(), 4);
     let bin = &entries[1];
     assert_eq!(
@@ -27,8 +24,9 @@ fn stat_listing_reads_modes_and_link_targets() {
     let lib64 = &entries[2];
     assert_eq!(lib64.kind, FileKind::Link);
     assert!(lib64.opens);
-    assert_eq!(entries[3].name, "my notes.txt");
-    assert!(stat_listing("---\n").is_empty());
+    assert_eq!(entries[3].name, "my\nnotes.txt");
+    assert_eq!(stat_listing("---\n"), Some(Vec::new()));
+    assert_eq!(stat_listing("81a4 5 1\n---\n"), None);
 }
 
 fn tar_of(entries: &[(&str, EntryType, &[u8])]) -> Vec<u8> {

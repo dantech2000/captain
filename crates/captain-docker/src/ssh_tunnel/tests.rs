@@ -8,7 +8,7 @@ use captain_core::ssh::SshTarget;
 
 use std::sync::Mutex;
 
-use super::{Slot, SshTunnel, open_in};
+use super::{Slot, SshTunnel, close_in, open_in};
 
 /// A temp dir with a stub `ssh` script. The stub logs its arguments to `calls`.
 struct Stub(PathBuf);
@@ -119,8 +119,8 @@ fn stale_start_stops_its_own_tunnel() {
     let (old, new) = (target("old"), target("new"));
     let mut newer = None;
     // The start for `old` finishes after a start for `new` began and finished.
-    let stale = open_in(&slot, &old, || {
-        newer = Some(open_in(&slot, &new, || stub.start_to(&new)).unwrap());
+    let stale = open_in(&slot, &old, |_| {
+        newer = Some(open_in(&slot, &new, |_| stub.start_to(&new)).unwrap());
         stub.start_to(&old)
     });
     assert!(stale.is_err());
@@ -129,4 +129,34 @@ fn stale_start_stops_its_own_tunnel() {
     assert_eq!(tunnel.target, new);
     assert_eq!(Some(tunnel.socket.clone()), newer);
     assert!(tunnel.socket.exists());
+}
+
+#[test]
+fn close_kills_the_ssh_of_a_start_in_progress() {
+    // Never makes the socket, like an `ssh` that waits for a password.
+    let stub = Stub::new(
+        "closing",
+        "echo $$ > \"$(dirname \"$0\")/pid\"\nexec sleep 30",
+    );
+    let slot = Mutex::new(Slot::new());
+    let pid_file = stub.0.join("pid");
+    std::thread::scope(|scope| {
+        let opening = scope.spawn(|| {
+            open_in(&slot, &target("box"), |register| {
+                let program = stub.0.join("ssh").into();
+                SshTunnel::start_with(program, target("box"), &stub.0, register)
+            })
+        });
+        wait_until("ssh to start", || {
+            fs::read_to_string(&pid_file).is_ok_and(|p| !p.is_empty())
+        });
+        let pid: u32 = fs::read_to_string(&pid_file)
+            .unwrap()
+            .trim()
+            .parse()
+            .unwrap();
+        close_in(&slot);
+        assert!(!is_running(pid), "ssh {pid} still runs after the close");
+        assert!(opening.join().unwrap().is_err());
+    });
 }

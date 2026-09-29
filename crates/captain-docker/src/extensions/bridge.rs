@@ -16,7 +16,7 @@ use tokio::net::TcpStream;
 use tokio::runtime::Handle;
 
 use super::manager::Context;
-use super::{backend, process};
+use super::{backend, exec_policy, process};
 use crate::mapping;
 
 /// How long a backend request may take.
@@ -132,13 +132,14 @@ fn to_event(value: &impl serde::Serialize) -> Result<BridgeEvent, EngineError> {
         .map_err(|error| EngineError::Api(error.to_string()))
 }
 
-/// The command for an exec in `scope`.
+/// The command for an exec in `scope`, always pointed at Captain's engine.
 async fn command(
     context: &Context,
     extension: &InstalledExtension,
     scope: ExecScope,
     exec: &ExecRequest,
 ) -> Result<Command, EngineError> {
+    exec_policy::check(scope, exec)?;
     let mut command = match scope {
         ExecScope::Docker => {
             let mut command = context.docker_command()?;
@@ -158,17 +159,13 @@ async fn command(
             let binary =
                 host_binary(&bin, &extension.binaries, &exec.cmd).map_err(EngineError::Api)?;
             let mut command = Command::new(binary);
-            command
-                .args(&exec.args)
-                .current_dir(&bin)
-                .env("DOCKER_HOST", &context.host)
-                .env_remove("DOCKER_CONTEXT");
+            command.args(&exec.args).current_dir(&bin);
             command
         }
     };
     if let Some(cwd) = &exec.cwd {
         command.current_dir(cwd);
     }
-    command.envs(&exec.env);
+    exec_policy::point_at(&mut command, &context.host, &exec.env);
     Ok(command)
 }

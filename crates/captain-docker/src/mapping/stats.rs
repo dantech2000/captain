@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use bollard::models::{ContainerCpuStats, ContainerStatsResponse};
 use captain_core::model::{StatsSample, cpu_percent};
 
@@ -6,14 +8,8 @@ pub fn stats(response: ContainerStatsResponse) -> StatsSample {
     let memory_bytes = response
         .memory_stats
         .map(|memory| {
-            let usage = memory.usage.unwrap_or_default();
-            // cgroup v2 reports reclaimable page cache as inactive_file, v1 as cache.
-            // `docker stats` subtracts it, so Captain does too.
-            let cache = memory
-                .stats
-                .and_then(|s| s.get("inactive_file").or_else(|| s.get("cache")).copied())
-                .unwrap_or_default();
-            usage.saturating_sub(cache)
+            let stats = memory.stats.unwrap_or_default();
+            memory_used(memory.usage.unwrap_or_default(), &stats)
         })
         .unwrap_or_default();
     let (rx_bytes, tx_bytes) =
@@ -34,6 +30,18 @@ pub fn stats(response: ContainerStatsResponse) -> StatsSample {
         rx_bytes,
         tx_bytes,
     }
+}
+
+/// Memory use without the reclaimable page cache, as `docker stats` shows it:
+/// `total_inactive_file` on cgroup v1, `inactive_file` on v2, and the raw usage when
+/// the value is not below it. See calculateMemUsageUnixNoCache in
+/// <https://github.com/docker/cli/blob/master/cli/command/container/stats_helpers.go>.
+fn memory_used(usage: u64, stats: &HashMap<String, u64>) -> u64 {
+    let cache = match stats.get("total_inactive_file") {
+        Some(&v1) if v1 < usage => Some(v1),
+        _ => stats.get("inactive_file").copied().filter(|&v2| v2 < usage),
+    };
+    usage - cache.unwrap_or_default()
 }
 
 fn cpu(current: Option<&ContainerCpuStats>, previous: Option<&ContainerCpuStats>) -> f64 {
@@ -62,3 +70,6 @@ fn cpu(current: Option<&ContainerCpuStats>, previous: Option<&ContainerCpuStats>
         cpus,
     )
 }
+
+#[cfg(test)]
+mod tests;

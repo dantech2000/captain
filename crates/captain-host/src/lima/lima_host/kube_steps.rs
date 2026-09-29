@@ -14,13 +14,14 @@ use crate::lima::paths::LimaPaths;
 const KUBERNETES: &str = "kubernetes";
 
 /// Starts k3s after the engine started, or makes sure it is off. A failure does not
-/// fail the start: the engine runs, and the Kubernetes status shows the problem.
+/// fail the start: the engine runs, and the Kubernetes status shows the problem. A
+/// stop kills it; the start checks for that next.
 pub fn on_start(inner: &Inner, limactl: &Limactl, sink: &mut dyn FnMut(String)) {
     let settings = lock(&inner.kubernetes).clone();
     let result = if settings.enabled {
-        kubernetes::install(limactl, &inner.paths, &settings, sink).map(drop)
+        kubernetes::install(limactl, &inner.paths, &settings, &inner.cancel, sink).map(drop)
     } else {
-        kubernetes::disable(limactl, &inner.paths)
+        kubernetes::disable(limactl, &inner.paths, &inner.cancel)
     };
     if let Err(error) = result {
         tracing::warn!(%error, "Kubernetes did not start");

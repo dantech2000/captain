@@ -11,9 +11,6 @@ use crate::theme::Palette;
 use crate::widgets::drag_region;
 use crate::workspace::Workspace;
 
-/// How many past log lines to load when a container is selected.
-const LOG_TAIL: usize = 500;
-
 /// The right-hand panel for the selected container.
 pub struct InspectorView {
     workspace: Entity<Workspace>,
@@ -104,8 +101,7 @@ impl InspectorView {
             }
         }));
 
-        let lines = engine.logs(&id, LOG_TAIL);
-        self.logs.update(cx, |logs, cx| logs.load(lines, cx));
+        self.logs.update(cx, |logs, cx| logs.load(engine, id, cx));
     }
 }
 

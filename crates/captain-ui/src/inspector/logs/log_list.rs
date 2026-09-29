@@ -32,6 +32,9 @@ pub fn log_list(
     .flex_1()
 }
 
+/// The height of one row. A paused list shifts by it when the oldest line drops.
+pub(super) const ROW_HEIGHT: Pixels = px(19.);
+
 fn row(
     ix: usize,
     found: &LogMatch,
@@ -71,7 +74,7 @@ fn row(
         .flex()
         .gap(px(10.))
         .px(px(12.))
-        .h(px(19.))
+        .h(ROW_HEIGHT)
         .items_center()
         .border_l_2()
         .border_color(if line.level == LogLevel::Info {

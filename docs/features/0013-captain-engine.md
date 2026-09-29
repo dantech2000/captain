@@ -22,7 +22,9 @@ Captain starts, stops, and configures its own Docker engine, so it works without
 - Sidebar: the engine card shows the host state with Start or Stop. The brand line follows the host.
 - Settings: a Captain Engine card with the choice, status with Start, Stop, and Restart, CPUs, memory, and disk (applied on the next start), the quit switch, "Bring data from another engine…", and "Reset Captain Engine…" with a confirmation.
 - Menu bar: the status line comes from the host, with "Start Captain Engine" or "Stop Captain Engine".
-- Quit: stops the engine first when the setting is on, waits up to 20 seconds, and keeps the window responsive.
+- Quit: stops the engine first when the setting is on, waits up to 20 seconds, and keeps the window responsive. A start that runs at Quit is stopped whatever the setting, because Captain cannot finish its later steps after it exits. During a snapshot step, Quit waits until the step ends (feature [0023](0023-snapshots.md)).
+- Stop during a start: every step of the start runs under one cancel handle, `captain-host/src/cancel.rs`: `limactl start`, the daemon settings, the k3s download with `curl`, and each `limactl shell` step of the k3s install. Stop kills the running command, and the start checks the handle before each next step, so it ends within seconds. A killed `limactl shell` can leave `ssh` holding its pipes, so a cancelled command does not wait for them.
+- Status checks have limits: `limactl list`, `limactl --version`, and the daemon and k3s status reads in the VM give up after 30 seconds, so a hung `limactl` cannot freeze the status.
 
 ## Out of scope
 
@@ -40,6 +42,7 @@ Captain starts, stops, and configures its own Docker engine, so it works without
 - **Bind mount ownership:** with virtiofs, files in bind mounts can show the wrong uid and gid inside containers ([lima#4053](https://github.com/lima-vm/lima/issues/4053), open).
 - **`/tmp/lima`** is mounted because the design asks for it. Lima no longer mounts it by default and advises against it on shared computers ([lima#3648](https://github.com/lima-vm/lima/issues/3648)).
 - **Rosetta** needs `softwareupdate --install-rosetta` on a Mac without it, or Lima can wait at "Installing rosetta..." ([Lima multi-arch docs](https://lima-vm.io/docs/config/multi-arch/), [lima#1202](https://github.com/lima-vm/lima/issues/1202)).
+- **curl limits.** `--connect-timeout` covers only the connection ([curl docs](https://curl.se/docs/manpage.html#--connect-timeout)). A k3s download also fails when it moves slower than 1000 bytes per second for 60 seconds (`--speed-limit`, `--speed-time`), and a text download stops after 120 seconds (`--max-time`).
 - `limactl list --json` prints one JSON object per line. Captain reads all instances and picks `captain`, like Colima does, because `limactl list captain` fails when the instance does not exist. Statuses: `Running`, `Stopped`, `Broken` (with `errors`), and `Installing`.
 - The template uses `base: template:_images/ubuntu-lts`, so `limactl` must find its `share/lima/templates` folder. M9 must bundle it next to `limactl`.
 

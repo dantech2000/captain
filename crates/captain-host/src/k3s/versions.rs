@@ -7,6 +7,7 @@ use captain_core::HostError;
 use captain_core::kubernetes::{K3sVersion, VersionList, parse_channels, parse_releases};
 
 use super::curl;
+use crate::cancel::Cancel;
 
 const CHANNELS_URL: &str = "https://update.k3s.io/v1-release/channels";
 const RELEASES_URL: &str = "https://api.github.com/repos/k3s-io/k3s/releases?per_page=100";
@@ -39,10 +40,11 @@ pub fn list(cache_file: &Path, cache: &Path, refresh: bool) -> VersionList {
 }
 
 fn fetch() -> Result<VersionList, HostError> {
-    let channels = parse_channels(&curl::text(CHANNELS_URL)?).map_err(HostError)?;
+    let cancel = Cancel::default();
+    let channels = parse_channels(&curl::text(CHANNELS_URL, &cancel)?).map_err(HostError)?;
     let mut releases = Vec::new();
     for page in 1..=PAGES {
-        let json = curl::text(&format!("{RELEASES_URL}&page={page}"))?;
+        let json = curl::text(&format!("{RELEASES_URL}&page={page}"), &cancel)?;
         releases.extend(parse_releases(&json).map_err(HostError)?);
     }
     Ok(VersionList::new(releases, channels))

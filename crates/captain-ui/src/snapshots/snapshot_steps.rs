@@ -1,5 +1,7 @@
 //! Create, restore, edit, and delete. Create and restore stop Captain Engine first, block
-//! its controls meanwhile, and start it again if it ran.
+//! its controls meanwhile, and start it again if it ran. Each step's task is detached
+//! and holds only a weak handle to this model, so it runs to the end, adopts the
+//! restored settings, and unblocks the engine also when the window closes.
 
 use captain_core::HostError;
 use captain_core::snapshot::Snapshot;
@@ -13,12 +15,13 @@ impl SnapshotsModel {
         let (Some(host), Some(store)) = (self.host.clone(), self.store.clone()) else {
             return;
         };
-        if self.task.is_some() {
+        if self.busy || host.read(cx).is_snapshotting() {
             return;
         }
         let (running, stop) = host.update(cx, |host, cx| host.begin_snapshot(cx));
         self.set_step(stopping_or(running, "Saving the snapshot..."), cx);
-        self.task = Some(cx.spawn(async move |this, cx| {
+        self.busy = true;
+        cx.spawn(async move |this, cx| {
             stop.await;
             this.update(cx, |model, cx| model.set_step("Saving the snapshot...", cx))
                 .ok();
@@ -27,7 +30,8 @@ impl SnapshotsModel {
             host.update(cx, |host, cx| host.end_snapshot(running, cx));
             this.update(cx, |model, cx| model.finish("Create", done, cx))
                 .ok();
-        }));
+        })
+        .detach();
     }
 
     /// Replaces the engine with the snapshot `id`. With `save_first`, the current
@@ -36,12 +40,13 @@ impl SnapshotsModel {
         let (Some(host), Some(store)) = (self.host.clone(), self.store.clone()) else {
             return;
         };
-        if self.task.is_some() {
+        if self.busy || host.read(cx).is_snapshotting() {
             return;
         }
         let (running, stop) = host.update(cx, |host, cx| host.begin_snapshot(cx));
         self.set_step(stopping_or(running, "Restoring the snapshot..."), cx);
-        self.task = Some(cx.spawn(async move |this, cx| {
+        self.busy = true;
+        cx.spawn(async move |this, cx| {
             stop.await;
             let name = snapshot.metadata.name.clone();
             let mut result = Ok(());
@@ -71,7 +76,8 @@ impl SnapshotsModel {
             let done = result.map(|()| format!("Restored \"{name}\""));
             this.update(cx, |model, cx| model.finish("Restore", done, cx))
                 .ok();
-        }));
+        })
+        .detach();
     }
 
     /// Deletes the snapshot. The engine keeps running.
@@ -79,17 +85,19 @@ impl SnapshotsModel {
         let Some(store) = self.store.clone() else {
             return;
         };
-        if self.task.is_some() {
+        if self.busy {
             return;
         }
         self.set_step("Deleting the snapshot...", cx);
         let delete = store.delete(snapshot.id);
         let name = snapshot.metadata.name;
-        self.task = Some(cx.spawn(async move |this, cx| {
+        self.busy = true;
+        cx.spawn(async move |this, cx| {
             let done = delete.await.map(|()| format!("Deleted \"{name}\""));
             this.update(cx, |model, cx| model.finish("Delete", done, cx))
                 .ok();
-        }));
+        })
+        .detach();
     }
 
     /// Renames the snapshot and sets its description. The engine keeps running.
@@ -103,18 +111,20 @@ impl SnapshotsModel {
         let Some(store) = self.store.clone() else {
             return;
         };
-        if self.task.is_some() {
+        if self.busy {
             return;
         }
         self.set_step("Saving the snapshot...", cx);
         let edit = store.edit(snapshot.id, name, description);
-        self.task = Some(cx.spawn(async move |this, cx| {
+        self.busy = true;
+        cx.spawn(async move |this, cx| {
             let done = edit
                 .await
                 .map(|edited| format!("Saved \"{}\"", edited.metadata.name));
             this.update(cx, |model, cx| model.finish("Edit", done, cx))
                 .ok();
-        }));
+        })
+        .detach();
     }
 
     fn finish(
@@ -123,7 +133,7 @@ impl SnapshotsModel {
         result: Result<String, HostError>,
         cx: &mut Context<Self>,
     ) {
-        self.task = None;
+        self.busy = false;
         self.step = None;
         cx.emit(match result {
             Ok(message) => SnapshotEvent::Done(message),

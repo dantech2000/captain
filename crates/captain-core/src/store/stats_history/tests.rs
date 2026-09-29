@@ -1,3 +1,5 @@
+use std::time::{Duration, Instant};
+
 use super::{HISTORY_LEN, StatsHistory};
 use crate::model::StatsSample;
 
@@ -26,12 +28,16 @@ fn keeps_only_the_latest_samples() {
 }
 
 #[test]
-fn net_rate_is_the_delta_between_the_last_two_samples() {
+fn net_rate_divides_the_delta_by_the_time_between_samples() {
+    let start = Instant::now();
     let mut history = StatsHistory::default();
-    history.push(sample(0.0, 1000, 500));
-    history.push(sample(0.0, 1800, 700));
+    history.push_at(sample(0.0, 1000, 500), start);
+    history.push_at(sample(0.0, 1800, 700), start + Duration::from_secs(1));
     assert_eq!(history.net_rate(), (800, 200));
-    assert_eq!(history.net_series().len(), 1);
+    // After a 30 s gap, 30 000 bytes are 1 000 bytes per second.
+    history.push_at(sample(0.0, 31_800, 700), start + Duration::from_secs(31));
+    assert_eq!(history.net_rate(), (1000, 0));
+    assert_eq!(history.net_series().len(), 2);
 }
 
 #[test]

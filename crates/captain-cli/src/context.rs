@@ -6,7 +6,9 @@ use std::sync::Arc;
 
 use anyhow::{Context as _, Result, bail};
 use captain_core::EngineHost;
-use captain_core::process_lock::{ProcessLock, app_lock_path, settings_lock_path};
+use captain_core::process_lock::{
+    CLI_RESTORE_NOTE, ProcessLock, app_lock_path, settings_lock_path,
+};
 use captain_core::settings::Settings;
 use captain_host::{LimaHost, LimaPaths, machine};
 
@@ -83,9 +85,22 @@ impl Context {
         Ok(result)
     }
 
-    /// True while the Captain app runs with this settings file.
+    /// True while the Captain app runs with this settings file, or when that
+    /// cannot be checked. A restore's own hold on `app.lock` does not count.
     pub fn app_running(&self) -> bool {
-        ProcessLock::holder(&app_lock_path(&self.settings_path)).is_some()
+        ProcessLock::holder(&app_lock_path(&self.settings_path))
+            .is_some_and(|note| note != CLI_RESTORE_NOTE)
+    }
+
+    /// Holds `app.lock`, so the app cannot start until the lock drops. Fails with
+    /// `refusal` while the app runs.
+    pub fn exclude_app(&self, refusal: &str) -> Result<ProcessLock> {
+        let path = app_lock_path(&self.settings_path);
+        match ProcessLock::try_acquire(&path, CLI_RESTORE_NOTE) {
+            Ok(Some(lock)) => Ok(lock),
+            Ok(None) => bail!("{refusal}"),
+            Err(error) => Err(error).with_context(|| format!("cannot lock {}", path.display())),
+        }
     }
 
     /// Captain Engine with the saved resources and Docker daemon settings.
@@ -109,3 +124,6 @@ impl Context {
         }
     }
 }
+
+#[cfg(test)]
+mod tests;

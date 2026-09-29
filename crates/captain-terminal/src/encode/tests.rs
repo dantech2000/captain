@@ -126,7 +126,7 @@ fn paste_is_bracketed_only_when_the_program_asks() {
         ..InputModes::default()
     };
     assert_eq!(
-        encode_paste("echo\x1b[201~ hi\n", bracketed),
+        encode_paste("echo\x1b[201~ hi\x03\n", bracketed),
         b"\x1b[200~echo[201~ hi\n\x1b[201~"
     );
 }

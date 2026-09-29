@@ -139,7 +139,7 @@ pub enum KubernetesCommand {
         #[arg(long)]
         version: Option<String>,
         /// The port of the Kubernetes API on 127.0.0.1.
-        #[arg(long)]
+        #[arg(long, value_parser = clap::value_parser!(u16).range(1..))]
         port: Option<u16>,
         /// Install Traefik on ports 80 and 443.
         #[arg(long)]

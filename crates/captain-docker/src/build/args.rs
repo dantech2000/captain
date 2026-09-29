@@ -33,6 +33,16 @@ pub fn build_args(spec: &BuildSpec) -> Vec<String> {
     args
 }
 
+/// `spec` with an absolute context. The CLI runs in the context folder, so a
+/// relative context in the arguments would point inside itself.
+pub fn with_absolute_context(spec: &BuildSpec) -> BuildSpec {
+    let mut spec = spec.clone();
+    if let Ok(context) = std::path::absolute(&spec.context) {
+        spec.context = context;
+    }
+    spec
+}
+
 /// The version from `docker buildx version`, which prints
 /// `github.com/docker/buildx v0.35.0 a319e5b`.
 pub fn parse_buildx_version(stdout: &str) -> Option<String> {

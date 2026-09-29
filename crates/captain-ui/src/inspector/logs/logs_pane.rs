@@ -1,7 +1,8 @@
 use std::rc::Rc;
+use std::sync::Arc;
 use std::time::Duration;
 
-use captain_core::EngineStream;
+use captain_core::Engine;
 use captain_core::model::LogLine;
 use captain_core::store::{LevelFilter, LogBuffer, find_matches};
 use futures::StreamExt;
@@ -10,15 +11,19 @@ use gpui_kit::*;
 
 use super::jump_pill::jump_pill;
 use super::local_offset::local_offset;
-use super::log_list::log_list;
-use super::toolbar;
+use super::log_list::{ROW_HEIGHT, log_list};
+use super::{stream_error, toolbar};
 use crate::theme::Palette;
 
 /// How long the Copy button shows a check after a copy.
 const COPIED_FOR: Duration = Duration::from_millis(1500);
+/// How many past log lines to load when a container is selected.
+const LOG_TAIL: usize = 500;
 
 /// The Logs tab of one container: its recent lines and how the tab shows them.
 pub struct LogsPane {
+    /// The engine and container the lines come from, for Reconnect.
+    source: Option<(Arc<dyn Engine>, String)>,
     buffer: LogBuffer,
     level: LevelFilter,
     query: SharedString,
@@ -31,6 +36,8 @@ pub struct LogsPane {
     unseen: usize,
     scroll: UniformListScrollHandle,
     stream_task: Option<Task<()>>,
+    /// Why the log stream stopped, when it failed.
+    stream_error: Option<String>,
     /// Set for a moment after a copy.
     copied: Option<Task<()>>,
     _subscriptions: Vec<Subscription>,
@@ -39,6 +46,7 @@ pub struct LogsPane {
 impl Default for LogsPane {
     fn default() -> Self {
         Self {
+            source: None,
             buffer: LogBuffer::default(),
             level: LevelFilter::default(),
             query: SharedString::default(),
@@ -48,6 +56,7 @@ impl Default for LogsPane {
             unseen: 0,
             scroll: UniformListScrollHandle::new(),
             stream_task: None,
+            stream_error: None,
             copied: None,
             _subscriptions: Vec::new(),
         }
@@ -55,15 +64,38 @@ impl Default for LogsPane {
 }
 
 impl LogsPane {
-    /// Empties the view and shows the lines of `lines` as they arrive. The filters
-    /// and search text stay.
-    pub fn load(&mut self, mut lines: EngineStream<LogLine>, cx: &mut Context<Self>) {
+    /// Empties the view and shows the recent and new lines of container `id`. The
+    /// filters and search text stay.
+    pub fn load(&mut self, engine: Arc<dyn Engine>, id: String, cx: &mut Context<Self>) {
+        self.source = Some((engine, id));
+        self.reconnect(cx);
+    }
+
+    /// Loads the lines of the same container again, for example after an error.
+    pub(super) fn reconnect(&mut self, cx: &mut Context<Self>) {
+        let Some((engine, id)) = &self.source else {
+            return;
+        };
+        let mut lines = engine.logs(id, LOG_TAIL);
         self.buffer.clear();
         self.following = true;
         self.unseen = 0;
+        self.stream_error = None;
         self.stream_task = Some(cx.spawn(async move |this, cx| {
-            while let Some(Ok(line)) = lines.next().await {
-                if this.update(cx, |this, cx| this.push(line, cx)).is_err() {
+            while let Some(line) = lines.next().await {
+                let more = this.update(cx, |this, cx| match line {
+                    Ok(line) => {
+                        this.push(line, cx);
+                        true
+                    }
+                    Err(error) => {
+                        tracing::warn!(%error, "the log stream failed");
+                        this.stream_error = Some(format!("The log stream stopped: {error}"));
+                        cx.notify();
+                        false
+                    }
+                });
+                if !more.unwrap_or(false) {
                     break;
                 }
             }
@@ -75,8 +107,18 @@ impl LogsPane {
         if !self.following && self.shows(&line) {
             self.unseen += 1;
         }
-        self.buffer.push(line);
+        let evicted = self.buffer.push(line);
+        // A paused list keeps its rows in place when the oldest shown line drops.
+        if !self.following && evicted.is_some_and(|old| self.shows(&old)) {
+            let handle = self.scroll.0.borrow().base_handle.clone();
+            let offset = handle.offset();
+            handle.set_offset(point(offset.x, (offset.y + ROW_HEIGHT).min(px(0.))));
+        }
         cx.notify();
+    }
+
+    pub(super) fn stream_error(&self) -> Option<&str> {
+        self.stream_error.as_deref()
     }
 
     /// Whether `line` passes the level filter and the search text.
@@ -227,6 +269,7 @@ impl Render for LogsPane {
             .pb(px(20.))
             .child(toolbar::search_row(self, &search, &palette, cx))
             .child(toolbar::filter_row(self, count, &palette, cx))
+            .children(stream_error::render(self, &palette, cx))
             .child(
                 div()
                     .relative()

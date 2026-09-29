@@ -46,11 +46,16 @@ pub struct LogBuffer {
 }
 
 impl LogBuffer {
-    pub fn push(&mut self, line: LogLine) {
-        if self.lines.len() == LOG_BUFFER_LEN {
-            self.lines.pop_front();
-        }
+    /// Adds `line`, and returns the oldest line when the buffer was full and
+    /// dropped it.
+    pub fn push(&mut self, line: LogLine) -> Option<LogLine> {
+        let evicted = if self.lines.len() == LOG_BUFFER_LEN {
+            self.lines.pop_front()
+        } else {
+            None
+        };
         self.lines.push_back(line);
+        evicted
     }
 
     pub fn clear(&mut self) {

@@ -25,7 +25,7 @@ The user sees the Docker CLI contexts in Settings and connects Captain to any of
   ```
 
   The local socket is in a new directory with mode 0700 in the temp dir. Captain waits for the socket to appear, then connects to it like any Unix socket. Compose, Buildx, and extensions use the same socket.
-- The tunnel restarts when `ssh` exits, after 1 s, then with a longer wait each time, up to 30 s. It stops when Captain connects to another engine and when Captain quits.
+- The tunnel restarts when `ssh` exits, after 1 s, then with a longer wait each time, up to 30 s. It stops when Captain connects to another engine and when Captain quits. A start that still waits for `ssh` to log in stops too: the close kills that `ssh` before it returns, so a quit during the login leaves no `ssh -L` behind.
 - With `BatchMode=yes`, `ssh` never asks for a password. If the login fails, the error says: "SSH cannot log in to HOST without a password. Add your key to the SSH agent (`ssh-add`) or set up key login, then try again." An unknown host key gets its own message.
 - The custom endpoint field and `DOCKER_HOST` or the current context take `ssh://` URLs. The Engine card shows the `ssh://` URL, not the local socket.
 
@@ -50,7 +50,7 @@ The user sees the Docker CLI contexts in Settings and connects Captain to any of
 ## Verification
 
 1. Run `cargo test -p captain-core docker_context ssh`. The tests parse context metadata, check the hash directory name, and parse SSH URLs.
-2. Run `cargo test -p captain-docker ssh_tunnel`. The tests run a stub `ssh`: the tunnel starts, restarts after the stub dies, stops, and reports a failed login.
+2. Run `cargo test -p captain-docker ssh_tunnel`. The tests run a stub `ssh`: the tunnel starts, restarts after the stub dies, stops, and reports a failed login. A close during a start kills the stub at once.
 3. Run `cargo test -p captain-docker --test live_contexts -- --ignored`. It creates a context and makes it the default with the real `docker` CLI in a temp `DOCKER_CONFIG`, and Captain reads the result.
 4. Start Captain and open Settings. The Switch engine card lists the contexts from `docker context ls`, and the default one has the note "Default context".
 5. Click **Use** on a context. The Engine card shows its host.

@@ -62,7 +62,9 @@ impl TagDialog {
             cx.notify();
             return;
         };
-        let Some(engine) = self.state.read(cx).engine.clone() else {
+        let state = self.state.read(cx);
+        let generation = state.generation();
+        let Some(engine) = state.engine.clone() else {
             return;
         };
         let target = target.to_string();
@@ -78,8 +80,10 @@ impl TagDialog {
                 match result {
                     Ok(()) => {
                         state.update(cx, |state, cx| {
-                            state.set_notice(format!("Tagged {target}"), cx);
-                            state.reload_selected_detail(cx);
+                            if state.generation() == generation {
+                                state.set_notice(format!("Tagged {target}"), generation, cx);
+                                state.reload_selected_detail(cx);
+                            }
                         });
                         window.close_dialog(cx);
                     }

@@ -10,6 +10,7 @@ pub mod extension;
 mod fake_engine;
 pub mod format;
 pub mod kubernetes;
+pub mod link_target;
 pub mod migration;
 pub mod model;
 pub mod process_lock;

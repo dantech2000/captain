@@ -21,7 +21,7 @@ Replace the M1 table with the v2 design: a branded sidebar, live stat tiles, con
 - Inspector tabs:
   - Overview: stat tiles, ports, health-check history (up to the last five checks the engine keeps), environment variables with secrets masked, and mounts.
   - Logs: the last 500 lines, then live lines. The level filter is All / Info / Warn / Error.
-  - Stats: larger CPU, memory, and network charts for the last 60 samples.
+  - Stats: larger CPU, memory, and network charts for the last 60 samples. Memory leaves out the page cache the way `docker stats` does (`total_inactive_file` on cgroup v1, `inactive_file` on v2). The network rate divides each byte delta by the time between the two samples, so a gap while stats reconnect shows the average rate.
   - Terminal and Files: a placeholder that names the milestone that adds them.
 - Live stats: one stats stream per running container, kept in a 60-sample history.
 

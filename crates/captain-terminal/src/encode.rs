@@ -44,11 +44,12 @@ pub fn encode_key(input: &KeyInput, modes: InputModes) -> Option<Vec<u8>> {
 }
 
 /// The bytes for a paste. Bracketed paste mode wraps the text, so the shell does not
-/// run it line by line; ESC is removed so the text cannot end the bracket early.
+/// run it line by line. ESC and Ctrl-C are removed, as alacritty does: ESC could end
+/// the bracket early, and some shells treat Ctrl-C as the end of the paste.
 /// Without it, line ends become CR, as if the user pressed Enter.
 pub fn encode_paste(text: &str, modes: InputModes) -> Vec<u8> {
     if modes.bracketed_paste {
-        let clean = text.replace('\x1b', "");
+        let clean = text.replace(['\x1b', '\x03'], "");
         [b"\x1b[200~", clean.as_bytes(), b"\x1b[201~"].concat()
     } else {
         text.replace("\r\n", "\r").replace('\n', "\r").into_bytes()

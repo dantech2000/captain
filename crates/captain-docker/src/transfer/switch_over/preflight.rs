@@ -9,6 +9,7 @@ use bollard::models::{ContainerInspectResponse, ContainerSummary};
 use bollard::query_parameters::ListContainersOptionsBuilder;
 use captain_core::EngineError;
 
+use super::super::compose::Project;
 use super::super::owner;
 use super::super::source::SourceEngine;
 use super::Job;
@@ -43,7 +44,7 @@ pub async fn check(
             cli: Ok(_),
             ..
         } if project.files_exist => {
-            return same_project(target, project.name, project.working_dir).await;
+            return same_project(target, project, &origin).await;
         }
         Start::Project { project, .. } => project.containers.iter().map(String::as_str).collect(),
     };
@@ -105,14 +106,15 @@ pub fn other_writers(
     Ok(())
 }
 
-/// Refuses when the target has containers of a project named `project` that Compose
-/// ran from another folder. `docker compose up` would take them over.
+/// Refuses when the target has containers of a project named like `project` that
+/// Captain did not copy there from `origin`, or that Compose ran from another
+/// folder. `docker compose up` would take them over.
 async fn same_project(
     target: &Docker,
-    project: &str,
-    working_dir: Option<&str>,
+    project: &Project<'_>,
+    origin: &str,
 ) -> Result<(), EngineError> {
-    let label = format!("{PROJECT_LABEL}={project}");
+    let label = format!("{PROJECT_LABEL}={}", project.name);
     let filters = HashMap::from([("label", vec![label.as_str()])]);
     let options = ListContainersOptionsBuilder::default()
         .all(true)
@@ -120,14 +122,13 @@ async fn same_project(
         .build();
     let listed = target.list_containers(Some(options)).await;
     let other = listed.map_err(mapping::engine_error)?.into_iter().any(|c| {
-        c.labels
-            .as_ref()
-            .and_then(|l| l.get(WORKING_DIR_LABEL))
-            .map(String::as_str)
-            != working_dir
+        let labels = c.labels.as_ref();
+        let dir = labels.and_then(|l| l.get(WORKING_DIR_LABEL));
+        dir.map(String::as_str) != project.working_dir || !owner::is_copy_from(labels, origin)
     });
     if other {
-        return Err(not_a_copy(&format!("A Compose project named {project}")));
+        let what = format!("A Compose project named {}", project.name);
+        return Err(not_a_copy(&what));
     }
     Ok(())
 }

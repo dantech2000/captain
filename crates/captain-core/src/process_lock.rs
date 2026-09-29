@@ -11,6 +11,10 @@ pub fn app_lock_path(settings: &Path) -> PathBuf {
     settings.with_file_name("app.lock")
 }
 
+/// The note in `app.lock` while a `captain snapshot restore` holds it, so the app
+/// cannot start in the middle of the restore.
+pub const CLI_RESTORE_NOTE: &str = "cli-restore";
+
 /// The lock file next to `settings.json` that guards each read, change, and write
 /// of the settings, so two writers never lose each other's change.
 pub fn settings_lock_path(settings: &Path) -> PathBuf {
@@ -48,9 +52,14 @@ impl ProcessLock {
 
     /// The note of the process that holds the lock at `path`, or `None` when no
     /// process holds it. The note is empty where the file cannot be read while
-    /// locked (Windows).
+    /// locked (Windows), and when the lock cannot be checked: a caller that cannot
+    /// tell treats the lock as held.
     pub fn holder(path: &Path) -> Option<String> {
-        let mut file = File::open(path).ok()?;
+        let mut file = match File::open(path) {
+            Ok(file) => file,
+            Err(error) if error.kind() == io::ErrorKind::NotFound => return None,
+            Err(_) => return Some(String::new()),
+        };
         match file.try_lock_shared() {
             Ok(()) => None,
             Err(TryLockError::WouldBlock) => {
@@ -58,7 +67,7 @@ impl ProcessLock {
                 file.read_to_string(&mut note).ok();
                 Some(note)
             }
-            Err(TryLockError::Error(_)) => None,
+            Err(TryLockError::Error(_)) => Some(String::new()),
         }
     }
 }

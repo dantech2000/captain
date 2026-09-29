@@ -75,7 +75,11 @@ impl ImagesState {
     }
 
     /// Shows a result in green, for example "Tagged app:1.0", and reloads the list.
-    pub fn set_notice(&mut self, notice: String, cx: &mut Context<Self>) {
+    /// Does nothing if the engine changed since `generation`.
+    pub fn set_notice(&mut self, notice: String, generation: u64, cx: &mut Context<Self>) {
+        if generation != self.generation {
+            return;
+        }
         self.error = None;
         self.notice = Some(notice);
         self.reload(Duration::ZERO, cx);

@@ -59,11 +59,12 @@ pub fn start(
         let (input_tx, input_rx) = mpsc::unbounded();
         tokio::spawn(write_input(input, input_rx));
 
-        let (output_tx, output_rx) = mpsc::unbounded();
         let (exit_tx, exit_rx) = oneshot::channel();
         let waiter = docker.clone();
         let waited_id = exec_id.clone();
-        tokio::spawn(async move {
+        // Dropping the output stream aborts the reader at once, even while the
+        // command prints nothing, and that closes the connection.
+        let output = runtime::forward(&handle, move |output_tx| async move {
             let mut output = output;
             while let Some(frame) = output.next().await {
                 let item = frame
@@ -75,7 +76,10 @@ pub fn start(
                 }
             }
             drop(output_tx);
-            exit_tx.send(exit_code(&waiter, &waited_id).await).ok();
+            // Apart from the reader, so dropping the stream now does not lose the code.
+            tokio::spawn(async move {
+                exit_tx.send(exit_code(&waiter, &waited_id).await).ok();
+            });
         });
 
         let resize_docker = docker.clone();
@@ -100,7 +104,7 @@ pub fn start(
         Ok(ExecSession {
             command,
             input: ExecInput::new(input_tx),
-            output: output_rx.boxed(),
+            output,
             resizer,
             exit,
         })

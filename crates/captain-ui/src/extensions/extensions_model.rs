@@ -202,12 +202,15 @@ impl ExtensionsModel {
             return;
         }
         self.step = Some(format!("Updating {}...", update.extension.title()).into());
-        super::close_window(&update.extension.id, cx);
+        let id = update.extension.id.clone();
+        super::close_window(&id, cx);
         let apply = manager.update(update.extension, update.candidate);
         self.task = Some(cx.spawn(async move |this, cx| {
             let result = apply.await;
             this.update(cx, |model, cx| {
                 model.end_step(cx);
+                // A window opened meanwhile would show the old or half-copied files.
+                super::close_window(&id, cx);
                 match result {
                     Ok(extension) => cx.emit(ExtensionEvent::Done(format!(
                         "Updated {} to {}",
@@ -232,12 +235,14 @@ impl ExtensionsModel {
         }
         let title = extension.title().to_string();
         self.step = Some(format!("Removing {title}...").into());
-        super::close_window(&extension.id, cx);
+        let id = extension.id.clone();
+        super::close_window(&id, cx);
         let remove = manager.remove(extension);
         self.task = Some(cx.spawn(async move |this, cx| {
             let result = remove.await;
             this.update(cx, |model, cx| {
                 model.end_step(cx);
+                super::close_window(&id, cx);
                 match result {
                     Ok(()) => cx.emit(ExtensionEvent::Done(format!("Removed {title}"))),
                     Err(error) => model.fail("Remove", error, cx),

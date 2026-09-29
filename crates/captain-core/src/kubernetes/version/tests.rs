@@ -21,7 +21,15 @@ fn only_releases_are_stable() {
 
 #[test]
 fn rejects_other_tags() {
-    for text in ["1.36.4+k3s1", "v1.36+k3s1", "v1.36.4", "latest"] {
+    for text in [
+        "1.36.4+k3s1",
+        "v1.36+k3s1",
+        "v1.36.4",
+        "latest",
+        "v1.36.4-rc/../../x+k3s1",
+        "v1.36.4-+k3s1",
+        "v1.36.4+k3s+1",
+    ] {
         assert!(text.parse::<K3sVersion>().is_err(), "{text}");
     }
 }

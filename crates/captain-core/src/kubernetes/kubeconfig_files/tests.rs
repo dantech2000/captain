@@ -76,3 +76,19 @@ fn keeps_the_current_context_that_a_later_file_sets() {
     assert_eq!(load_contexts(&paths).names, ["dev", CONTEXT]);
     std::fs::remove_dir_all(&dir).ok();
 }
+
+#[cfg(unix)]
+#[test]
+fn a_symlinked_kubeconfig_stays_a_link() {
+    use std::os::unix::fs::PermissionsExt;
+    let dir = folder("symlink");
+    std::fs::create_dir_all(dir.join("dotfiles")).unwrap();
+    let link = dir.join("config");
+    std::os::unix::fs::symlink(dir.join("dotfiles/config"), &link).unwrap();
+    install_captain(std::slice::from_ref(&link), &captain()).unwrap();
+    assert!(link.symlink_metadata().unwrap().file_type().is_symlink());
+    let target = std::fs::metadata(dir.join("dotfiles/config")).unwrap();
+    assert_eq!(target.permissions().mode() & 0o777, 0o600);
+    assert!(current_context(&read_config(&link).unwrap()).is_some());
+    std::fs::remove_dir_all(&dir).ok();
+}

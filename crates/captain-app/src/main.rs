@@ -18,7 +18,9 @@ use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use std::sync::Arc;
 
-use captain_core::process_lock::{ProcessLock, app_lock_path, settings_lock_path};
+use captain_core::process_lock::{
+    CLI_RESTORE_NOTE, ProcessLock, app_lock_path, settings_lock_path,
+};
 use captain_core::settings::Settings;
 
 fn main() {
@@ -106,6 +108,11 @@ fn app_lock(settings: &Path) -> Option<ProcessLock> {
                 return None;
             }
         }
+    }
+    if ProcessLock::holder(&path).as_deref() == Some(CLI_RESTORE_NOTE) {
+        tracing::warn!("the captain CLI is restoring a snapshot; quitting");
+        eprintln!("The captain command is restoring a snapshot. Open Captain when it finishes.");
+        std::process::exit(1);
     }
     tracing::warn!("another Captain is running; quitting");
     eprintln!("Captain is already running.");

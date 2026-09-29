@@ -37,6 +37,7 @@ Show the local images and let the user inspect, pull, remove, prune, and run the
 - Pull: a text field and a Pull button. Enter also starts the pull. A missing tag means `latest`. A progress bar and a status line show the pull, with the number of finished layers.
 - Live list: the page reloads on image events (`pull`, `tag`, `untag`, `delete`, `import`, `load`, `prune`) and on container `create` and `destroy`, with a 150 ms debounce.
 - Errors show inline in red: list errors, remove and prune errors, and pull errors.
+- Engine switch: when the workspace switches or loses its engine, the page drops everything from the old one: the list, the selection, errors and notices, the "Started" notice, and any pull or push, which stops. Results that arrive later from the old engine (remove, prune, tag, build, run) do not show. The Build button stays off until the new engine connects.
 
 ## Out of scope
 

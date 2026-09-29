@@ -6,7 +6,7 @@ use crate::theme::Palette;
 use crate::widgets::{ButtonTone, text_button};
 
 /// One extension: title, image and publisher, and Open, Update, and Remove. Open is off for
-/// an extension without a page, and where Captain has no web view.
+/// an extension without a page, where Captain has no web view, and while a step runs.
 pub fn render(
     model: &Entity<ExtensionsModel>,
     extension: &InstalledExtension,
@@ -14,7 +14,7 @@ pub fn render(
     palette: &Palette,
 ) -> AnyElement {
     let details = format!("{} · {}", extension.image, extension.labels.publisher());
-    let can_open = super::CAN_OPEN && extension.page_url().is_some();
+    let can_open = enabled && super::CAN_OPEN && extension.page_url().is_some();
     let open = {
         let (model, extension) = (model.clone(), extension.clone());
         text_button(

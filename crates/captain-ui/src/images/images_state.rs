@@ -14,7 +14,7 @@ use super::Started;
 pub struct ImagesState {
     pub(super) engine: Option<Arc<dyn Engine>>,
     /// Counts engine switches. Remove carries the number it was shown for, and does
-    /// nothing after a switch.
+    /// nothing after a switch. Results that arrive after a switch are dropped.
     pub(super) generation: u64,
     /// Runs `docker buildx build`. `None` turns the Build button off.
     pub(super) builder: Option<Arc<dyn ImageBuilder>>,
@@ -100,11 +100,13 @@ impl ImagesState {
 
     /// Drops the engine and everything loaded from it, while the workspace has none.
     pub fn detach(&mut self, cx: &mut Context<Self>) {
+        self.builder = None;
         if self.engine.take().is_some() {
             self.clear_engine_state(cx);
         }
     }
 
+    /// Drops what came from the old engine. Dropping a task cancels its pull or push.
     fn clear_engine_state(&mut self, cx: &mut Context<Self>) {
         self.generation += 1;
         self.store = ImageStore::default();
@@ -116,6 +118,14 @@ impl ImagesState {
         self.load_error = None;
         self.error = None;
         self.notice = None;
+        self.pruning = false;
+        self.pull = None;
+        self.pull_error = None;
+        self.pull_task = None;
+        self.push = None;
+        self.push_error = None;
+        self.push_task = None;
+        self.started = None;
         cx.notify();
     }
 

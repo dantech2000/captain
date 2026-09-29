@@ -49,3 +49,18 @@ fn reads_the_buildx_version() {
         None
     );
 }
+
+#[test]
+fn a_relative_context_becomes_absolute_once() {
+    let spec = BuildSpec {
+        context: PathBuf::from("app"),
+        dockerfile: PathBuf::from("Dockerfile"),
+        tag: "myapp:dev".into(),
+        build_args: Vec::new(),
+        target: None,
+    };
+    let context = std::env::current_dir().unwrap().join("app");
+    let args = build_args(&with_absolute_context(&spec));
+    assert_eq!(args.last(), Some(&context.display().to_string()));
+    assert!(args.contains(&context.join("Dockerfile").display().to_string()));
+}

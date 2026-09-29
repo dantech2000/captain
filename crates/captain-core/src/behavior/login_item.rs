@@ -65,22 +65,33 @@ pub fn run_command(program: &str) -> String {
 }
 
 /// One argument of an `Exec` line, quoted by the Desktop Entry rules: reserved
-/// characters need double quotes, `"`, `` ` ``, `$`, and `\` get a backslash inside
-/// them, and then the string escape doubles every backslash.
+/// characters need double quotes, and `"`, `` ` ``, `$`, and `\` get a backslash
+/// inside them. Then the string escape doubles every backslash and writes line
+/// breaks and tabs as `\n`, `\r`, and `\t`, and a literal `%` becomes `%%`, so it
+/// is not a field code. See
+/// <https://specifications.freedesktop.org/desktop-entry/latest/exec-variables.html>.
 fn exec_argument(arg: &str) -> String {
     const RESERVED: &str = " \t\n\"'\\><~|&;$*?#()`";
-    if !arg.chars().any(|c| RESERVED.contains(c)) {
-        return arg.to_string();
+    let mut quoted = String::new();
+    let needs_quotes = arg.chars().any(|c| RESERVED.contains(c));
+    if needs_quotes {
+        quoted.push('"');
     }
-    let mut quoted = String::from("\"");
     for c in arg.chars() {
-        if matches!(c, '"' | '`' | '$' | '\\') {
+        if needs_quotes && matches!(c, '"' | '`' | '$' | '\\') {
             quoted.push('\\');
         }
         quoted.push(c);
     }
-    quoted.push('"');
-    quoted.replace('\\', "\\\\")
+    if needs_quotes {
+        quoted.push('"');
+    }
+    quoted
+        .replace('\\', "\\\\")
+        .replace('\n', "\\n")
+        .replace('\r', "\\r")
+        .replace('\t', "\\t")
+        .replace('%', "%%")
 }
 
 fn xml_escape(text: &str) -> String {

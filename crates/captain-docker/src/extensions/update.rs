@@ -66,8 +66,7 @@ pub async fn apply(
     // The ID stays, so an older ID keeps its folder, backend, and page data.
     new.id = extension.id.clone();
     new.engine = context.engine.clone();
-    let root = context.paths.root();
-    let backup = root.join(".backup").join(&new.id);
+    let backup = context.paths.backup_dir(&new.id);
     if backup.exists() {
         return Err(EngineError::Api(format!(
             "An earlier update of {} did not finish. Its previous files are in {}.",
@@ -75,7 +74,7 @@ pub async fn apply(
             backup.display()
         )));
     }
-    let staging = ExtensionPaths::new(root.join(".update"));
+    let staging = context.paths.staging();
     std::fs::remove_dir_all(staging.dir(&new.id)).ok();
     let result = stage_and_switch(context, &extension, &new, &staging, backup).await;
     std::fs::remove_dir_all(staging.dir(&new.id)).ok();

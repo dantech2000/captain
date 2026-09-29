@@ -6,7 +6,7 @@ use std::time::Duration;
 use captain_core::model::BuildSpec;
 use captain_core::{EngineStream, ImageBuilder};
 
-use super::args::{build_args, parse_buildx_version};
+use super::args::{build_args, parse_buildx_version, with_absolute_context};
 use super::lines::stream_lines;
 use crate::compose::{DockerCli, docker_host, error_message};
 use crate::{Endpoint, process};
@@ -68,8 +68,9 @@ impl BuildCli {
 
 impl ImageBuilder for BuildCli {
     fn build(&self, spec: &BuildSpec) -> EngineStream<String> {
+        let spec = with_absolute_context(spec);
         let mut command = self.command();
-        command.args(build_args(spec)).current_dir(&spec.context);
+        command.args(build_args(&spec)).current_dir(&spec.context);
         stream_lines(command, "docker buildx")
     }
 }

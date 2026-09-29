@@ -5,5 +5,6 @@ mod curl;
 mod download;
 mod versions;
 
+pub use curl::ping;
 pub use download::ensure;
 pub use versions::list;

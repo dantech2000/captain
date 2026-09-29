@@ -28,6 +28,15 @@ fn exec_quotes_reserved_characters() {
 }
 
 #[test]
+fn exec_escapes_percent_and_line_breaks() {
+    let entry = autostart_entry("/home/me/100%/%u\ncaptain");
+    assert!(
+        entry.contains(r#"Exec="/home/me/100%%/%%u\ncaptain""#),
+        "{entry}"
+    );
+}
+
+#[test]
 fn hidden_or_disabled_entries_are_off() {
     assert!(autostart_enabled(&autostart_entry("/bin/captain")));
     assert!(!autostart_enabled("[Desktop Entry]\nHidden=true\n"));

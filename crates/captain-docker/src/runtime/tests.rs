@@ -3,7 +3,7 @@ use std::time::{Duration, Instant};
 
 use futures::channel::mpsc::UnboundedSender;
 
-use super::{build, forward};
+use super::{BackgroundRuntime, build, forward};
 
 #[test]
 fn dropping_a_stream_aborts_an_idle_producer() {
@@ -24,4 +24,13 @@ fn dropping_a_stream_aborts_an_idle_producer() {
         assert!(Instant::now() < deadline, "the producer still runs");
         std::thread::sleep(Duration::from_millis(10));
     }
+}
+
+#[test]
+fn dropping_a_background_runtime_does_not_wait_for_blocking_work() {
+    let runtime = BackgroundRuntime::from(build().unwrap());
+    runtime.spawn_blocking(|| std::thread::sleep(Duration::from_secs(5)));
+    let dropped = Instant::now();
+    drop(runtime);
+    assert!(dropped.elapsed() < Duration::from_secs(1));
 }

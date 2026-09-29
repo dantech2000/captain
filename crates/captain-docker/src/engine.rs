@@ -2,9 +2,9 @@ use std::time::Duration;
 
 use bollard::{API_DEFAULT_VERSION, Docker};
 use captain_core::EngineError;
-use tokio::runtime::Runtime;
 
-use crate::{Endpoint, mapping, runtime};
+use crate::runtime::{self, BackgroundRuntime};
+use crate::{Endpoint, mapping};
 
 mod containers;
 mod images;
@@ -21,7 +21,7 @@ pub struct DockerEngine {
     docker: Docker,
     /// The endpoint the Engine card shows: an `ssh://` URL for a tunnel.
     label: String,
-    runtime: Runtime,
+    runtime: BackgroundRuntime,
 }
 
 impl DockerEngine {
@@ -49,7 +49,7 @@ impl DockerEngine {
 
 /// A client for `endpoint` with an agreed API version, and the runtime it runs on.
 /// Blocks for up to a few seconds; call it from a background thread.
-pub(crate) fn connect(endpoint: &Endpoint) -> Result<(Docker, Runtime), EngineError> {
+pub(crate) fn connect(endpoint: &Endpoint) -> Result<(Docker, BackgroundRuntime), EngineError> {
     let runtime = runtime::build().map_err(|err| EngineError::Unreachable(err.to_string()))?;
     let docker = runtime.block_on(async {
         let docker = client(endpoint).map_err(mapping::engine_error)?;
@@ -58,7 +58,7 @@ pub(crate) fn connect(endpoint: &Endpoint) -> Result<(Docker, Runtime), EngineEr
             .map_err(|_| EngineError::Unreachable(format!("{endpoint} did not answer")))?
             .map_err(mapping::engine_error)
     })?;
-    Ok((docker, runtime))
+    Ok((docker, runtime.into()))
 }
 
 fn client(endpoint: &Endpoint) -> Result<Docker, bollard::errors::Error> {

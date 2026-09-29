@@ -2,6 +2,9 @@
 //! behind the Service through the Kubernetes port-forward API, as Rancher Desktop
 //! does with the client library's `PortForward`. See ADR 0010.
 
+use std::sync::Arc;
+use std::time::Duration;
+
 use captain_core::HostError;
 use captain_core::kubernetes::ForwardKey;
 use k8s_openapi::api::core::v1::Pod;
@@ -10,7 +13,11 @@ use tokio::net::{TcpListener, TcpStream};
 use tokio::task::JoinSet;
 
 use crate::client::error;
+use crate::clients::Clients;
 use crate::target;
+
+/// How long a forward waits after a failed accept.
+const ACCEPT_BACKOFF: Duration = Duration::from_millis(250);
 
 /// Listens on `127.0.0.1:<port>`, or a free port when it is `None`.
 pub async fn bind(port: Option<u16>) -> Result<TcpListener, HostError> {
@@ -21,21 +28,28 @@ pub async fn bind(port: Option<u16>) -> Result<TcpListener, HostError> {
 }
 
 /// Accepts connections until the task is aborted. Dropping the task drops the
-/// connection tasks too, so open connections end with the forward.
-pub async fn serve(listener: TcpListener, client: Client, key: ForwardKey) {
+/// connection tasks too, so open connections end with the forward. Each connection
+/// takes the current client, so a Kubernetes reset does not break the forward.
+pub async fn serve(listener: TcpListener, clients: Arc<Clients>, key: ForwardKey) {
     let mut connections = JoinSet::new();
     loop {
         while connections.try_join_next().is_some() {}
         let socket = match listener.accept().await {
             Ok((socket, _)) => socket,
             Err(error) => {
+                // Such as too many open files: wait, so the loop does not spin.
                 tracing::warn!(%error, "port forward accept failed");
+                tokio::time::sleep(ACCEPT_BACKOFF).await;
                 continue;
             }
         };
-        let (client, key) = (client.clone(), key.clone());
+        let (clients, key) = (clients.clone(), key.clone());
         connections.spawn(async move {
-            if let Err(error) = relay(client, &key, socket).await {
+            let relayed = match clients.get().await {
+                Ok(client) => relay(client, &key, socket).await,
+                Err(error) => Err(error),
+            };
+            if let Err(error) = relayed {
                 tracing::warn!(%error, service = %key.service, "port forward failed");
             }
         });

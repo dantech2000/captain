@@ -28,6 +28,9 @@ impl ImagesState {
         cx.spawn(async move |this, cx| {
             let result = engine.remove_image(&id).await;
             this.update(cx, |this, cx| {
+                if this.generation != generation {
+                    return;
+                }
                 this.removing.remove(&id);
                 if let Err(error) = result {
                     tracing::warn!(%error, "removing an image failed");
@@ -53,9 +56,13 @@ impl ImagesState {
         self.error = None;
         self.notice = None;
         cx.notify();
+        let generation = self.generation;
         cx.spawn(async move |this, cx| {
             let result = engine.prune_dangling_images().await;
             this.update(cx, |this, cx| {
+                if this.generation != generation {
+                    return;
+                }
                 this.pruning = false;
                 match result {
                     Ok(bytes) => {

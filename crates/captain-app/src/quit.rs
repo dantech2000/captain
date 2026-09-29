@@ -1,4 +1,5 @@
-//! Quit: stops Captain Engine first when the settings say so. See ADR 0008.
+//! Quit: stops Captain Engine first when the settings say so, or when a start runs.
+//! It waits for a snapshot step. See ADR 0008 and docs/features/0023-snapshots.md.
 
 use std::time::Duration;
 
@@ -13,22 +14,34 @@ struct Quitting;
 
 impl Global for Quitting {}
 
-/// Stops Captain Engine if it runs and the settings ask for it, then quits. The
-/// window stays responsive and shows "Stopping" meanwhile.
+/// Set while Quit waits for a snapshot step to end.
+struct WaitingForSnapshot {
+    _subscription: Subscription,
+}
+
+impl Global for WaitingForSnapshot {}
+
+/// Stops Captain Engine if it runs and the settings ask for it, then quits. A start
+/// that runs now is stopped too, because Captain cannot finish it after it exits.
+/// The window stays responsive and shows "Stopping" meanwhile.
 pub fn quit(cx: &mut App) {
-    if cx.has_global::<Quitting>() {
-        cx.quit();
-        return;
-    }
     let Some(model) = captain_ui::host_model(cx) else {
         cx.quit();
         return;
     };
+    if model.read(cx).is_snapshotting() {
+        wait_for_snapshot(model, cx);
+        return;
+    }
+    if cx.has_global::<Quitting>() {
+        cx.quit();
+        return;
+    }
     let host = model.read(cx);
-    let stop_engine = captain_ui::current_settings(cx).stop_engine_on_quit
-        && host.uses_captain(cx)
+    let stop_engine = host.uses_captain(cx)
         && host.can_control()
-        && host.status().can_stop();
+        && (host.is_starting()
+            || captain_ui::current_settings(cx).stop_engine_on_quit && host.status().can_stop());
     if !stop_engine {
         cx.quit();
         return;
@@ -44,4 +57,25 @@ pub fn quit(cx: &mut App) {
         cx.update(|cx| cx.quit());
     })
     .detach();
+}
+
+/// Quits when the snapshot step ends, because a step cut off halfway can leave the
+/// engine without its disk. The step does not start the engine again.
+fn wait_for_snapshot(model: Entity<captain_ui::HostModel>, cx: &mut App) {
+    if cx.has_global::<WaitingForSnapshot>() {
+        return;
+    }
+    tracing::info!("waiting for the snapshot step before quitting");
+    model.update(cx, |model, cx| model.quit_after_snapshot(cx));
+    let mut done = false;
+    let subscription = cx.observe(&model, move |model, cx| {
+        if done || model.read(cx).is_snapshotting() {
+            return;
+        }
+        done = true;
+        quit(cx);
+    });
+    cx.set_global(WaitingForSnapshot {
+        _subscription: subscription,
+    });
 }

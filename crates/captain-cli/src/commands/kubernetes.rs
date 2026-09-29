@@ -44,24 +44,22 @@ fn enable(
     traefik: Option<bool>,
 ) -> Result<()> {
     let (host, kubernetes) = cluster(context)?;
-    let mut wanted = KubernetesSettings {
-        enabled: true,
-        ..context.load()?.kubernetes
-    };
-    if let Some(version) = version {
+    if let Some(version) = &version {
         version.parse::<K3sVersion>().map_err(anyhow::Error::msg)?;
-        wanted.version = Some(version);
     }
-    if wanted.version.is_none() {
+    // The network lookup runs before the settings lock.
+    let stable = if version.is_none() && context.load()?.kubernetes.version.is_none() {
         let list = block_on(kubernetes.versions(false))?;
         let stable = list
             .stable()
             .context("cannot find the stable k3s version; check the network")?;
-        wanted.version = Some(stable.to_string());
-    }
-    wanted.port = port.unwrap_or(wanted.port);
-    wanted.traefik = traefik.unwrap_or(wanted.traefik);
-    save(context, &wanted)?;
+        Some(stable.to_string())
+    } else {
+        None
+    };
+    let wanted = save(context, |saved| {
+        apply_enable(saved, version, stable, port, traefik)
+    })?;
     host.set_kubernetes(wanted.clone());
     let version = wanted.version.clone().unwrap_or_default();
     if !engine_running(&host)? {
@@ -71,13 +69,26 @@ fn enable(
     print_stream(kubernetes.enable(wanted))
 }
 
+/// Turns Kubernetes on in `saved` with only the options the command names, so a
+/// change another command saved meanwhile stays.
+fn apply_enable(
+    saved: &mut KubernetesSettings,
+    version: Option<String>,
+    stable: Option<String>,
+    port: Option<u16>,
+    traefik: Option<bool>,
+) {
+    saved.enabled = true;
+    if version.is_some() || saved.version.is_none() {
+        saved.version = version.or(stable);
+    }
+    saved.port = port.unwrap_or(saved.port);
+    saved.traefik = traefik.unwrap_or(saved.traefik);
+}
+
 fn disable(context: &Context) -> Result<()> {
     let (host, kubernetes) = cluster(context)?;
-    let wanted = KubernetesSettings {
-        enabled: false,
-        ..context.load()?.kubernetes
-    };
-    save(context, &wanted)?;
+    let wanted = save(context, |saved| saved.enabled = false)?;
     host.set_kubernetes(wanted);
     if engine_running(&host)? {
         block_on(kubernetes.disable())?;
@@ -98,14 +109,18 @@ fn reset(context: &Context, yes: bool) -> Result<()> {
     print_stream(kubernetes.reset())
 }
 
-/// Saves the Kubernetes settings. Like `captain set`, it holds the settings lock and
-/// refuses while the app runs, because the app writes the whole file on each change.
-fn save(context: &Context, kubernetes: &KubernetesSettings) -> Result<()> {
+/// Changes the saved Kubernetes settings with `change` and returns them. Like
+/// `captain set`, it reads, changes, and saves under the settings lock, and refuses
+/// while the app runs, because the app writes the whole file on each change.
+fn save(
+    context: &Context,
+    change: impl FnOnce(&mut KubernetesSettings),
+) -> Result<KubernetesSettings> {
     context.update_settings(
         "Captain is running. Change Kubernetes in Settings, or quit Captain first.",
         |settings| {
-            settings.kubernetes = kubernetes.clone();
-            Ok(())
+            change(&mut settings.kubernetes);
+            Ok(settings.kubernetes.clone())
         },
     )
 }
@@ -120,3 +135,6 @@ fn print_stream(stream: HostStream<String>) -> Result<()> {
     }
     Ok(())
 }
+
+#[cfg(test)]
+mod tests;

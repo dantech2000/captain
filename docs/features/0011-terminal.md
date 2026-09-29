@@ -20,7 +20,7 @@ Open a shell in a running container from the inspector, like `docker exec -it <c
 - A grid drawn in the monospace font at 12 px: cell backgrounds, then text runs per row with color, bold, italic, underline, and strikeout, then a block, beam, or underline cursor. An unfocused grid shows a hollow block. The 16 ANSI colors have dark and light variants tuned to Captain's palette.
 - Keys: printable text, Enter, Tab, Shift-Tab, Backspace, Escape, arrows (application cursor mode aware), Home, End, Page Up, Page Down, Insert, Delete, F1 to F12, Ctrl and Alt combinations. On macOS, Option types the character it composes.
 - Ctrl-K and Ctrl-Q go to the shell while the grid has focus. The app binds them to the palette and Quit elsewhere. Cmd-K and Cmd-Q still work on macOS.
-- Copy and paste: Cmd-C and Cmd-V on macOS, Ctrl-Shift-C and Ctrl-Shift-V elsewhere. Paste uses bracketed paste when the program asks for it.
+- Copy and paste: Cmd-C and Cmd-V on macOS, Ctrl-Shift-C and Ctrl-Shift-V elsewhere. Paste uses bracketed paste when the program asks for it. ESC and Ctrl-C (`\x03`) are removed from a bracketed paste, as alacritty does, so pasted text cannot end the paste early and run commands ([alacritty event.rs](https://github.com/alacritty/alacritty/blob/master/alacritty/src/event.rs)).
 - Mouse: drag to select, double click selects a word, triple click a line.
 - Scroll wheel: scrolls 10,000 lines of history. On the alternate screen (`less`, `vim`) it sends arrow keys. Typing jumps back to the live screen.
 - Resize: the grid fits whole cells into the pane. The emulator resizes at once; the exec resizes after the size holds still for 150 ms.

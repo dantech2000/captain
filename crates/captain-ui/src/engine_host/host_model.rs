@@ -35,6 +35,9 @@ pub struct HostModel {
     pub(super) cancelled: bool,
     /// True while a snapshot step runs. Start, stop, reset, and resizing wait.
     pub(super) snapshotting: bool,
+    /// True once Quit waits for the snapshot step, which then does not start the
+    /// engine again.
+    pub(super) quitting: bool,
     pub(super) _poll: Option<Task<()>>,
 }
 
@@ -71,6 +74,7 @@ pub fn init(
             stopping: false,
             cancelled: false,
             snapshotting: false,
+            quitting: false,
             _poll: None,
         };
         model.rescan(cx);
@@ -119,6 +123,11 @@ impl HostModel {
     /// False for a host Captain does not control, and while a snapshot step runs.
     pub fn can_control(&self) -> bool {
         self.host.can_control() && !self.snapshotting
+    }
+
+    /// True while a start runs, from the first step to the last.
+    pub fn is_starting(&self) -> bool {
+        self.start_task.is_some()
     }
 
     /// Why the last start failed, until the next start.

@@ -4,6 +4,7 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 
 use super::Settings;
+use crate::link_target::link_target;
 
 /// Why the settings file could not be read or written.
 #[derive(Debug, thiserror::Error)]
@@ -34,8 +35,10 @@ impl Settings {
     /// Writes the settings to `path`, creating its directory if needed. It writes a
     /// temporary file next to `path` and renames it, so a crash never leaves half a file.
     /// A writer that reads the settings first holds
-    /// [`settings_lock_path`](crate::process_lock::settings_lock_path) meanwhile.
+    /// [`settings_lock_path`](crate::process_lock::settings_lock_path) meanwhile. A
+    /// symlinked file stays a link: the write goes to its target.
     pub fn save(&self, path: &Path) -> Result<(), SettingsError> {
+        let path = &link_target(path);
         if let Some(dir) = path.parent() {
             fs::create_dir_all(dir).map_err(|source| io_error(dir, source))?;
         }

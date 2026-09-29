@@ -4,13 +4,14 @@
 
 use std::fs::File;
 use std::io::Read;
-use std::path::{Path, PathBuf};
+use std::path::{Component, Path, PathBuf};
 
 use captain_core::HostError;
 use captain_core::kubernetes::{K3sAssets, K3sVersion, download_url, expected_sha256};
 use sha2::{Digest, Sha256};
 
 use super::curl;
+use crate::cancel::Cancel;
 
 /// The folder that holds `version` in `cache`.
 pub fn folder(cache: &Path, version: &K3sVersion) -> PathBuf {
@@ -22,8 +23,16 @@ pub fn ensure(
     cache: &Path,
     version: &K3sVersion,
     assets: &K3sAssets,
+    cancel: &Cancel,
     sink: &mut dyn FnMut(String),
 ) -> Result<PathBuf, HostError> {
+    // The parser allows only a safe tag; failure cleanup deletes these folders.
+    if !matches!(
+        Path::new(version.as_str()).components().collect::<Vec<_>>()[..],
+        [Component::Normal(_)]
+    ) {
+        return Err(HostError(format!("{version} is not a k3s version.")));
+    }
     let done = folder(cache, version);
     if done.join(assets.binary).is_file() && done.join(assets.images).is_file() {
         return Ok(done);
@@ -32,7 +41,7 @@ pub fn ensure(
     std::fs::remove_dir_all(&temp).ok();
     let io = |error: std::io::Error| HostError(format!("Cannot write {}: {error}", temp.display()));
     std::fs::create_dir_all(&temp).map_err(io)?;
-    let result = fetch(&temp, version, assets, sink).and_then(|()| {
+    let result = fetch(&temp, version, assets, cancel, sink).and_then(|()| {
         std::fs::remove_dir_all(&done).ok();
         std::fs::rename(&temp, &done).map_err(io)
     });
@@ -46,13 +55,14 @@ fn fetch(
     temp: &Path,
     version: &K3sVersion,
     assets: &K3sAssets,
+    cancel: &Cancel,
     sink: &mut dyn FnMut(String),
 ) -> Result<(), HostError> {
-    let listing = curl::text(&download_url(version.as_str(), assets.checksums))?;
+    let listing = curl::text(&download_url(version.as_str(), assets.checksums), cancel)?;
     for (file, what) in [(assets.binary, "k3s"), (assets.images, "the system images")] {
         sink(format!("Downloading {what} for Kubernetes {version}."));
         let path = temp.join(file);
-        curl::save(&download_url(version.as_str(), file), &path)?;
+        curl::save(&download_url(version.as_str(), file), &path, cancel)?;
         let expected = expected_sha256(&listing, file).ok_or_else(|| {
             HostError(format!("{} has no checksum for {file}.", assets.checksums))
         })?;

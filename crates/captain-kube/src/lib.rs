@@ -3,6 +3,7 @@
 //! See docs/adr/0010-kubernetes.md.
 
 mod client;
+mod clients;
 mod forward;
 mod forwarder;
 mod services;

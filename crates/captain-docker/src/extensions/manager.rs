@@ -4,11 +4,11 @@ use captain_core::extension::{
     InstalledExtension, UpdateCheck,
 };
 use captain_core::{EngineError, EngineFuture};
-use tokio::runtime::Runtime;
 
 use super::{bridge, install, update};
 use crate::compose::{DockerCli, docker_host};
-use crate::{Endpoint, engine, runtime};
+use crate::runtime::{self, BackgroundRuntime};
+use crate::{Endpoint, engine};
 
 /// What every extension step needs: the engine, the `docker` CLI pointed at it, and
 /// the extensions folder.
@@ -57,7 +57,7 @@ impl Context {
 /// The Docker implementation of [`ExtensionManager`].
 pub struct DockerExtensions {
     context: Context,
-    runtime: Runtime,
+    runtime: BackgroundRuntime,
 }
 
 impl DockerExtensions {

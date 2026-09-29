@@ -3,6 +3,7 @@
 //! `dockerd`; Windows comes later. See docs/adr/0008-captain-engine.md.
 
 mod blocking;
+mod cancel;
 mod host;
 mod k3s;
 mod lima;

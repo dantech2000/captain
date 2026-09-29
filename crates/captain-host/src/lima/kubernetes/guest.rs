@@ -95,6 +95,9 @@ for m in $(awk '$2 ~ "^/(var/lib/kubelet|run/k3s)" {print $2}' /proc/self/mounts
 rm -rf /var/lib/kubelet /var/lib/rancher/k3s/data /var/lib/rancher/k3s/server /var/lib/rancher/k3s/storage /etc/rancher/k3s /run/k3s /var/lib/rancher/k3s/captain-version
 "#;
 
+/// Prints the API port in the installed unit, or nothing.
+const PORT_SCRIPT: &str = r#"sed -n 's/.*--https-listen-port \([0-9]*\).*/\1/p' /etc/systemd/system/k3s.service 2>/dev/null || true"#;
+
 /// Prints the unit state, then the installed version (or nothing).
 const STATUS_SCRIPT: &str = r#"systemctl is-active k3s 2>/dev/null || true
 cat /var/lib/rancher/k3s/captain-version 2>/dev/null || true
@@ -145,6 +148,10 @@ pub fn reset_args(instance: &str) -> Vec<String> {
 
 pub fn status_args(instance: &str) -> Vec<String> {
     sudo(instance, STATUS_SCRIPT, &[])
+}
+
+pub fn port_args(instance: &str) -> Vec<String> {
+    sudo(instance, PORT_SCRIPT, &[])
 }
 
 pub fn kubeconfig_args(instance: &str) -> Vec<String> {

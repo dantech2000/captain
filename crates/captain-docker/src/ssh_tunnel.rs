@@ -17,7 +17,7 @@ use captain_core::ssh::SshTarget;
 
 mod slot;
 
-use slot::{Slot, open_in};
+use slot::{Register, Slot, close_in, open_in};
 
 /// How long `ssh` may take to log in and open the local socket.
 const READY_TIMEOUT: Duration = Duration::from_secs(40);
@@ -39,19 +39,16 @@ pub fn open_ssh_tunnel(target: &SshTarget) -> Result<PathBuf, String> {
     if !cfg!(unix) {
         return Err("Captain reaches engines over SSH on macOS and Linux only.".into());
     }
-    open_in(&ACTIVE, target, || {
-        SshTunnel::start("ssh".into(), target.clone(), &std::env::temp_dir())
+    open_in(&ACTIVE, target, |register| {
+        let base = std::env::temp_dir();
+        SshTunnel::start_with("ssh".into(), target.clone(), &base, register)
     })
 }
 
-/// Stops the open tunnel, if there is one. A start still in progress stops too.
+/// Stops the open tunnel, if there is one. A start still in progress stops too, and
+/// its `ssh` is killed before this returns, so a quit leaves no `ssh` behind.
 pub fn close_ssh_tunnel() {
-    let tunnel = {
-        let mut slot = Slot::lock(&ACTIVE);
-        slot.generation += 1;
-        slot.tunnel.take()
-    };
-    drop(tunnel);
+    close_in(&ACTIVE);
 }
 
 /// A running `ssh -L` and the thread that restarts it. Dropping it stops both and
@@ -77,7 +74,18 @@ struct Shared {
 impl SshTunnel {
     /// Starts `program` (the `ssh` binary) with a socket in a new 0700 directory
     /// under `base`, and waits until the socket exists.
+    #[cfg(all(test, unix))]
     pub(crate) fn start(program: OsString, target: SshTarget, base: &Path) -> Result<Self, String> {
+        Self::start_with(program, target, base, None)
+    }
+
+    /// Like `start`, and hands `register` a way to stop the start while it waits.
+    pub(crate) fn start_with(
+        program: OsString,
+        target: SshTarget,
+        base: &Path,
+        register: Option<Register<'_>>,
+    ) -> Result<Self, String> {
         let number = NEXT_DIR.fetch_add(1, Ordering::Relaxed);
         let dir = base.join(format!("captain-ssh-{}-{number}", std::process::id()));
         private_dir(&dir).map_err(|err| format!("cannot make {}: {err}", dir.display()))?;
@@ -90,12 +98,14 @@ impl SshTunnel {
             stopped: Mutex::new(false),
             wake: Condvar::new(),
         });
-        match shared.spawn_ready() {
-            Ok(child) => *shared.lock_child() = Some(child),
-            Err(error) => {
-                let _ = fs::remove_dir_all(&dir);
-                return Err(error);
-            }
+        let closed = register.is_some_and(|register| !register.starting(&shared));
+        if closed {
+            let _ = fs::remove_dir_all(&dir);
+            return Err(format!("The connection to {target} was closed."));
+        }
+        if let Err(error) = shared.spawn_ready() {
+            let _ = fs::remove_dir_all(&dir);
+            return Err(error);
         }
         tracing::info!(%target, socket = %socket.display(), "SSH tunnel is up");
         let supervisor = {
@@ -125,19 +135,12 @@ impl SshTunnel {
 
 impl Drop for SshTunnel {
     fn drop(&mut self) {
-        *self
-            .shared
-            .stopped
-            .lock()
-            .unwrap_or_else(PoisonError::into_inner) = true;
-        self.shared.wake.notify_all();
+        self.shared.stop();
         if let Some(supervisor) = self.supervisor.take() {
             let _ = supervisor.join();
         }
-        if let Some(mut child) = self.shared.lock_child().take() {
-            let _ = child.kill();
-            let _ = child.wait();
-        }
+        // The supervisor may have started one more `ssh` before it saw the stop.
+        self.shared.stop();
         let _ = fs::remove_dir_all(&self.dir);
         tracing::info!(target = %self.target, "SSH tunnel stopped");
     }
@@ -146,6 +149,16 @@ impl Drop for SshTunnel {
 impl Shared {
     fn lock_child(&self) -> std::sync::MutexGuard<'_, Option<Child>> {
         self.child.lock().unwrap_or_else(PoisonError::into_inner)
+    }
+
+    /// Marks the tunnel stopped, wakes the supervisor, and kills `ssh`.
+    fn stop(&self) {
+        *self.stopped.lock().unwrap_or_else(PoisonError::into_inner) = true;
+        self.wake.notify_all();
+        if let Some(mut child) = self.lock_child().take() {
+            let _ = child.kill();
+            let _ = child.wait();
+        }
     }
 
     fn is_stopped(&self) -> bool {
@@ -178,13 +191,11 @@ impl Shared {
                 break;
             }
             match self.spawn_ready() {
-                Ok(child) => {
-                    *self.lock_child() = Some(child);
+                Ok(()) => {
                     delay = FIRST_RESTART;
                     tracing::info!(target = %self.target, "SSH tunnel is up again");
                 }
                 Err(error) => {
-                    *self.lock_child() = None;
                     delay = (delay * 2).min(MAX_RESTART);
                     tracing::warn!(%error, "cannot restart the SSH tunnel");
                 }
@@ -193,37 +204,49 @@ impl Shared {
     }
 
     /// Runs `ssh` and waits until it makes the local socket, which it does after it
-    /// logs in. The error explains why `ssh` exited.
-    fn spawn_ready(&self) -> Result<Child, String> {
+    /// logs in. The error explains why `ssh` exited. The child waits in `child`, so
+    /// [`Shared::stop`] can kill it at any time.
+    fn spawn_ready(&self) -> Result<(), String> {
         let _ = fs::remove_file(&self.socket);
-        let mut child = Command::new(&self.program)
+        let child = Command::new(&self.program)
             .args(self.target.tunnel_args(&self.socket))
             .stdin(Stdio::null())
             .stdout(Stdio::null())
             .stderr(Stdio::piped())
             .spawn()
             .map_err(|err| format!("Captain cannot run ssh: {err}"))?;
+        *self.lock_child() = Some(child);
         let deadline = Instant::now() + READY_TIMEOUT;
         loop {
+            let mut guard = self.lock_child();
+            let Some(child) = guard.as_mut().filter(|_| !self.is_stopped()) else {
+                drop(guard);
+                self.stop();
+                return Err(format!("The connection to {} was closed.", self.target));
+            };
             if self.socket.exists() {
-                log_stderr(&mut child, self.target.to_string());
-                return Ok(child);
+                log_stderr(child, self.target.to_string());
+                return Ok(());
             }
             if let Ok(Some(_)) = child.try_wait() {
                 let mut stderr = String::new();
                 if let Some(mut pipe) = child.stderr.take() {
                     let _ = pipe.read_to_string(&mut stderr);
                 }
+                *guard = None;
                 return Err(self.target.explain_failure(&stderr));
             }
-            if Instant::now() > deadline || self.is_stopped() {
-                let _ = child.kill();
-                let _ = child.wait();
+            if Instant::now() > deadline {
+                if let Some(mut child) = guard.take() {
+                    let _ = child.kill();
+                    let _ = child.wait();
+                }
                 return Err(format!(
                     "SSH to {} did not open the tunnel in time.",
                     self.target.host
                 ));
             }
+            drop(guard);
             std::thread::sleep(Duration::from_millis(100));
         }
     }

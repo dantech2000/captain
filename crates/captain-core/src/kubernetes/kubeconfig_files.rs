@@ -2,11 +2,13 @@
 //! and a backup before each write. See ADR 0010.
 
 use std::ffi::OsStr;
+use std::io::Write;
 use std::path::{Path, PathBuf};
 
 use serde_json::Value;
 
 use super::kubeconfig::{self, CONTEXT};
+use crate::link_target::link_target;
 
 /// The files kubectl reads: each entry of `KUBECONFIG`, or `~/.kube/config`.
 pub fn kubeconfig_paths(env: Option<&OsStr>, home: &Path) -> Vec<PathBuf> {
@@ -43,19 +45,21 @@ pub fn read_config(path: &Path) -> Result<Value, String> {
 
 /// Writes `config` to `path`. An existing file is copied to `<name>.captain-backup`
 /// first. The new file is written next to it and renamed, and only its owner can
-/// read it, like the files kubectl writes.
-pub fn write_config(path: &Path, config: &Value) -> Result<(), String> {
+/// read it, like the files kubectl writes. A symlinked file stays a link: the new
+/// file goes next to the target and replaces it, and the backup stays next to the
+/// link.
+pub fn write_config(link: &Path, config: &Value) -> Result<(), String> {
+    let path = &link_target(link);
     let fail = |error: std::io::Error| format!("Cannot write {}: {error}", path.display());
     let yaml = kubeconfig::to_yaml(config)?;
     if let Some(dir) = path.parent() {
         std::fs::create_dir_all(dir).map_err(fail)?;
     }
     if path.exists() {
-        std::fs::copy(path, sibling(path, "captain-backup")).map_err(fail)?;
+        std::fs::copy(path, sibling(link, "captain-backup")).map_err(fail)?;
     }
     let temp = sibling(path, "captain-new");
-    std::fs::write(&temp, yaml).map_err(fail)?;
-    restrict(&temp).map_err(fail)?;
+    write_private(&temp, yaml.as_bytes()).map_err(fail)?;
     std::fs::rename(&temp, path).map_err(fail)
 }
 
@@ -144,15 +148,15 @@ fn sibling(path: &Path, suffix: &str) -> PathBuf {
     path.with_file_name(name)
 }
 
-#[cfg(unix)]
-fn restrict(path: &Path) -> std::io::Result<()> {
-    use std::os::unix::fs::PermissionsExt;
-    std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o600))
-}
-
-#[cfg(not(unix))]
-fn restrict(_: &Path) -> std::io::Result<()> {
-    Ok(())
+/// Writes a new file that only its owner can read from the first byte, because a
+/// kubeconfig holds the client key.
+fn write_private(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
+    std::fs::remove_file(path).ok();
+    let mut options = std::fs::OpenOptions::new();
+    options.write(true).create_new(true);
+    #[cfg(unix)]
+    std::os::unix::fs::OpenOptionsExt::mode(&mut options, 0o600);
+    options.open(path)?.write_all(bytes)
 }
 
 #[cfg(test)]

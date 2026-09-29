@@ -15,6 +15,7 @@ use tokio::runtime::{Builder, Handle, Runtime};
 use tokio::task::AbortHandle;
 
 use crate::client::client;
+use crate::clients::Clients;
 use crate::{forward, services};
 
 struct Running {
@@ -28,6 +29,7 @@ type Table = Arc<Mutex<BTreeMap<ForwardKey, Running>>>;
 pub struct KubeForwarder {
     runtime: Runtime,
     kubeconfig: PathBuf,
+    clients: Arc<Clients>,
     forwards: Table,
 }
 
@@ -41,6 +43,7 @@ impl KubeForwarder {
             .build()?;
         Ok(Self {
             runtime,
+            clients: Arc::new(Clients::new(kubeconfig.clone())),
             kubeconfig,
             forwards: Table::default(),
         })
@@ -67,10 +70,11 @@ impl PortForwarding for KubeForwarder {
         {
             return futures::future::ready(Err(HostError(why))).boxed();
         }
-        let (path, table, handle) = (
+        let (path, table, handle, clients) = (
             self.kubeconfig.clone(),
             self.forwards.clone(),
             self.runtime.handle().clone(),
+            self.clients.clone(),
         );
         self.spawn(async move {
             if let Some(running) = lock(&table).get(&key) {
@@ -79,14 +83,15 @@ impl PortForwarding for KubeForwarder {
                     key,
                 });
             }
-            let client = client(&path).await?;
+            // Fails early when Kubernetes is off.
+            client(&path).await?;
             let listener = forward::bind(local_port).await?;
             let local_port = listener
                 .local_addr()
                 .map_err(|error| HostError(error.to_string()))?
                 .port();
             let task = handle
-                .spawn(forward::serve(listener, client, key.clone()))
+                .spawn(forward::serve(listener, clients, key.clone()))
                 .abort_handle();
             Ok(claim(&table, key, Running { local_port, task }))
         })

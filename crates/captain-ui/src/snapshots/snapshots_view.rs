@@ -66,7 +66,8 @@ impl Render for SnapshotsView {
         let model = self.model.read(cx);
         let (running, engine_busy) = host_model(cx).map_or((false, false), |host| {
             let host = host.read(cx);
-            (host.status().is_running(), host.status().is_busy())
+            let busy = host.status().is_busy() || host.is_snapshotting();
+            (host.status().is_running(), busy)
         });
         let enabled = model.is_available() && !model.is_busy() && !engine_busy;
         let create = text_button(

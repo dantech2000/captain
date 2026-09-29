@@ -10,6 +10,7 @@ use futures::channel::mpsc;
 use super::install;
 use crate::LimaHost;
 use crate::blocking::blocking;
+use crate::cancel::Cancel;
 use crate::k3s;
 
 /// k3s in one Lima instance.
@@ -45,14 +46,18 @@ impl KubernetesHost for LimaKubernetes {
         on_thread(move |sink| {
             host.set_kubernetes_settings(settings.clone());
             host.with_running_engine(|limactl, paths| {
-                install::install(limactl, paths, &settings, sink).map(drop)
+                install::install(limactl, paths, &settings, &Cancel::default(), sink).map(drop)
             })
         })
     }
 
     fn disable(&self) -> HostFuture<()> {
         let host = self.host.clone();
-        blocking(move || host.with_running_engine(install::disable))
+        blocking(move || {
+            host.with_running_engine(|limactl, paths| {
+                install::disable(limactl, paths, &Cancel::default())
+            })
+        })
     }
 
     fn reset(&self) -> HostStream<String> {
@@ -61,9 +66,10 @@ impl KubernetesHost for LimaKubernetes {
             let settings = host.kubernetes_settings();
             host.with_running_engine(|limactl, paths| {
                 sink("Deleting the Kubernetes cluster.".into());
-                install::reset(limactl, paths)?;
+                let cancel = Cancel::default();
+                install::reset(limactl, paths, &cancel)?;
                 if settings.enabled {
-                    install::install(limactl, paths, &settings, sink)?;
+                    install::install(limactl, paths, &settings, &cancel, sink)?;
                 }
                 Ok(())
             })

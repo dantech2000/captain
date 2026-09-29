@@ -50,10 +50,18 @@ impl HostModel {
         self.host.set_resources(metadata.resources)
     }
 
-    /// Unblocks the engine controls, and starts the engine if `restart`.
+    /// Keeps the running snapshot step from starting the engine again, because
+    /// Captain quits when it ends.
+    pub fn quit_after_snapshot(&mut self, cx: &mut Context<Self>) {
+        self.quitting = true;
+        cx.notify();
+    }
+
+    /// Unblocks the engine controls, and starts the engine if `restart`, unless
+    /// Captain quits.
     pub(crate) fn end_snapshot(&mut self, restart: bool, cx: &mut Context<Self>) {
         self.snapshotting = false;
-        if restart {
+        if restart && !self.quitting {
             self.start(cx);
         }
         cx.notify();

@@ -8,12 +8,12 @@ use std::time::Duration;
 use captain_core::model::{ComposeProject, ProjectAction};
 use captain_core::{EngineError, EngineFuture, ProjectRunner};
 use futures::FutureExt;
-use futures::channel::oneshot;
 
 use super::command::{compose_command, docker_host};
 use super::docker_cli::DockerCli;
 use super::output::{error_message, parse_version};
 use crate::Endpoint;
+use crate::child::output_guarded;
 
 /// How long `docker compose version` may take before Captain gives up on the CLI.
 const DETECT_TIMEOUT: Duration = Duration::from_secs(5);
@@ -52,7 +52,7 @@ impl ComposeCli {
     }
 
     /// A `docker` command with the environment pointed at Captain's endpoint.
-    fn command(&self, args: &[String], dir: Option<&Path>) -> Command {
+    pub(super) fn command(&self, args: &[String], dir: Option<&Path>) -> Command {
         let mut command = self.docker.command();
         command
             .args(args)
@@ -85,13 +85,6 @@ impl ProjectRunner for ComposeCli {
 }
 
 impl ComposeCli {
-    /// `up -d` for only `services`. Services that are not named stay off, including
-    /// the ones behind a profile. A named service with a profile starts, and so do
-    /// the services it depends on.
-    pub fn up_services(&self, project: &ComposeProject, services: &[String]) -> EngineFuture<()> {
-        self.run_with(project, ProjectAction::Up, services)
-    }
-
     /// Runs `action` for `project`, with `services` after the action's arguments.
     fn run_with(
         &self,
@@ -107,20 +100,15 @@ impl ComposeCli {
             }
             Err(message) => return futures::future::ready(Err(EngineError::Api(message))).boxed(),
         };
-        let (tx, rx) = oneshot::channel();
-        std::thread::spawn(move || tx.send(run(command)).ok());
-        rx.map(|result| {
-            result.unwrap_or_else(|_| Err(EngineError::Api("the compose command stopped".into())))
-        })
-        .boxed()
+        // Dropping the future kills the command, for example when a migration stops.
+        output_guarded(command).map(checked).boxed()
     }
 }
 
-/// Runs `command` to the end. Fails with the command's error output.
-fn run(mut command: Command) -> Result<(), EngineError> {
-    let output = command
-        .output()
-        .map_err(|err| EngineError::Api(format!("cannot run docker compose: {err}")))?;
+/// Fails with the command's error output.
+fn checked(output: std::io::Result<Output>) -> Result<(), EngineError> {
+    let output =
+        output.map_err(|err| EngineError::Api(format!("cannot run docker compose: {err}")))?;
     if output.status.success() {
         return Ok(());
     }

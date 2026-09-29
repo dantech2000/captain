@@ -18,15 +18,22 @@ use tar::{Archive, EntryType};
 use self::archive::{Collected, io_error};
 use crate::mapping;
 
-/// Lists the folder `$1` with `stat`, which prints the same fields in GNU coreutils
-/// and BusyBox. The second run follows links, to find the ones that point to
-/// folders. Exit code 3 means the folder cannot be opened; 127 means no `stat`.
+/// Lists the folder `$1`. `stat` prints the same fields in GNU coreutils and
+/// BusyBox, but ends each name with a newline, which a name may hold. So `stat`
+/// prints no names; the shell's `printf` prints them after it, each ending in a NUL
+/// and led by `1` when it opens as a folder, following links. A pattern that
+/// matches nothing stays as itself and does not exist, so both skip it. Exit code 3
+/// means the folder cannot be opened; 127 means no `stat`.
 const LIST_SCRIPT: &str = r#"command -v stat >/dev/null || exit 127
 cd -- "$1" || exit 3
 set -- .[!.]* ..?* *
-stat -c "%f %s %Y %n" -- "$@" 2>/dev/null
+stat -c "%f %s %Y" -- "$@" 2>/dev/null
 echo ---
-stat -L -c "%f %n" -- "$@" 2>/dev/null
+for f; do
+  [ -e "$f" ] || [ -L "$f" ] || continue
+  if [ -d "$f" ]; then d=1; else d=0; fi
+  printf '%s%s\0' "$d" "$f"
+done
 exit 0"#;
 
 /// The most of a folder's tar the archive fallback reads.
@@ -39,7 +46,11 @@ pub async fn list(docker: &Docker, id: &str, path: &str) -> Result<Vec<FileEntry
         .map(String::from)
         .to_vec();
     match capture::capture(docker, id, cmd).await {
-        Ok(out) if out.code == Some(0) => Ok(mapping::stat_listing(&out.stdout)),
+        Ok(out) if out.code == Some(0) => mapping::stat_listing(&out.stdout).ok_or_else(|| {
+            EngineError::Api(format!(
+                "{path} changed while Captain listed it. Try again."
+            ))
+        }),
         Ok(out) if out.code == Some(3) => Err(EngineError::Api(format!(
             "Could not open {path}. It does not exist, or it is not a folder."
         ))),
@@ -124,7 +135,6 @@ fn temp_name() -> String {
 }
 
 fn unpack(tar: &Path, dir: &Path, name: &str) -> io::Result<PathBuf> {
-    let free = |name: &str| dir.join(save_name(name, |n| dir.join(n).exists()));
     let kind = {
         let mut archive = Archive::new(File::open(tar)?);
         let mut entry = archive
@@ -133,8 +143,8 @@ fn unpack(tar: &Path, dir: &Path, name: &str) -> io::Result<PathBuf> {
             .ok_or_else(|| io::Error::other("the archive is empty"))??;
         let kind = entry.header().entry_type();
         if kind == EntryType::Regular {
-            let target = free(name);
-            io::copy(&mut entry, &mut File::create_new(&target)?)?;
+            let (target, mut file) = reserve(dir, name)?;
+            io::copy(&mut entry, &mut file)?;
             return Ok(target);
         }
         kind
@@ -144,8 +154,31 @@ fn unpack(tar: &Path, dir: &Path, name: &str) -> io::Result<PathBuf> {
             "Captain can save only files and folders. Open the link's target instead.",
         ));
     }
-    // The archive is closed, so Windows allows the rename.
-    let target = free(&format!("{name}.tar"));
-    fs::rename(tar, &target)?;
+    // The rename replaces only the empty file that `reserve` made. The archive and
+    // that file are closed, so Windows allows it.
+    let (target, file) = reserve(dir, &format!("{name}.tar"))?;
+    drop(file);
+    fs::rename(tar, &target).inspect_err(|_| {
+        fs::remove_file(&target).ok();
+    })?;
     Ok(target)
 }
+
+/// Creates a new, empty file with the first free name like `name` in `dir`. It
+/// replaces nothing: not another save that picked the same name meanwhile, and not
+/// a link that points nowhere.
+fn reserve(dir: &Path, name: &str) -> io::Result<(PathBuf, File)> {
+    let taken = |n: &str| dir.join(n).symlink_metadata().is_ok();
+    for _ in 0..100 {
+        let target = dir.join(save_name(name, taken));
+        match File::create_new(&target) {
+            Ok(file) => return Ok((target, file)),
+            Err(error) if error.kind() == io::ErrorKind::AlreadyExists => continue,
+            Err(error) => return Err(error),
+        }
+    }
+    Err(io::Error::other(format!("no free name for {name}")))
+}
+
+#[cfg(all(test, unix))]
+mod tests;

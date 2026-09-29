@@ -2,6 +2,7 @@
 //! runtime-neutral futures and channels. See docs/adr/0002-bollard-and-tokio-bridge.md.
 
 use std::future::Future;
+use std::ops::Deref;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 
@@ -19,6 +20,33 @@ pub fn build() -> std::io::Result<Runtime> {
         .thread_name("captain-docker")
         .enable_all()
         .build()
+}
+
+/// A runtime that shuts down without waiting when it drops. A plain [`Runtime`]
+/// waits for its `spawn_blocking` work, which would freeze the UI thread that drops
+/// an engine. See <https://docs.rs/tokio/latest/tokio/runtime/struct.Runtime.html#method.shutdown_background>.
+pub struct BackgroundRuntime(Option<Runtime>);
+
+impl From<Runtime> for BackgroundRuntime {
+    fn from(runtime: Runtime) -> Self {
+        Self(Some(runtime))
+    }
+}
+
+impl Deref for BackgroundRuntime {
+    type Target = Runtime;
+
+    fn deref(&self) -> &Runtime {
+        self.0.as_ref().expect("the runtime is set until drop")
+    }
+}
+
+impl Drop for BackgroundRuntime {
+    fn drop(&mut self) {
+        if let Some(runtime) = self.0.take() {
+            runtime.shutdown_background();
+        }
+    }
 }
 
 /// Spawns `future` on tokio. Any executor can await the returned future.

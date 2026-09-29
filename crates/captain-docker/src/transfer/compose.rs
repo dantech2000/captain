@@ -2,11 +2,12 @@
 //! when they exist here, or else container by container from the inspect data.
 
 use bollard::Docker;
+use captain_core::EngineError;
 use captain_core::migration::TransferEvent;
-use captain_core::model::{ComposeProject, ProjectAction};
-use captain_core::{EngineError, ProjectRunner};
+use captain_core::model::ComposeProject;
 
 use super::container::copy_container;
+use super::owner;
 use super::progress::{self, Events, Outcome};
 use super::source::SourceEngine;
 use crate::ComposeCli;
@@ -39,7 +40,8 @@ pub async fn copy_project(
                 config_files: project.config_files.to_vec(),
                 services: Vec::new(),
             };
-            cli.run_project(&compose, ProjectAction::Up).await?;
+            let labels = owner::mark(None, &owner::origin(source).await?);
+            cli.up_labeled(&compose, &[], labels).await?;
             let note = "Started with docker compose up -d from its files.";
             progress::send(events, TransferEvent::Note(note.into()));
             return Ok(Outcome::Copied);

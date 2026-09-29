@@ -6,8 +6,10 @@ use gpui_kit::*;
 use crate::workspace::Workspace;
 
 /// Asks before deleting `container`. A live container can only be deleted here, with
-/// "Stop and delete", which force-removes it.
+/// "Stop and delete", which force-removes it. Confirming does nothing once the
+/// workspace switched engines.
 pub fn open(container: &Container, handle: Entity<Workspace>, window: &mut Window, cx: &mut App) {
+    let generation = handle.read(cx).engine_generation();
     let id = container.id.clone();
     let action = ContainerAction::removal_for(container.state);
     let title = SharedString::from(format!("Delete {}?", container.name));
@@ -30,7 +32,9 @@ pub fn open(container: &Container, handle: Entity<Workspace>, window: &mut Windo
             .ok_variant(ButtonVariant::Danger)
             .on_ok(move |_, _, cx| {
                 handle.update(cx, |workspace, cx| {
-                    workspace.run_action(id.clone(), action, cx)
+                    if workspace.engine_generation() == generation {
+                        workspace.run_action(id.clone(), action, cx)
+                    }
                 });
                 true
             })

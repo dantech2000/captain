@@ -48,6 +48,16 @@ impl ExtensionPaths {
     pub fn manifest(&self, id: &str) -> PathBuf {
         self.dir(id).join(MANIFEST_FILE)
     }
+
+    /// The old files of an update that has not finished: `.backup/<id>`.
+    pub fn backup_dir(&self, id: &str) -> PathBuf {
+        self.root.join(".backup").join(id)
+    }
+
+    /// Where an update copies the new files first: `.update/<id>`.
+    pub fn staging(&self) -> Self {
+        Self::new(self.root.join(".update"))
+    }
 }
 
 /// The file in `ui_dir` for the URL path `path`, for example `/assets/app.js`.

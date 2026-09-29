@@ -1,7 +1,6 @@
 //! The blocking work behind each [`LimaHost`](super::LimaHost) action. Each runs on
 //! its own thread.
 
-use std::sync::atomic::Ordering;
 use std::time::{Duration, Instant};
 
 use captain_core::{HostError, HostResources, HostStatus};
@@ -9,11 +8,13 @@ use captain_core::{HostError, HostResources, HostStatus};
 use super::{Inner, Phase, daemon_steps, engine_lock, kube_steps, lock};
 use crate::lima::args;
 use crate::lima::instance::{LimaInstance, find_instance};
-use crate::lima::limactl::{Limactl, kill};
+use crate::lima::limactl::Limactl;
 use crate::lima::template;
 
 /// How long a stop waits for a start it cancelled to wind down.
 const CANCEL_WAIT: Duration = Duration::from_secs(10);
+/// How long `limactl list` and the other status checks may take.
+pub const QUICK_TIMEOUT: Duration = Duration::from_secs(30);
 
 pub fn status(inner: &Inner) -> HostStatus {
     match inner.phase() {
@@ -44,7 +45,7 @@ pub fn status(inner: &Inner) -> HostStatus {
 pub fn start(inner: &Inner, sink: &mut dyn FnMut(String)) -> Result<(), HostError> {
     let _guard = inner.begin(Phase::Starting)?;
     let _lock = engine_lock::acquire(inner, true)?;
-    inner.cancel.store(false, Ordering::SeqCst);
+    inner.cancel.reset();
     inner.paths.check_socket_paths().map_err(HostError)?;
     let limactl = inner.limactl().map_err(HostError)?;
     let wanted = *lock(&inner.resources);
@@ -58,13 +59,13 @@ pub fn start(inner: &Inner, sink: &mut dyn FnMut(String)) -> Result<(), HostErro
         Some(instance) => {
             if let Some(edit) = args::edit(&inner.paths.instance, &instance.resources(), &wanted) {
                 sink("Applying the new resources.".into());
-                limactl.stream(&edit, &inner.running, sink)?;
+                limactl.stream(&edit, &inner.cancel, sink)?;
             }
         }
     }
-    check_cancel(inner)?;
+    inner.cancel.check()?;
     sink("Starting Captain Engine.".into());
-    limactl.stream(&args::start(&inner.paths.instance), &inner.running, sink)?;
+    limactl.stream(&args::start(&inner.paths.instance), &inner.cancel, sink)?;
     let socket = inner.paths.docker_socket();
     if !socket.exists() {
         return Err(HostError(format!(
@@ -72,8 +73,10 @@ pub fn start(inner: &Inner, sink: &mut dyn FnMut(String)) -> Result<(), HostErro
             socket.display()
         )));
     }
+    // Each step below runs under `inner.cancel`, so a stop ends it at once.
     daemon_steps::apply(inner, &limactl, sink)?;
     kube_steps::on_start(inner, &limactl, sink);
+    inner.cancel.check()?;
     sink("Captain Engine is running.".into());
     Ok(())
 }
@@ -96,7 +99,7 @@ fn create(
     sink("Setting up Captain Engine. The first start downloads about 600 MB.".into());
     limactl.stream(
         &args::create(&inner.paths.instance, &file),
-        &inner.running,
+        &inner.cancel,
         sink,
     )
 }
@@ -105,6 +108,8 @@ fn create(
 pub fn stop(inner: &Inner) -> Result<(), HostError> {
     cancel_start(inner);
     let _guard = inner.begin(Phase::Stopping)?;
+    // The start has ended, so the stop's own commands may run.
+    inner.cancel.reset();
     let _lock = engine_lock::acquire(inner, false)?;
     let limactl = inner.limactl().map_err(HostError)?;
     match find(inner, &limactl)? {
@@ -115,14 +120,14 @@ pub fn stop(inner: &Inner) -> Result<(), HostError> {
             limactl
                 .stream(
                     &args::stop(&inner.paths.instance, false),
-                    &inner.running,
+                    &inner.cancel,
                     &mut ignore,
                 )
                 .or_else(|error| {
                     tracing::warn!(%error, "limactl stop failed; forcing it");
                     limactl.stream(
                         &args::stop(&inner.paths.instance, true),
-                        &inner.running,
+                        &inner.cancel,
                         &mut ignore,
                     )
                 })
@@ -172,23 +177,15 @@ fn cancel_start(inner: &Inner) {
     if inner.phase() != Phase::Starting {
         return;
     }
-    inner.cancel.store(true, Ordering::SeqCst);
-    kill(&inner.running);
+    inner.cancel.cancel();
     let deadline = Instant::now() + CANCEL_WAIT;
     while inner.phase() == Phase::Starting && Instant::now() < deadline {
         std::thread::sleep(Duration::from_millis(100));
-        kill(&inner.running);
+        inner.cancel.kill();
     }
-}
-
-fn check_cancel(inner: &Inner) -> Result<(), HostError> {
-    if inner.cancel.load(Ordering::SeqCst) {
-        return Err(HostError("The start was cancelled.".into()));
-    }
-    Ok(())
 }
 
 pub fn find(inner: &Inner, limactl: &Limactl) -> Result<Option<LimaInstance>, HostError> {
-    let json = limactl.output(&args::list())?;
+    let json = limactl.output_within(&args::list(), QUICK_TIMEOUT)?;
     Ok(find_instance(&json, &inner.paths.instance))
 }
