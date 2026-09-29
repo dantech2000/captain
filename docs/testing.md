@@ -118,15 +118,28 @@ Use `target/debug/Captain.app/Contents/Resources/bin/captain`.
 
 ## Last run
 
-2026-09-29, commit c656372, macOS, on the real Captain Engine. Run through the `captain` CLI, which drives the same host code as the app. The UI steps were not run, because the terminal had no Accessibility permission.
+2026-09-29, commit c656372, macOS, on the real Captain Engine. Tests 1–3 ran first through the `captain` CLI (the same host code as the app), then the UI steps in the app.
 
 | Test | Result |
 |------|--------|
-| 1. Daemon settings: mirror, custom key, TCP 23750, revert | Pass. `docker info` showed the mirror; `tcp://127.0.0.1:23750` answered; revert removed the drop-in. About 12 s outage per restart. |
-| 2. Snapshots: create, restore, rename, delete | Pass. Create and restore took about 10 s each. The APFS clone used no extra disk. The test volume was gone after restore. |
-| 3. Kubernetes: enable, local-image pod, port forward, reset, disable | Pass. k3s v1.36.4 ran in 40 s. The `captain` context was added, the current context was kept, and the kubeconfig backup was written. |
-| 3.7 Stop during a k3s start | Not run (needs the app). |
-| 2.7, 8.2 Close the window or quit during a snapshot | Not run (needs the app). |
+| 1. Daemon settings: mirror, custom key, TCP 23750, revert | Pass (CLI). `docker info` showed the mirror; `tcp://127.0.0.1:23750` answered; revert removed the drop-in. About 12 s outage per restart. The form checks passed earlier in the app. |
+| 2.1–2.6 Snapshots page: create, edit, restore with save first, delete | Pass. Create took under 3 s plus the engine restart. The APFS clone used no extra disk. The test volume was gone after restore, and a "Before restore" snapshot was saved. |
+| 2.7 Close the window during a restore | Pass. The restore finished, the engine started again, and the page was normal after reopening. |
+| 3.1–3.2 Kubernetes card: enable and apply | Pass. The card showed Running once the CA-checked API answered. The `captain` context was added and the current context was kept. |
+| 3.3–3.4 Local-image pod and Port Forwarding page | Pass. The pod ran without a pull; forwarding `web:80` to 18080 served it; Stop closed the port. |
+| 3.5 Show Kubernetes containers | Pass. Hidden by default; the toggle shows one card per namespace. |
+| 3.6 Kubernetes Contexts menu | Pass. Switching to `captain` and back changed `kubectl config current-context`. |
+| 3.7 Stop during the k3s step of a start | Pass. The engine stopped 4 s after Stop. |
+| 3.8 Turn Kubernetes off | Pass. No pod containers left; engine memory back to about 57 MB. |
 | 4. Administrative access | Not run (needs your password). |
-| 5. Extensions | Pass earlier the same day, in the app. |
-| UI pages: Snapshots, Kubernetes card, Port Forwarding, contexts menu | Not run. |
+| 5. Extensions | Pass, in the app. |
+| 6. Contexts list | Pass after a fix: "No engines found" no longer shows above listed contexts. |
+| 7. Command line | Pass. |
+| 8.1 Quit stops the engine; the next launch starts it | Pass. The engine was up 9 s after launch. |
+| 8.2 Quit during a snapshot | Pass. Captain waited for the snapshot step, then quit. |
+
+Notes for the UI/UX pass:
+
+- The sidebar's bottom entries and the engine card's Start button move when the engine stops or starts.
+- The Memory tile and the menu bar count include Kubernetes containers while they are hidden.
+- Kubernetes containers show raw `k8s_POD_…` names; the pod and container names would read better.

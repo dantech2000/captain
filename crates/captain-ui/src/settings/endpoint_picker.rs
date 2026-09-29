@@ -29,7 +29,8 @@ pub fn render(
             detected_row(ix, detected, active, palette, cx)
         })
         .collect();
-    if rows.is_empty() {
+    // Contexts are engines too, so the empty note shows only when neither list has any.
+    if rows.is_empty() && view.contexts.contexts.is_empty() {
         rows.push(
             settings_row(
                 "No engines found",
