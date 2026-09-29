@@ -20,6 +20,7 @@ pub fn free_space(_: &Path) -> Option<u64> {
 }
 
 /// Reads the "Available" column of `df -Pk` output, in 1024-byte blocks.
+#[cfg(any(unix, test))]
 pub fn parse_df(output: &str) -> Option<u64> {
     let line = output.lines().nth(1)?;
     let available: u64 = line.split_whitespace().nth(3)?.parse().ok()?;
