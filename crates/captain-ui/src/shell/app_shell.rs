@@ -1,23 +1,19 @@
-use std::sync::Arc;
-
-use captain_core::{Engine, EngineError};
-use gpui_kit::component::{Theme, h_flex};
+use gpui_kit::component::Theme;
+use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::*;
 
-use super::engine_status::EngineStatus;
-use super::page::Page;
 use super::sidebar;
 use crate::containers::ContainersView;
+use crate::inspector::InspectorView;
+use crate::theme::Palette;
+use crate::workspace::{Connection, Connector, Workspace};
 
-/// Connects to an engine. It may block, so the shell runs it on a background thread.
-pub type Connector = Box<dyn FnOnce() -> Result<Arc<dyn Engine>, EngineError> + Send>;
-
-/// The root view: the sidebar and the active page.
+/// The root view: sidebar, container list, and inspector.
 pub struct AppShell {
-    page: Page,
-    status: EngineStatus,
+    workspace: Entity<Workspace>,
     containers: Entity<ContainersView>,
-    _appearance: Subscription,
+    inspector: Entity<InspectorView>,
+    _subscriptions: Vec<Subscription>,
 }
 
 impl AppShell {
@@ -27,64 +23,45 @@ impl AppShell {
             Theme::sync_system_appearance(Some(window), cx)
         });
 
-        let containers = cx.new(|cx| ContainersView::new(window, cx));
-        let shell = Self {
-            page: Page::Containers,
-            status: EngineStatus::Connecting,
+        let workspace = cx.new(|cx| {
+            let mut workspace = Workspace::new();
+            workspace.connect(connect, cx);
+            workspace
+        });
+        let containers = cx.new(|cx| ContainersView::new(workspace.clone(), cx));
+        let inspector = cx.new(|cx| InspectorView::new(workspace.clone(), cx));
+        let observe = cx.observe(&workspace, |_, _, cx| cx.notify());
+
+        Self {
+            workspace,
             containers,
-            _appearance: appearance,
-        };
-        shell.connect(connect, cx);
-        shell
-    }
-
-    fn connect(&self, connect: Connector, cx: &mut Context<Self>) {
-        cx.spawn(async move |this, cx| {
-            let connected = cx
-                .background_executor()
-                .spawn(async move { connect() })
-                .await;
-            let engine = match connected {
-                Ok(engine) => engine,
-                Err(error) => {
-                    this.update(cx, |this, cx| this.fail(error, cx)).ok();
-                    return;
-                }
-            };
-            let info = engine.info().await;
-            this.update(cx, |this, cx| match info {
-                Ok(info) => {
-                    this.status = EngineStatus::Connected(info);
-                    this.containers
-                        .update(cx, |view, cx| view.attach(engine, cx));
-                    cx.notify();
-                }
-                Err(error) => this.fail(error, cx),
-            })
-            .ok();
-        })
-        .detach();
-    }
-
-    fn fail(&mut self, error: EngineError, cx: &mut Context<Self>) {
-        tracing::warn!(%error, "engine connection failed");
-        self.status = EngineStatus::Failed(error.clone());
-        self.containers.update(cx, |view, cx| view.fail(error, cx));
-        cx.notify();
+            inspector,
+            _subscriptions: vec![appearance, observe],
+        }
     }
 }
 
 impl Render for AppShell {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        h_flex()
+        let palette = Palette::of(cx);
+        let workspace = self.workspace.read(cx);
+        let show_inspector = workspace.selected().is_some()
+            && !matches!(workspace.connection(), Connection::Failed(_));
+
+        div()
             .size_full()
-            .child(sidebar::render(self.page, &self.status, cx))
+            .flex()
+            .bg(palette.bg)
+            .text_color(palette.text)
+            .text_size(px(13.))
+            .child(sidebar::render(workspace, &palette))
             .child(
                 div()
                     .flex_1()
-                    .h_full()
                     .min_w_0()
+                    .h_full()
                     .child(self.containers.clone()),
             )
+            .when(show_inspector, |this| this.child(self.inspector.clone()))
     }
 }

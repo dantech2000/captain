@@ -1,9 +1,12 @@
 use futures::FutureExt;
 use futures::StreamExt;
-use futures::future::{BoxFuture, ready};
-use futures::stream::{self, BoxStream};
+use futures::future::ready;
+use futures::stream;
 
-use crate::model::{Container, EngineEvent, EngineInfo};
+use crate::engine::{EngineFuture, EngineStream};
+use crate::model::{
+    Container, ContainerAction, ContainerDetail, EngineEvent, EngineInfo, LogLine, StatsSample,
+};
 use crate::{Engine, EngineError};
 
 /// An in-memory [`Engine`] for tests and UI previews.
@@ -12,10 +15,12 @@ pub struct FakeEngine {
     pub info: Option<EngineInfo>,
     pub containers: Vec<Container>,
     pub events: Vec<EngineEvent>,
+    pub stats: Vec<StatsSample>,
+    pub logs: Vec<LogLine>,
 }
 
 impl Engine for FakeEngine {
-    fn info(&self) -> BoxFuture<'static, Result<EngineInfo, EngineError>> {
+    fn info(&self) -> EngineFuture<EngineInfo> {
         let result = self
             .info
             .clone()
@@ -23,11 +28,32 @@ impl Engine for FakeEngine {
         ready(result).boxed()
     }
 
-    fn list_containers(&self) -> BoxFuture<'static, Result<Vec<Container>, EngineError>> {
+    fn list_containers(&self) -> EngineFuture<Vec<Container>> {
         ready(Ok(self.containers.clone())).boxed()
     }
 
-    fn events(&self) -> BoxStream<'static, Result<EngineEvent, EngineError>> {
+    fn events(&self) -> EngineStream<EngineEvent> {
         stream::iter(self.events.clone().into_iter().map(Ok)).boxed()
+    }
+
+    fn inspect_container(&self, id: &str) -> EngineFuture<ContainerDetail> {
+        let detail = ContainerDetail {
+            id: id.to_string(),
+            ..ContainerDetail::default()
+        };
+        ready(Ok(detail)).boxed()
+    }
+
+    fn stats(&self, _id: &str) -> EngineStream<StatsSample> {
+        stream::iter(self.stats.clone().into_iter().map(Ok)).boxed()
+    }
+
+    fn logs(&self, _id: &str, tail: usize) -> EngineStream<LogLine> {
+        let skip = self.logs.len().saturating_sub(tail);
+        stream::iter(self.logs.clone().into_iter().skip(skip).map(Ok)).boxed()
+    }
+
+    fn run_action(&self, _id: &str, _action: ContainerAction) -> EngineFuture<()> {
+        ready(Ok(())).boxed()
     }
 }

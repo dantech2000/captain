@@ -1,16 +1,38 @@
 use gpui_kit::assets::IconName;
-use gpui_kit::component::label::Label;
-use gpui_kit::component::{ActiveTheme, Icon, v_flex};
+use gpui_kit::component::Icon;
 use gpui_kit::*;
 
-pub fn render(cx: &App) -> impl IntoElement {
-    v_flex()
-        .size_full()
+use crate::theme::Palette;
+
+pub fn render(filtered: bool, palette: &Palette) -> impl IntoElement {
+    let (title, hint) = if filtered {
+        (
+            "No containers match this filter",
+            "Choose All to see every container.",
+        )
+    } else {
+        (
+            "No containers yet",
+            "Run `docker run hello-world` and it shows up here.",
+        )
+    };
+    div()
+        .pt(px(80.))
+        .flex()
+        .flex_col()
         .items_center()
-        .justify_center()
-        .gap_2()
-        .text_color(cx.theme().muted_foreground)
-        .child(Icon::new(IconName::Container).size_8())
-        .child(Label::new("No containers"))
-        .child(Label::new("Run `docker run hello-world` and it will show up here.").text_sm())
+        .gap(px(8.))
+        .text_color(palette.text2)
+        .child(
+            Icon::new(IconName::Container)
+                .size(px(32.))
+                .text_color(palette.text3),
+        )
+        .child(
+            div()
+                .text_color(palette.text)
+                .font_weight(FontWeight::SEMIBOLD)
+                .child(title),
+        )
+        .child(div().text_size(px(12.)).child(hint))
 }

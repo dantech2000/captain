@@ -1,5 +1,3 @@
-//! Text formatting for values that views show.
-
 /// A coarse relative age like the Docker CLI prints, for example "3 hours ago".
 /// Both arguments are Unix timestamps in seconds.
 pub fn age_label(created: i64, now: i64) -> String {

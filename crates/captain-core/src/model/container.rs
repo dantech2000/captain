@@ -1,4 +1,4 @@
-use super::PortMapping;
+use super::{Health, PortMapping};
 
 /// A container as Captain shows it in lists.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -15,12 +15,49 @@ pub struct Container {
     pub created: i64,
     /// The Compose project, from the `com.docker.compose.project` label.
     pub compose_project: Option<String>,
+    /// `None` if the container has no health check.
+    pub health: Option<Health>,
 }
 
 impl Container {
     /// The first 12 characters of the ID, as the Docker CLI shows it.
     pub fn short_id(&self) -> &str {
         &self.id[..self.id.len().min(12)]
+    }
+
+    /// The image split into name and tag: `nginx:1.27` gives `("nginx", "1.27")`.
+    /// A registry port (`localhost:5000/app`) is not a tag. No tag gives an empty one.
+    pub fn image_name_and_tag(&self) -> (&str, &str) {
+        let slash = self.image.rfind('/').map_or(0, |i| i + 1);
+        match self.image[slash..].rfind(':') {
+            Some(colon) if !self.image.starts_with("sha256:") => {
+                let colon = slash + colon;
+                (&self.image[..colon], &self.image[colon + 1..])
+            }
+            _ => (&self.image, ""),
+        }
+    }
+
+    /// A short uptime for the list, for example `3 hours`, `Paused`, or `Exited`.
+    pub fn uptime_label(&self) -> String {
+        match self.state {
+            ContainerState::Running => {
+                let status = self.status.split(" (").next().unwrap_or_default();
+                status.strip_prefix("Up ").unwrap_or(status).to_string()
+            }
+            ContainerState::Paused => "Paused".into(),
+            ContainerState::Restarting => "Restarting".into(),
+            ContainerState::Created => "Created".into(),
+            ContainerState::Dead => "Dead".into(),
+            _ => "Exited".into(),
+        }
+    }
+
+    /// Host ports that are published, without duplicates, in order.
+    pub fn published_ports(&self) -> Vec<u16> {
+        let mut ports: Vec<u16> = self.ports.iter().filter_map(|p| p.public_port).collect();
+        ports.dedup();
+        ports
     }
 
     /// The published ports as one comma-separated string.

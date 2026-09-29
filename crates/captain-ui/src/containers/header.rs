@@ -1,33 +1,69 @@
-use captain_core::store::ContainerStore;
-use gpui_kit::component::label::Label;
-use gpui_kit::component::{ActiveTheme, h_flex};
-use gpui_kit::prelude::FluentBuilder;
+use captain_core::store::ContainerFilter;
 use gpui_kit::*;
 
-/// `store` is `None` until the first list arrives, so the counts stay hidden.
-pub fn render(store: Option<&ContainerStore>, cx: &App) -> impl IntoElement {
-    let theme = cx.theme();
-    h_flex()
-        .justify_between()
-        .items_center()
-        .px_4()
-        .py_3()
-        .border_b_1()
-        .border_color(theme.border)
-        .child(
-            Label::new("Containers")
-                .text_lg()
-                .font_weight(FontWeight::SEMIBOLD),
-        )
-        .when_some(store, |this, store| {
-            this.child(
-                Label::new(format!(
-                    "{} running, {} total",
-                    store.active_count(),
-                    store.len()
-                ))
-                .text_sm()
-                .text_color(theme.muted_foreground),
-            )
+use crate::theme::Palette;
+use crate::widgets::{Segment, drag_region, segmented};
+use crate::workspace::Workspace;
+
+/// The page title, counts, and the filter. The empty parts drag the window.
+pub fn render(
+    handle: &Entity<Workspace>,
+    workspace: &Workspace,
+    palette: &Palette,
+) -> impl IntoElement {
+    let store = workspace.store();
+    let running = store.active_count();
+    let stopped = store.len() - running;
+    let projects = store.projects().len();
+    let summary = match projects {
+        0 => format!("{running} running · {stopped} stopped"),
+        1 => format!("{running} running · {stopped} stopped · 1 project"),
+        n => format!("{running} running · {stopped} stopped · {n} projects"),
+    };
+
+    let segments = ContainerFilter::ALL
+        .into_iter()
+        .map(|filter| {
+            let handle = handle.clone();
+            Segment {
+                label: filter.label().into(),
+                selected: workspace.filter() == filter,
+                on_click: Box::new(move |_, cx| {
+                    handle.update(cx, |workspace, cx| workspace.set_filter(filter, cx));
+                }),
+            }
         })
+        .collect();
+
+    drag_region("containers-header")
+        .flex_shrink_0()
+        .flex()
+        .items_center()
+        .gap(px(12.))
+        .px(px(24.))
+        .pt(px(18.))
+        .pb(px(14.))
+        .child(
+            div()
+                .flex_1()
+                .flex()
+                .flex_col()
+                .gap(px(2.))
+                .child(
+                    div()
+                        .text_size(px(22.))
+                        .font_weight(FontWeight::BOLD)
+                        .child("Containers"),
+                )
+                .child(
+                    div()
+                        .text_size(px(12.))
+                        .text_color(palette.text2)
+                        .child(summary),
+                ),
+        )
+        .child(
+            segmented("filter", segments, palette)
+                .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation()),
+        )
 }

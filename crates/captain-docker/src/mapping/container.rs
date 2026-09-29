@@ -1,5 +1,5 @@
 use bollard::models::{ContainerSummary, PortSummary};
-use captain_core::model::{Container, ContainerState, PortMapping};
+use captain_core::model::{Container, ContainerState, Health, PortMapping};
 
 const COMPOSE_PROJECT_LABEL: &str = "com.docker.compose.project";
 
@@ -22,6 +22,11 @@ pub fn container(summary: ContainerSummary) -> Container {
         .collect();
     ports.sort_by_key(|p| (p.private_port, p.public_port));
 
+    let health = summary
+        .health
+        .and_then(|h| h.status)
+        .and_then(|status| Health::parse(status.as_ref()));
+
     Container {
         id: summary.id.unwrap_or_default(),
         name,
@@ -33,6 +38,7 @@ pub fn container(summary: ContainerSummary) -> Container {
         compose_project: summary
             .labels
             .and_then(|mut labels| labels.remove(COMPOSE_PROJECT_LABEL)),
+        health,
     }
 }
 

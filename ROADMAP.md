@@ -4,9 +4,9 @@ Captain grows one milestone at a time. Each milestone has a GitHub milestone, an
 
 | # | Milestone | Scope | Status |
 |---|-----------|-------|--------|
-| M1 | Skeleton + container list | Workspace, CI, window with sidebar, engine status, live read-only container table | In progress |
-| M2 | Container actions | Start, stop, restart, pause, remove. Confirmation dialogs and error notifications. | Planned |
-| M3 | Container detail | Detail pane with Logs (streaming), Inspect (JSON), and Stats (charts) tabs | Planned |
+| M1 | Skeleton + container list | Workspace, CI, window with sidebar, engine status, live read-only container table | Done |
+| M2 | Container actions | Start, stop, restart, pause, remove. Confirmation dialogs and error notifications. | In progress: start, stop, restart, and delete (stopped only) work. See [0002](docs/features/0002-v2-interface.md). |
+| M3 | Container detail | Detail pane with Logs (streaming), Inspect (JSON), and Stats (charts) tabs | In progress: Overview, Logs, and Stats tabs work. See [0002](docs/features/0002-v2-interface.md). |
 | M4 | Images | List, pull with progress, remove, prune, inspect | Planned |
 | M5 | Volumes and networks | List, create, remove, prune, inspect | Planned |
 | M6 | Compose projects | Group containers by Compose project. Stack up, down, and restart. | Planned |

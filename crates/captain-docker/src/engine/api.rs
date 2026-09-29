@@ -1,0 +1,119 @@
+//! The [`Engine`] trait implementation. Every call runs on the private tokio runtime.
+
+use std::pin::pin;
+
+use bollard::query_parameters::{
+    ListContainersOptionsBuilder, LogsOptionsBuilder, StatsOptionsBuilder,
+};
+use captain_core::model::{
+    Container, ContainerAction, ContainerDetail, EngineEvent, EngineInfo, LogLine, StatsSample,
+};
+use captain_core::{Engine, EngineFuture, EngineStream};
+use futures::StreamExt;
+
+use super::DockerEngine;
+use crate::{mapping, runtime};
+
+impl Engine for DockerEngine {
+    fn info(&self) -> EngineFuture<EngineInfo> {
+        let docker = self.docker.clone();
+        let endpoint = self.endpoint.clone();
+        runtime::spawn(self.runtime.handle(), async move {
+            let (version, info) = futures::try_join!(docker.version(), docker.info())
+                .map_err(mapping::engine_error)?;
+            Ok(mapping::engine_info(version, info, &endpoint))
+        })
+    }
+
+    fn list_containers(&self) -> EngineFuture<Vec<Container>> {
+        let docker = self.docker.clone();
+        runtime::spawn(self.runtime.handle(), async move {
+            let options = ListContainersOptionsBuilder::default().all(true).build();
+            let summaries = docker
+                .list_containers(Some(options))
+                .await
+                .map_err(mapping::engine_error)?;
+            Ok(summaries.into_iter().map(mapping::container).collect())
+        })
+    }
+
+    fn events(&self) -> EngineStream<EngineEvent> {
+        let docker = self.docker.clone();
+        runtime::forward(self.runtime.handle(), move |tx| async move {
+            let mut events = pin!(docker.events(None));
+            while let Some(item) = events.next().await {
+                let item = item.map(mapping::event).map_err(mapping::engine_error);
+                if tx.unbounded_send(item).is_err() {
+                    break;
+                }
+            }
+        })
+    }
+
+    fn inspect_container(&self, id: &str) -> EngineFuture<ContainerDetail> {
+        let docker = self.docker.clone();
+        let id = id.to_string();
+        runtime::spawn(self.runtime.handle(), async move {
+            let response = docker
+                .inspect_container(&id, None)
+                .await
+                .map_err(mapping::engine_error)?;
+            Ok(mapping::detail(response))
+        })
+    }
+
+    fn stats(&self, id: &str) -> EngineStream<StatsSample> {
+        let docker = self.docker.clone();
+        let id = id.to_string();
+        runtime::forward(self.runtime.handle(), move |tx| async move {
+            let options = StatsOptionsBuilder::default().stream(true).build();
+            let mut stats = pin!(docker.stats(&id, Some(options)));
+            while let Some(item) = stats.next().await {
+                let item = item.map(mapping::stats).map_err(mapping::engine_error);
+                if tx.unbounded_send(item).is_err() {
+                    break;
+                }
+            }
+        })
+    }
+
+    fn logs(&self, id: &str, tail: usize) -> EngineStream<LogLine> {
+        let docker = self.docker.clone();
+        let id = id.to_string();
+        runtime::forward(self.runtime.handle(), move |tx| async move {
+            let options = LogsOptionsBuilder::default()
+                .follow(true)
+                .stdout(true)
+                .stderr(true)
+                .tail(&tail.to_string())
+                .build();
+            let mut output = pin!(docker.logs(&id, Some(options)));
+            while let Some(item) = output.next().await {
+                let lines = match item {
+                    Ok(frame) => mapping::log_lines(frame).into_iter().map(Ok).collect(),
+                    Err(error) => vec![Err(mapping::engine_error(error))],
+                };
+                if lines
+                    .into_iter()
+                    .any(|line| tx.unbounded_send(line).is_err())
+                {
+                    break;
+                }
+            }
+        })
+    }
+
+    fn run_action(&self, id: &str, action: ContainerAction) -> EngineFuture<()> {
+        let docker = self.docker.clone();
+        let id = id.to_string();
+        runtime::spawn(self.runtime.handle(), async move {
+            let result = match action {
+                ContainerAction::Start => docker.start_container(&id, None).await,
+                ContainerAction::Stop => docker.stop_container(&id, None).await,
+                ContainerAction::Restart => docker.restart_container(&id, None).await,
+                ContainerAction::Remove => docker.remove_container(&id, None).await,
+            };
+            result.map_err(mapping::engine_error)
+        })
+    }
+}

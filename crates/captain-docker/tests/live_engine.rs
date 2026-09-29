@@ -25,3 +25,30 @@ fn reads_version_and_containers() {
         containers.len()
     );
 }
+
+#[test]
+#[ignore = "needs a running Docker engine with a running container"]
+fn inspects_and_streams_stats_of_a_running_container() {
+    use futures::StreamExt;
+
+    let engine = connect();
+    let containers = block_on(engine.list_containers()).expect("list");
+    let running = containers
+        .iter()
+        .find(|c| c.state.is_active())
+        .expect("a running container");
+
+    let detail = block_on(engine.inspect_container(&running.id)).expect("inspect");
+    assert_eq!(detail.id, running.id);
+
+    let samples: Vec<_> = block_on(engine.stats(&running.id).take(2).collect());
+    let last = samples.last().expect("a sample").as_ref().expect("stats");
+    assert!(last.memory_bytes > 0);
+    println!(
+        "{}: {} env vars, cpu {:.2}%, mem {} bytes",
+        running.name,
+        detail.env.len(),
+        last.cpu_percent,
+        last.memory_bytes
+    );
+}

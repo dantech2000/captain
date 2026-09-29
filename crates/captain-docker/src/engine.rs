@@ -1,16 +1,12 @@
-use std::pin::pin;
 use std::time::Duration;
 
-use bollard::query_parameters::ListContainersOptionsBuilder;
 use bollard::{API_DEFAULT_VERSION, Docker};
-use captain_core::model::{Container, EngineEvent, EngineInfo};
-use captain_core::{Engine, EngineError};
-use futures::StreamExt;
-use futures::future::BoxFuture;
-use futures::stream::BoxStream;
+use captain_core::EngineError;
 use tokio::runtime::Runtime;
 
 use crate::{Endpoint, mapping, runtime};
+
+mod api;
 
 /// Seconds bollard waits for a single request.
 const REQUEST_TIMEOUT_SECS: u64 = 120;
@@ -57,41 +53,5 @@ fn client(endpoint: &Endpoint) -> Result<Docker, bollard::errors::Error> {
         Endpoint::Tcp(address) => {
             Docker::connect_with_http(address, REQUEST_TIMEOUT_SECS, API_DEFAULT_VERSION)
         }
-    }
-}
-
-impl Engine for DockerEngine {
-    fn info(&self) -> BoxFuture<'static, Result<EngineInfo, EngineError>> {
-        let docker = self.docker.clone();
-        let endpoint = self.endpoint.clone();
-        runtime::spawn(self.runtime.handle(), async move {
-            let version = docker.version().await.map_err(mapping::engine_error)?;
-            Ok(mapping::engine_info(version, &endpoint))
-        })
-    }
-
-    fn list_containers(&self) -> BoxFuture<'static, Result<Vec<Container>, EngineError>> {
-        let docker = self.docker.clone();
-        runtime::spawn(self.runtime.handle(), async move {
-            let options = ListContainersOptionsBuilder::default().all(true).build();
-            let summaries = docker
-                .list_containers(Some(options))
-                .await
-                .map_err(mapping::engine_error)?;
-            Ok(summaries.into_iter().map(mapping::container).collect())
-        })
-    }
-
-    fn events(&self) -> BoxStream<'static, Result<EngineEvent, EngineError>> {
-        let docker = self.docker.clone();
-        runtime::forward(self.runtime.handle(), move |tx| async move {
-            let mut events = pin!(docker.events(None));
-            while let Some(item) = events.next().await {
-                let item = item.map(mapping::event).map_err(mapping::engine_error);
-                if tx.unbounded_send(item).is_err() {
-                    break;
-                }
-            }
-        })
     }
 }

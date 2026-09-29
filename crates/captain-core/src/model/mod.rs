@@ -1,9 +1,21 @@
+mod action;
 mod container;
+mod container_detail;
 mod engine_info;
+mod env_var;
 mod event;
+mod health;
+mod log_line;
 mod port;
+mod stats;
 
+pub use action::ContainerAction;
 pub use container::{Container, ContainerState};
+pub use container_detail::{ContainerDetail, HealthCheck, Mount};
 pub use engine_info::EngineInfo;
+pub use env_var::EnvVar;
 pub use event::{EngineEvent, EventKind};
+pub use health::Health;
+pub use log_line::{LogLevel, LogLine, LogStream};
 pub use port::PortMapping;
+pub use stats::{StatsSample, cpu_percent};
