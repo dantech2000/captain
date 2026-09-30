@@ -1,0 +1,52 @@
+name: acme-shop
+services:
+  web:
+    image: nginx:1.29-alpine
+    ports: ["18080:80"]
+    volumes: ["./web:/usr/share/nginx/html:ro"]
+    environment:
+      API_URL: http://api:8000
+    depends_on: [api]
+  api:
+    build: ./api
+    ports: ["18000:8000"]
+    environment:
+      DATABASE_URL: postgres://shop:shop@db:5432/shop
+      REDIS_URL: redis://cache:6379
+    depends_on: [db, cache]
+  db:
+    image: postgres:17-alpine
+    ports: ["15432:5432"]
+    environment:
+      POSTGRES_USER: shop
+      POSTGRES_PASSWORD: shop-demo-secret
+      POSTGRES_DB: shop
+    volumes: ["db-data:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "shop"]
+      interval: 5s
+  cache:
+    image: redis:7-alpine
+    ports: ["16379:6379"]
+  worker:
+    image: alpine:3.21
+    command: ["sh", "-c", "echo worker ready; sleep 8; echo loading report cache; tail /dev/zero"]
+    mem_limit: 64m
+    restart: always
+    environment:
+      REDIS_URL: redis://cache:6379
+
+volumes:
+  db-data:
+
+x-captain:
+  tasks:
+    db-size:
+      service: db
+      command: psql -U shop -d shop -c "select pg_size_pretty(pg_database_size('shop')) as size"
+    seed:
+      service: db
+      command: psql -U shop -d shop -c "create table if not exists orders(id serial primary key, total int); insert into orders(total) select (random()*100)::int from generate_series(1,500); select count(*) as orders from orders"
+    ping-cache:
+      service: cache
+      command: redis-cli ping
