@@ -273,7 +273,7 @@ Clean up: turn off **Let agents use Captain**, and `docker compose down` in the 
 | 11. Popover and floating log | Pass after a fix: the warning card came and went during the crash loop, and Float logs opened the selected container. A crash tracker on the event stream fixed both. The Dock badge was not checked. |
 | 12. ⌘K commands | Pass for completions. |
 | 13. Storage | Pass for the page and the Disk card. No cleanup was run. |
-| 14.1–14.3, 14.5–14.6 Files tab | Pass, 2026-09-30, in the demo project `docs/demo/acme-shop` with a release build. The typo `imgae` showed its error on its line, and completion offered keys with hover docs. The preview named web for Recreate; it also listed Start for worker, which was restarting after an out-of-memory kill. Apply recreated web. Steps 4 and 7–10 were not run. |
+| 14. Files tab | Pass, 2026-09-30, all ten steps, in the demo project `docs/demo/acme-shop` with a release build. The typo `imgae` showed its error on its line, and completion offered keys with hover docs. ⌘F found both `worker` matches, and ⌘Z undid the edits. The preview named web for Recreate; it also listed Start for worker, which was restarting after an out-of-memory kill. Apply recreated web. With unsaved edits, an outside change showed the reload bar and Save refused; without edits, the editor loaded the change by itself. Through a symlink, the link stayed and the target kept mode 640. `RUNN` showed "unknown instruction: RUNN (did you mean RUN?)" on its line, and Rebuild api made a new container. Found: an error message after a failed rebuild stays until closed and covers Save and Rebuild. |
 
 Notes for the UI/UX pass:
 
