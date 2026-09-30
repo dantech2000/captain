@@ -1,4 +1,5 @@
 mod app_shell;
+mod details_rail;
 mod sidebar;
 mod status_bar;
 

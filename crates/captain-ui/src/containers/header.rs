@@ -1,7 +1,7 @@
 use captain_core::store::ContainerFilter;
 use gpui_kit::assets::IconName;
-use gpui_kit::component::Icon;
 use gpui_kit::component::checkbox::Checkbox;
+use gpui_kit::component::{Icon, Sizable};
 use gpui_kit::*;
 
 use crate::help::HelpExt;
@@ -75,7 +75,9 @@ pub fn render(
                         .child(summary),
                 ),
         )
-        .children((store.kubernetes_count() > 0).then(|| kubernetes_toggle(handle, workspace)))
+        .children(
+            (store.kubernetes_count() > 0).then(|| kubernetes_toggle(handle, workspace, palette)),
+        )
         .children(
             workspace
                 .project_filter()
@@ -88,21 +90,31 @@ pub fn render(
 }
 
 /// "Show Kubernetes containers". It shows only while the engine has pod containers.
-fn kubernetes_toggle(handle: &Entity<Workspace>, workspace: &Workspace) -> impl IntoElement {
+/// The label is drawn here, smaller than gpui-kit's, and a click anywhere on the row
+/// toggles it.
+fn kubernetes_toggle(
+    handle: &Entity<Workspace>,
+    workspace: &Workspace,
+    palette: &Palette,
+) -> impl IntoElement {
     let handle = handle.clone();
+    let checked = workspace.show_kubernetes();
     div()
         .id("show-kubernetes-help")
+        .flex()
+        .items_center()
+        .gap(px(6.))
+        .cursor_pointer()
+        .text_size(px(12.))
+        .text_color(palette.text2)
         .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
-        .child(
-            Checkbox::new("show-kubernetes")
-                .label("Show Kubernetes containers")
-                .checked(workspace.show_kubernetes())
-                .on_click(move |checked, _, cx| {
-                    handle.update(cx, |workspace, cx| {
-                        workspace.set_show_kubernetes(*checked, cx)
-                    });
-                }),
-        )
+        .on_click(move |_, _, cx| {
+            handle.update(cx, |workspace, cx| {
+                workspace.set_show_kubernetes(!checked, cx)
+            });
+        })
+        .child(Checkbox::new("show-kubernetes").small().checked(checked))
+        .child("Show Kubernetes containers")
         .help("Show the containers that Kubernetes runs for its pods, one card per namespace.")
 }
 

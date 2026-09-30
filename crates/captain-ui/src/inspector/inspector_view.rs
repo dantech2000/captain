@@ -181,7 +181,13 @@ impl Render for InspectorView {
                     .gap(px(16.))
                     .px(px(20.))
                     .pt(px(20.))
-                    .child(header::render(&container, &palette))
+                    .child(header::render(&container, &palette, {
+                        let workspace = self.workspace.clone();
+                        move |_, _, cx| {
+                            workspace
+                                .update(cx, |workspace, cx| workspace.set_details_hidden(true, cx));
+                        }
+                    }))
                     .child(actions::render(
                         &container,
                         &self.workspace,

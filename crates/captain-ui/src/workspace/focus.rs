@@ -58,6 +58,16 @@ impl Workspace {
         self.card_open
     }
 
+    /// True while the user keeps the details panel hidden.
+    pub fn details_hidden(&self) -> bool {
+        self.details_hidden
+    }
+
+    pub fn set_details_hidden(&mut self, hidden: bool, cx: &mut Context<Self>) {
+        self.details_hidden = hidden;
+        cx.notify();
+    }
+
     /// Opens the inspector on container `id`, or closes it if it shows `id` already.
     pub fn toggle_card(&mut self, id: String, cx: &mut Context<Self>) {
         let showing = self.card_open && self.selected.as_deref() == Some(id.as_str());

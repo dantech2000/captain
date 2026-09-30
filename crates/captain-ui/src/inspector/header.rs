@@ -1,12 +1,18 @@
 use captain_core::model::Container;
+use gpui_kit::assets::IconName;
 use gpui_kit::*;
 
 use crate::icons::{CaptainIcon, cap_icon};
 use crate::theme::Palette;
-use crate::widgets::pill;
+use crate::widgets::{icon_button, pill};
 
-/// The container icon, name, state, image, uptime, and project.
-pub fn render(container: &Container, palette: &Palette) -> impl IntoElement {
+/// The container icon, name, state, image, uptime, and project, and a button that
+/// hides the panel.
+pub fn render(
+    container: &Container,
+    palette: &Palette,
+    hide: impl Fn(&ClickEvent, &mut Window, &mut App) + 'static,
+) -> impl IntoElement {
     let color = container
         .compose_project
         .as_deref()
@@ -72,4 +78,11 @@ pub fn render(container: &Container, palette: &Palette) -> impl IntoElement {
                         .child(format!("{} · {project}", container.status)),
                 ),
         )
+        .child(icon_button(
+            "details-hide",
+            IconName::PanelRightClose,
+            "Hide the details panel. Select a container, or use the button at the right edge, to show it again.",
+            palette,
+            hide,
+        ))
 }

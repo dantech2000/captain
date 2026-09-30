@@ -1,7 +1,7 @@
 use gpui_kit::component::WindowExt;
-use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::*;
 
+use super::details_rail;
 use super::sidebar::{self, DiskSummary};
 use super::status_bar::StatusBar;
 use crate::containers::ContainersView;
@@ -173,16 +173,21 @@ impl AppShell {
         cx.notify();
     }
 
-    fn page(&self, page: Page, show_inspector: bool) -> Div {
+    /// The page, and beside the Containers and Project pages the details panel, or
+    /// the rail that shows it again when `details` says it is hidden.
+    fn page(&self, page: Page, details: Details, palette: &Palette) -> Div {
         let main = div().flex_1().min_w_0().h_full();
         let row = div().flex_1().min_w_0().h_full().flex();
+        let details = |row: Div| match &details {
+            Details::None => row,
+            Details::Shown => row.child(self.inspector.clone()),
+            Details::Hidden(name) => {
+                row.child(details_rail::render(&self.workspace, name, palette))
+            }
+        };
         match page {
-            Page::Containers => row
-                .child(main.child(self.containers.clone()))
-                .when(show_inspector, |this| this.child(self.inspector.clone())),
-            Page::Project => row
-                .child(main.child(self.project.clone()))
-                .when(show_inspector, |this| this.child(self.inspector.clone())),
+            Page::Containers => details(row.child(main.child(self.containers.clone()))),
+            Page::Project => details(row.child(main.child(self.project.clone()))),
             Page::Images => row.child(main.child(self.images.clone())),
             Page::Volumes => row.child(main.child(self.volumes.clone())),
             Page::Networks => row.child(main.child(self.networks.clone())),
@@ -213,6 +218,13 @@ impl Render for AppShell {
                         .focused_group()
                         .is_some_and(|group| group.containers.iter().any(|c| c.id == selected.id))
         }) && !matches!(workspace.connection(), Connection::Failed(_));
+        let details = match workspace.selected() {
+            Some(container) if show_inspector && workspace.details_hidden() => {
+                Details::Hidden(container.display_name().to_string())
+            }
+            _ if show_inspector => Details::Shown,
+            _ => Details::None,
+        };
 
         div()
             .size_full()
@@ -243,7 +255,7 @@ impl Render for AppShell {
                         forwarding,
                         &palette,
                     ))
-                    .child(self.page(workspace.page(), show_inspector)),
+                    .child(self.page(workspace.page(), details, &palette)),
             )
             .child(self.status_bar.clone())
             .children(self.palette.clone().map(|command_palette| {
@@ -268,4 +280,12 @@ fn disk_summary(cx: &App) -> Option<DiskSummary> {
         breakdown: model.breakdown(cx)?,
         freeable: model.default_bytes(),
     })
+}
+
+/// What stands beside the page: nothing, the details panel, or the rail for the
+/// hidden panel of the named container.
+enum Details {
+    None,
+    Shown,
+    Hidden(String),
 }

@@ -60,6 +60,9 @@ pub struct Workspace {
     pub(super) focus: Option<GroupKey>,
     /// True while the Project page shows the inspector next to its cards.
     pub(super) card_open: bool,
+    /// True after the user hid the details panel. Selecting a container shows it
+    /// again.
+    pub(super) details_hidden: bool,
     /// The inspector tab a card button asked for, until the inspector takes it.
     pub(super) inspector_tab: Option<InspectorTab>,
     /// The Logs tab filters a ⌘K command asked for, until the inspector takes them.
@@ -96,6 +99,7 @@ impl Workspace {
             project_filter: None,
             focus: None,
             card_open: false,
+            details_hidden: false,
             inspector_tab: None,
             log_filter: None,
         }
@@ -179,6 +183,7 @@ impl Workspace {
     pub fn select(&mut self, id: String, cx: &mut Context<Self>) {
         self.checked.click(&id, SelectMode::Replace, &[]);
         self.selected = Some(id);
+        self.details_hidden = false;
         cx.notify();
     }
 

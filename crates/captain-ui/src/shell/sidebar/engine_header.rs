@@ -1,14 +1,14 @@
-use captain_core::format::bytes_label;
 use gpui_kit::*;
 
 use crate::engine_host::HostSummary;
 use crate::help::HelpExt;
+use crate::shell::status_bar::engine_name;
 use crate::theme::Palette;
 use crate::widgets::brand_mark;
 use crate::workspace::{Connection, Workspace};
 
-/// The app icon, the app name, and one line of engine state: for example `Running · 5 CPUs
-/// · 463 MB`. With Captain Engine the state comes from the host, except that a
+/// The app icon, the app name, and one line of engine state: for example `Captain
+/// Engine · Running`. With Captain Engine the state comes from the host, except that a
 /// running engine that does not answer shows red. Its height never changes.
 pub fn render(
     workspace: &Workspace,
@@ -25,28 +25,24 @@ pub fn render(
         (None, Connection::Connected(_)) => (palette.green, "Running"),
         (None, Connection::Failed(_)) => (palette.red, "Not answering"),
     };
-    let line = match connection {
-        Connection::Connected(info) => format!(
-            "{state} · {} CPUs · {}",
-            info.cpus,
-            bytes_label(workspace.stats().total_memory())
-        ),
-        _ => state.to_string(),
+    // The numbers live in the engine card and the status bar; here only which
+    // engine it is and its state.
+    let engine = match (host, connection) {
+        (Some(_), _) => "Captain Engine",
+        (None, Connection::Connected(info)) => engine_name(&info.endpoint),
+        (None, _) => "Engine",
     };
-    let engine = if host.is_some() {
-        "Captain Engine"
-    } else {
-        "The engine"
-    };
+    let line = format!("{engine} · {state}");
     div()
         .id("sidebar-engine-header")
         .flex_shrink_0()
         .flex()
         .items_center()
-        .gap(px(10.))
-        .px(px(4.))
+        .gap(px(8.))
         .pb(px(12.))
-        .child(brand_mark(px(36.)))
+        // The artwork has the macOS icon margin built in; pull it left so the
+        // squircle lines up with the search field below.
+        .child(div().ml(px(-4.)).child(brand_mark(px(40.))))
         .child(
             div()
                 .flex_1()
@@ -56,8 +52,8 @@ pub fn render(
                 .gap(px(2.))
                 .child(
                     div()
-                        .text_size(px(14.))
-                        .font_weight(FontWeight::BOLD)
+                        .text_size(px(15.))
+                        .font_weight(FontWeight::SEMIBOLD)
                         .child("Captain"),
                 )
                 .child(
@@ -72,7 +68,7 @@ pub fn render(
                 ),
         )
         .help(format!(
-            "{engine}: {}. Memory counts every container.",
+            "{engine}: {}. The engine card below shows its CPU and memory.",
             state.to_lowercase()
         ))
 }
