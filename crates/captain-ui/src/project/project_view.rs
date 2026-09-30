@@ -12,7 +12,7 @@ use gpui_kit::*;
 use super::group_info::{is_sandbox, service_name};
 use super::log_view::ProjectLogView;
 use super::map::MapState;
-use super::tasks::{TaskList, TaskState};
+use super::tasks::TaskState;
 use super::view_tabs::ProjectTab;
 use super::{ProjectNotice, page};
 use crate::engine_host::{HostModel, host_model};
@@ -115,10 +115,10 @@ impl ProjectView {
         if let Some(GroupKey::Project(name)) = &focus
             && let Some(project) = compose_project(workspace.store().containers(), name)
         {
-            let unread = matches!(self.tasks.list, TaskList::None);
+            let stale = self.tasks.stale(&project);
             let compose = workspace.has_project_runner();
             self.project = Some(project.clone());
-            if unread && compose {
+            if stale && compose {
                 self.load_tasks(&project, cx);
             }
         }

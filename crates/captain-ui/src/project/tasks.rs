@@ -1,3 +1,5 @@
+use std::time::SystemTime;
+
 use captain_core::EngineError;
 use captain_core::model::{ComposeProject, ProjectTask, ProjectTasks, TaskOutput};
 use captain_core::store::TaskRuns;
@@ -23,6 +25,8 @@ pub struct TaskState {
     pub list: TaskList,
     pub runs: TaskRuns,
     load: Option<Task<()>>,
+    /// When the Compose files were last changed, as read for the list shown.
+    stamp: Vec<Option<SystemTime>>,
 }
 
 impl TaskState {
@@ -30,7 +34,28 @@ impl TaskState {
     pub fn forget_list(&mut self) {
         self.list = TaskList::None;
         self.load = None;
+        self.stamp.clear();
     }
+
+    /// True if the list is not read yet, or a Compose file of `project` changed on
+    /// disk since it was read, for example after the user added a task.
+    pub fn stale(&self, project: &ComposeProject) -> bool {
+        matches!(self.list, TaskList::None) || files_stamp(project) != self.stamp
+    }
+}
+
+/// The modification time of each Compose file of `project`, or `None` for one that
+/// cannot be read. A few `stat` calls, cheap enough to run on each refresh.
+fn files_stamp(project: &ComposeProject) -> Vec<Option<SystemTime>> {
+    project
+        .config_files
+        .iter()
+        .map(|file| {
+            std::fs::metadata(file)
+                .and_then(|meta| meta.modified())
+                .ok()
+        })
+        .collect()
 }
 
 impl ProjectView {
@@ -41,6 +66,7 @@ impl ProjectView {
             return;
         };
         self.tasks.list = TaskList::Loading;
+        self.tasks.stamp = files_stamp(project);
         let read = runner.tasks(project);
         self.tasks.load = Some(cx.spawn(async move |this, cx| {
             let result = read.await;
