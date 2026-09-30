@@ -34,7 +34,7 @@ The user's own terminal uses the tools inside `Captain.app`: `docker`, Compose, 
 
   ```sh
   # >>> captain >>>
-  # Added by Captain. Set PATH to Manual in Captain's Settings to remove it.
+  # Added by Captain. Set command_line_tools.path to manual in Captain's settings file to remove it.
   export PATH="$HOME/.captain/bin:$PATH"
   # <<< captain <<<
   ```
@@ -46,7 +46,7 @@ The user's own terminal uses the tools inside `Captain.app`: `docker`, Compose, 
 
   Captain writes a file only if it is a regular, writable file, or a missing file in a writable folder. It skips a symlink (for example a home-manager link into `/nix/store`), a file that `chezmoi source-path` says chezmoi manages, and a file it cannot write. For a skipped file, Settings shows the line to add, with a Copy button. Manual shows the lines for every file. Switching to Manual removes the blocks. A file that already names `.captain/bin` counts as done.
   Rancher's own block uses `### MANAGED BY RANCHER DESKTOP START (DO NOT EDIT)` markers ([manageLinesInFile.ts](https://github.com/rancher-sandbox/rancher-desktop/blob/main/pkg/rancher-desktop/integrations/manageLinesInFile.ts)); Captain's block is separate and comes later in the file, so `~/.captain/bin` wins while both exist.
-- **Settings > Command-line tools.** One card:
+- **Settings > Command-line tools.** One card (since [0037](0037-settings-page.md): the Terminal line and its setup sheet; PATH Automatic or Manual is in the settings file):
   - A row per tool (`docker`, `docker-compose`, `docker-credential-osxkeychain`, `captain`, and, for information, `kubectl` and `helm`) with what a new terminal runs: "Rancher Desktop (~/.rd/bin)", "Captain", "Docker Desktop", "Homebrew", "Nix", or the path. Captain runs `$SHELL -lic 'command -v …'` once, on a background thread, with a 10 s limit.
   - The link state and a **Relink** button (**Install** after `captain tools uninstall`).
   - The plugin folder state in `config.json`.
@@ -75,7 +75,7 @@ The user's own terminal uses the tools inside `Captain.app`: `docker`, Compose, 
 1. Run `cargo test -p captain-core cli_tools`. The tests use temp folders: the link plan (create, relink after a move, keep a regular file), the shell block add and remove, the skip rules (a link into a fake `/nix/store`, a read-only file), and the `config.json` merge that keeps the other keys and their order.
 2. Run `scripts/bundle-macos.sh` and check that `Captain.app/Contents/Resources/bin/docker-credential-osxkeychain` exists.
 3. Open the bundled app. Check that `~/.captain/bin` and `~/.captain/cli-plugins` hold the links, and that `~/.docker/config.json` lists `~/.captain/cli-plugins` first in `cliPluginsExtraDirs`.
-4. Open Settings > Command-line tools. The rows show where each tool comes from. With a chezmoi or home-manager `~/.zshrc`, the PATH row shows the line and a Copy button.
+4. Open Settings > Terminal > Set up…. The rows show where each tool comes from. With a chezmoi or home-manager `~/.zshrc`, the PATH row shows the line and a Copy button.
 5. Add the line, open a new terminal, and click Relink. The `docker` row says Captain. Run `docker compose version`, `docker buildx version`, and `docker pull` of a private image.
 6. Click **Use Captain Engine…** and confirm. `docker context ls` marks `captain-engine` with `*`.
 7. Move `Captain.app` and open it. The links point at the new place.

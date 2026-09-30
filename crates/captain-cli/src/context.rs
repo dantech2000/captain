@@ -68,11 +68,11 @@ impl Context {
         })
     }
 
-    /// Loads the settings, changes them with `change`, and saves them, all under the
-    /// settings lock, so two commands never lose each other's change. It refuses
-    /// with `refusal` while the app runs, because the app writes the whole file on
-    /// each change. The check is inside the lock, so an app that starts meanwhile
-    /// reads the saved file.
+    /// Loads the settings, changes them with `change`, and writes the changed keys
+    /// in place, all under the settings lock, so two commands never lose each
+    /// other's change. It refuses with `refusal` while the app runs, because the app
+    /// holds the settings in memory. The check is inside the lock, so an app that
+    /// starts meanwhile reads the saved file.
     pub fn update_settings<T>(
         &self,
         refusal: &str,
@@ -84,9 +84,10 @@ impl Context {
         if self.app_running() {
             bail!("{refusal}");
         }
-        let mut settings = self.load()?;
+        let before = self.load()?;
+        let mut settings = before.clone();
         let result = change(&mut settings)?;
-        settings.save(&self.settings_path)?;
+        Settings::save_change(&self.settings_path, &before, &settings)?;
         Ok(result)
     }
 

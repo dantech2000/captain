@@ -22,6 +22,7 @@ fn linux_with_another_engine_fails_nothing_that_does_not_apply() {
             lima_logs: None,
             rosetta: None,
         },
+        settings_problem: None,
     };
     let checks = evaluate(&facts);
     assert_eq!(failure_count(&checks), 0);

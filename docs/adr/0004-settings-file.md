@@ -1,6 +1,6 @@
 # ADR 0004: A versioned JSON settings file
 
-- Status: Accepted
+- Status: Accepted; format, writes, and errors changed by [ADR 0013](0013-settings-file-and-docs.md)
 - Date: 2026-09-28
 
 ## Context
@@ -21,3 +21,7 @@ M7 adds settings: the appearance, an accent color, and an engine endpoint that w
 - The settings format is plain data in `captain-core`, with unit tests and no UI.
 - Values in the file are lowercase names (`"dark"`, `"teal"`), so a new enum variant does not break older readers.
 - A malformed file is lost on the next save. We accept that for now; a later change can keep a backup.
+
+## Update: ADR 0013
+
+[ADR 0013](0013-settings-file-and-docs.md) changes this decision. The file is JSONC and holds only the values that differ from the defaults (format version 2). Writes edit the changed keys in place, so comments stay. A file with bad JSON is never overwritten; Captain names the line and waits for the fix. The app watches the file and applies edits. A generated schema and `docs/reference/settings.md` describe every key.

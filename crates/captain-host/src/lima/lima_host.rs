@@ -25,7 +25,7 @@ use super::snapshot::LimaSnapshots;
 use super::version::check_version;
 use crate::blocking::blocking;
 use crate::cancel::Cancel;
-use crate::probe::output_within;
+use crate::probe::{free_space, output_within};
 
 /// A start or a stop that Captain is running now. Lima's own status lags behind it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -245,6 +245,27 @@ impl EngineHost for LimaHost {
 
     fn kubernetes(&self) -> Option<Arc<dyn KubernetesHost>> {
         Some(Arc::new(LimaKubernetes::new(self.clone())))
+    }
+
+    fn files_dir(&self) -> Option<PathBuf> {
+        let dir = self.inner.paths.instance_dir();
+        Some(match dir.exists() {
+            true => dir,
+            false => self.inner.paths.lima_home.clone(),
+        })
+    }
+
+    fn runtime_version(&self) -> Option<String> {
+        let file = self.inner.paths.instance_dir().join("lima-version");
+        let version = std::fs::read_to_string(file).ok()?;
+        let version = version.trim();
+        (!version.is_empty()).then(|| format!("Lima {version}"))
+    }
+
+    fn free_disk(&self) -> Option<u64> {
+        let home = &self.inner.paths.lima_home;
+        let existing = home.ancestors().find(|dir| dir.exists())?;
+        free_space(existing)
     }
 }
 

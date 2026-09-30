@@ -47,6 +47,7 @@ fn main() {
     app.run(move |cx| {
         gpui_kit::init(cx);
         captain_ui::settings_init(cx, settings, path);
+        captain_ui::settings_watch_init(cx);
         captain_ui::engine_source_init(cx, Rc::new(connect::DockerSource));
         captain_ui::OpenMigrationAssistant::set_backend(
             cx,
@@ -126,6 +127,8 @@ fn app_lock(settings: &Path) -> Option<ProcessLock> {
 }
 
 /// The saved settings, or the defaults when there is no file or it cannot be read.
+/// A file from before format 2 drops its default values first, and the schema for
+/// editors goes next to it. See ADR 0013.
 fn load_settings(path: Option<&Path>) -> Settings {
     let Some(path) = path else {
         return Settings::default();
@@ -133,6 +136,12 @@ fn load_settings(path: Option<&Path>) -> Settings {
     // The `captain` CLI changes the file under this lock.
     let _lock = ProcessLock::acquire(&settings_lock_path(path))
         .inspect_err(|error| tracing::warn!(%error, "cannot lock the settings"));
+    if let Err(error) = Settings::migrate_file(path) {
+        tracing::warn!(%error, "cannot migrate the settings");
+    }
+    if let Err(error) = captain_core::settings::write_schema(path) {
+        tracing::warn!(%error, "cannot write the settings schema");
+    }
     Settings::load(path).unwrap_or_else(|error| {
         tracing::warn!(%error, "cannot read the settings; using the defaults");
         Settings::default()

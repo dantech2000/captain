@@ -88,6 +88,8 @@ impl AppShell {
             },
         );
         let mut subscriptions = vec![appearance, observe, notify, project_notify];
+        subscriptions.extend(settings::toast_file_problems(window, cx));
+
         subscriptions.extend(Self::follow_host(window, cx));
         // The sidebar badge counts failed checks.
         subscriptions

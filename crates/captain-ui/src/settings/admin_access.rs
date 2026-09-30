@@ -1,5 +1,6 @@
-//! The Administrative access card: links `/var/run/docker.sock` to Captain Engine's
-//! socket, so tools that use the default socket reach Captain Engine. See feature 0015.
+//! Administrative access, the optional 4th step of the terminal setup: links
+//! `/var/run/docker.sock` to Captain Engine's socket, so tools that use the default
+//! socket reach Captain Engine. See features 0015 and 0037.
 
 use std::path::{Path, PathBuf};
 
@@ -7,11 +8,12 @@ use captain_core::behavior::docker_socket::{DEFAULT_SOCKET, LinkAction, SocketLi
 use gpui_kit::component::WindowExt;
 use gpui_kit::*;
 
+use super::terminal_steps::{self, step_note};
 use super::{SettingsView, system};
 use crate::engine_host::captain_endpoint;
 use crate::help::HelpExt;
 use crate::theme::Palette;
-use crate::widgets::{ButtonTone, danger_footer, settings_card, settings_row, text_button};
+use crate::widgets::{ButtonTone, danger_footer, text_button};
 
 /// A link or unlink in progress, or the error of the last one.
 #[derive(Default)]
@@ -20,12 +22,13 @@ pub struct AdminAccess {
     error: Option<SharedString>,
 }
 
-/// The card, or `None` when Captain Engine is not in use, has no Unix socket, or
-/// already listens on the default socket.
-pub fn render(
+/// Step 4 of the terminal setup, or `None` when Captain Engine is not in use, has
+/// no Unix socket, or already listens on the default socket.
+pub fn step(
     view: &SettingsView,
+    this: &WeakEntity<SettingsView>,
     palette: &Palette,
-    cx: &mut Context<SettingsView>,
+    cx: &App,
 ) -> Option<Div> {
     let system = system::system(cx)?;
     let captain = captain_endpoint(cx).and_then(|endpoint| socket_path(&endpoint))?;
@@ -34,17 +37,18 @@ pub fn render(
     }
     let link = SocketLink::classify(&system.docker_socket()?, &captain);
     let admin = &view.admin_access;
+    let done = link == SocketLink::Captain;
     let note = admin.error.clone().unwrap_or_else(|| match link.action() {
-        Some(_) => format!("{} Changing it asks for your password.", link.describe()).into(),
+        Some(_) => format!("{} It needs your password.", link.describe()).into(),
         None => link.describe().into(),
     });
     let label = match (admin.busy, link.action()) {
         (true, _) => "Waiting for approval\u{2026}",
         (false, Some(LinkAction::Unlink)) => "Remove link\u{2026}",
-        (false, _) => "Link to Captain Engine\u{2026}",
+        (false, _) => "Link\u{2026}",
     };
     let action = link.action().filter(|_| !admin.busy);
-    let this = cx.weak_entity();
+    let this = this.clone();
     let button = text_button(
         "admin-access-link",
         label,
@@ -61,10 +65,20 @@ pub fn render(
                 run(this.clone(), action, link.clone(), captain.clone(), cx);
             }
         },
-    );
-    Some(settings_card(
-        "Administrative access",
-        [settings_row("Default Docker socket", Some(note), button, palette).id("settings-admin-socket").help("Link the default Docker socket to Captain Engine, so tools that do not read contexts find it.").into_any_element()],
+    )
+    .help(format!(
+        "Link {DEFAULT_SOCKET} to Captain Engine, so tools that do not read contexts find it. It asks for your password."
+    ));
+    let note = match admin.error {
+        Some(_) => step_note(note, palette).text_color(palette.red),
+        None => step_note(note, palette),
+    };
+    Some(terminal_steps::step(
+        4,
+        terminal_steps::state(done, false),
+        format!("Optional: let tools that use {DEFAULT_SOCKET} reach Captain Engine"),
+        note,
+        Some(button.into_any_element()),
         palette,
     ))
 }

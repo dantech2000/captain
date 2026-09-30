@@ -55,8 +55,16 @@ pub fn save_error(cx: &App) -> Option<SharedString> {
         .and_then(|store| store.save_error.clone())
 }
 
-/// Changes the settings, saves them, and applies the appearance. Every window
-/// redraws, so a new theme shows at once.
+/// The file the settings save to, such as
+/// `~/Library/Application Support/Captain/settings.json`. `None` when changes stay
+/// in memory.
+pub fn settings_file_path(cx: &App) -> Option<PathBuf> {
+    cx.try_global::<SettingsStore>()
+        .and_then(|store| store.path.clone())
+}
+
+/// Changes the settings, writes the changed keys into the file in place, and
+/// applies the appearance. Every window redraws, so a new theme shows at once.
 pub fn update(cx: &mut App, change: impl FnOnce(&mut Settings)) {
     let store = cx.default_global::<SettingsStore>();
     let before = store.settings.clone();
@@ -68,7 +76,7 @@ pub fn update(cx: &mut App, change: impl FnOnce(&mut Settings)) {
         // The `captain` CLI changes the file under the same lock.
         let _lock = ProcessLock::acquire(&settings_lock_path(path))
             .inspect_err(|error| tracing::warn!(%error, "cannot lock the settings"));
-        store.save_error = match store.settings.save(path) {
+        store.save_error = match Settings::save_change(path, &before, &store.settings) {
             Ok(()) => None,
             Err(error) => {
                 tracing::warn!(%error, "cannot save settings");
@@ -76,8 +84,21 @@ pub fn update(cx: &mut App, change: impl FnOnce(&mut Settings)) {
             }
         };
     }
-    let settings = &store.settings;
-    if settings.appearance != before.appearance || settings.theme != before.theme {
+    let settings = store.settings.clone();
+    follow_change(&before, &settings, cx);
+}
+
+/// Takes settings that someone else wrote to the file, without writing them back.
+/// The settings file watcher uses it.
+pub(super) fn replace(cx: &mut App, settings: Settings) {
+    let store = cx.default_global::<SettingsStore>();
+    let before = std::mem::replace(&mut store.settings, settings.clone());
+    store.save_error = None;
+    follow_change(&before, &settings, cx);
+}
+
+fn follow_change(before: &Settings, after: &Settings, cx: &mut App) {
+    if after.appearance != before.appearance || after.theme != before.theme {
         apply_appearance(None, cx);
     }
     cx.refresh_windows();

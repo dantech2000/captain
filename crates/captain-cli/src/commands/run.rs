@@ -3,8 +3,8 @@
 use anyhow::Result;
 
 use super::{
-    completion, docker_env, info, kubernetes, list_settings, restart, set, shell, snapshot, start,
-    status, stop, tools, version,
+    completion, docker_env, docs, info, kubernetes, list_settings, restart, set, shell, snapshot,
+    start, status, stop, tools, version,
 };
 use crate::cli::{Cli, Command};
 use crate::context::Context;
@@ -30,6 +30,10 @@ pub fn run(cli: Cli) -> Result<()> {
         }
         Command::Completion { shell } => {
             completion::run(shell);
+            Ok(())
+        }
+        Command::Docs(command) => {
+            docs::run(command);
             Ok(())
         }
     }

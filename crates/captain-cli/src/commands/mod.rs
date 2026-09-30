@@ -2,6 +2,7 @@
 
 mod completion;
 mod docker_env;
+mod docs;
 mod info;
 mod kubernetes;
 mod list_settings;

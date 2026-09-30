@@ -1,3 +1,4 @@
+use schemars::JsonSchema;
 use serde::{Deserialize, Deserializer, Serialize};
 
 use super::{Appearance, EngineChoice, ThemeFamily};
@@ -6,66 +7,102 @@ use crate::cli_tools::CliToolsSettings;
 use crate::daemon::DaemonSettings;
 use crate::kubernetes::KubernetesSettings;
 
-/// The settings file format that this build writes. See ADR 0004.
-pub const SETTINGS_VERSION: u32 = 1;
+/// The settings file format that this build writes. Version 2 holds only the values
+/// that differ from the defaults, and may have comments. See ADR 0004 and ADR 0013.
+pub const SETTINGS_VERSION: u32 = 2;
 
-/// Everything the user can change on the Settings page.
+/// Everything the user can change on the Settings page or in `settings.json`.
 ///
 /// Reading is lenient: a missing field gets its default, an unknown field is ignored,
 /// and a field with a value this build does not know (for example a new theme from a
 /// later version) falls back to its default instead of failing the whole file.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+///
+/// The doc comments on the fields are the descriptions in `settings.schema.json` and
+/// docs/reference/settings.md, so they speak to the user. `x-captain-group` puts a
+/// key under a heading in that reference.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(default)]
+#[schemars(
+    title = "Captain settings",
+    description = "Captain's settings.json. It holds only the settings you change; every other key has its default. See https://github.com/dantech2000/captain/blob/main/docs/reference/settings.md"
+)]
 pub struct Settings {
-    /// The format version of the file this came from.
+    /// The format of this file. Captain writes it; leave it as it is.
     #[serde(deserialize_with = "lenient")]
     pub version: u32,
+    /// Light or dark mode. `system` follows the operating system. Applies at once.
     #[serde(deserialize_with = "lenient")]
+    #[schemars(extend("x-captain-group" = "Appearance"), example = Appearance::Dark)]
     pub appearance: Appearance,
-    /// The color theme. Files from before themes have an `accent` key instead;
-    /// it is ignored.
+    /// The color theme. Each theme has a light and a dark version. Applies at once.
+    // Files from before themes have an `accent` key instead; it is ignored.
     #[serde(deserialize_with = "lenient")]
+    #[schemars(extend("x-captain-group" = "Appearance"), example = ThemeFamily::Harbor)]
     pub theme: ThemeFamily,
-    /// A `DOCKER_HOST`-style URL that wins over discovery, for example
-    /// `unix:///var/run/docker.sock` or `tcp://10.0.0.5:2375`.
+    /// A Docker API address that wins over the engines Captain finds, such as
+    /// `unix:///var/run/docker.sock` or `tcp://10.0.0.5:2375`. Used when `engine` is
+    /// `external`. Applies at the next launch.
     #[serde(deserialize_with = "lenient")]
+    #[schemars(extend("x-captain-group" = "Engine"), example = "tcp://10.0.0.5:2375")]
     pub engine_endpoint: Option<String>,
-    /// Captain Engine or another engine. `None` until the user picks one; see
-    /// [`Settings::engine_choice`].
+    /// `captain` runs Captain Engine, and `external` connects to an engine that
+    /// Captain does not control. Without it, Captain picks Captain Engine when it can
+    /// run on this computer. Applies at the next launch.
+    // See [`Settings::engine_choice`].
     #[serde(deserialize_with = "lenient")]
+    #[schemars(extend("x-captain-group" = "Engine"), example = EngineChoice::External)]
     pub engine: Option<EngineChoice>,
-    /// Stop Captain Engine when Captain quits.
+    /// Stop Captain Engine when Captain quits. Applies at once.
     #[serde(deserialize_with = "lenient_true")]
+    #[schemars(extend("x-captain-group" = "Engine"), example = false)]
     pub stop_engine_on_quit: bool,
-    /// The CPUs, memory, and disk for Captain Engine. `None` means the defaults for
-    /// this computer.
+    /// The CPUs, memory, and disk of Captain Engine. Set all three, or leave the key
+    /// out for this computer's defaults: half the CPUs (2 to 8), a quarter of the
+    /// memory (4 to 16 GiB), and a 64 GiB disk. Applies at the next engine start.
     #[serde(deserialize_with = "lenient")]
+    #[schemars(
+        extend("x-captain-group" = "Engine"),
+        example = HostResources { cpus: 4, memory_bytes: 8 * crate::GIB, disk_bytes: 64 * crate::GIB }
+    )]
     pub engine_resources: Option<HostResources>,
-    /// Captain Engine's Docker daemon: registry mirrors, custom `daemon.json` keys,
-    /// and the TCP socket. See feature 0020.
+    /// Captain Engine's Docker daemon. See the keys below.
+    // Feature 0020.
     #[serde(deserialize_with = "lenient")]
+    #[schemars(extend("x-captain-group" = "Docker daemon"))]
     pub engine_daemon: DaemonSettings,
-    /// The k3s cluster in Captain Engine. Off by default. See ADR 0010.
+    /// The k3s cluster in Captain Engine. See the keys below.
+    // ADR 0010.
     #[serde(deserialize_with = "lenient")]
+    #[schemars(extend("x-captain-group" = "Kubernetes"))]
     pub kubernetes: KubernetesSettings,
-    /// Launch with only the menu bar icon, and no main window.
+    /// Launch with only the menu bar icon and no main window. It needs
+    /// `show_menu_bar_icon`. Applies at the next launch.
     #[serde(deserialize_with = "lenient")]
+    #[schemars(extend("x-captain-group" = "Startup"), example = true)]
     pub start_in_background: bool,
-    /// Show Captain's icon in the menu bar (macOS) or the notification area (Windows).
+    /// Show Captain's icon in the menu bar (macOS) or the notification area
+    /// (Windows). Applies at once.
     #[serde(deserialize_with = "lenient_true")]
+    #[schemars(extend("x-captain-group" = "Startup"), example = false)]
     pub show_menu_bar_icon: bool,
-    /// Write debug-level logs. The Diagnostics page has the switch.
+    /// Write debug-level lines to Captain's log file. Applies at once.
     #[serde(deserialize_with = "lenient")]
+    #[schemars(extend("x-captain-group" = "Diagnostics"), example = true)]
     pub debug_logging: bool,
-    /// Remove build cache older than 14 days once a week while the engine runs. See
-    /// feature 0031.
+    /// Once a week, while the engine runs, remove build cache older than 14 days.
+    // Feature 0031.
     #[serde(deserialize_with = "lenient")]
+    #[schemars(extend("x-captain-group" = "Storage"), example = true)]
     pub weekly_build_cache_cleanup: bool,
-    /// When the weekly cleanup last ran, in Unix seconds.
+    /// When the weekly cleanup last ran, in Unix seconds. Captain sets it.
     #[serde(deserialize_with = "lenient")]
+    #[schemars(extend("x-captain-group" = "Storage"), example = 1790000000)]
     pub build_cache_cleaned_at: Option<i64>,
-    /// The tool links, the plugin folder, and PATH. See feature 0035.
+    /// The `docker`, Compose, and `captain` links for your terminal. See the keys
+    /// below.
+    // Feature 0035.
     #[serde(deserialize_with = "lenient")]
+    #[schemars(extend("x-captain-group" = "Terminal"))]
     pub command_line_tools: CliToolsSettings,
 }
 
@@ -92,16 +129,6 @@ impl Default for Settings {
 }
 
 impl Settings {
-    /// Parses a settings file. Only malformed JSON is an error.
-    pub fn from_json(json: &str) -> Result<Self, serde_json::Error> {
-        let mut settings: Settings = serde_json::from_str(json)?;
-        settings.engine_endpoint = settings
-            .engine_endpoint
-            .map(|host| host.trim().to_string())
-            .filter(|host| !host.is_empty());
-        Ok(settings)
-    }
-
     /// The engine to use: the saved choice, or the default when there is none.
     /// `captain_available` says whether Captain Engine can run on this computer.
     pub fn engine_choice(&self, captain_available: bool) -> EngineChoice {
@@ -114,17 +141,6 @@ impl Settings {
     /// user asked for the background and the menu bar icon is up to reach Captain.
     pub fn opens_window_at_launch(&self, tray_up: bool) -> bool {
         !(self.start_in_background && tray_up)
-    }
-
-    /// The file contents, stamped with the current [`SETTINGS_VERSION`].
-    pub fn to_json(&self) -> String {
-        let current = Settings {
-            version: SETTINGS_VERSION,
-            ..self.clone()
-        };
-        let mut json = serde_json::to_string_pretty(&current).unwrap_or_default();
-        json.push('\n');
-        json
     }
 }
 

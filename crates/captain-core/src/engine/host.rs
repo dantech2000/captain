@@ -10,6 +10,7 @@ use futures::stream::BoxStream;
 pub use resources::{GIB, HostResources};
 pub use status::HostStatus;
 
+use std::path::PathBuf;
 use std::sync::Arc;
 
 use crate::daemon::{DaemonSettings, DaemonState};
@@ -75,6 +76,23 @@ pub trait EngineHost: Send + Sync + 'static {
 
     /// The k3s cluster in this machine, or `None` for a host without one.
     fn kubernetes(&self) -> Option<Arc<dyn KubernetesHost>> {
+        None
+    }
+
+    /// The folder with the machine's files, for Show engine files, or `None`.
+    fn files_dir(&self) -> Option<PathBuf> {
+        None
+    }
+
+    /// What runs the machine and its version, such as `Lima 2.0.3`, for the About
+    /// line. It reads a file, so it is quick.
+    fn runtime_version(&self) -> Option<String> {
+        None
+    }
+
+    /// Free bytes on the disk that holds the machine. It may run a command, so the
+    /// UI calls it in the background.
+    fn free_disk(&self) -> Option<u64> {
         None
     }
 }

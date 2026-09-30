@@ -65,7 +65,12 @@ pub enum Command {
         json: bool,
     },
     /// Change one setting. Quit Captain first.
-    Set { key: SettingKey, value: String },
+    Set {
+        /// The setting.
+        key: SettingKey,
+        /// The new value. `captain list-settings` shows the current ones.
+        value: String,
+    },
     /// Open a shell in Captain Engine's VM, or run one command in it.
     Shell {
         /// The command to run, after `--`.
@@ -87,7 +92,20 @@ pub enum Command {
     /// Print the version.
     Version,
     /// Print a shell completion script.
-    Completion { shell: Shell },
+    Completion {
+        /// The shell.
+        shell: Shell,
+    },
+    /// Print documentation generated from these commands.
+    #[command(subcommand, hide = true)]
+    Docs(DocsCommand),
+}
+
+/// `captain docs ...`, hidden from `--help`.
+#[derive(Debug, PartialEq, Eq, Subcommand)]
+pub enum DocsCommand {
+    /// Print the Markdown reference in docs/reference/cli.md.
+    Cli,
 }
 
 /// `captain snapshot ...`. `NAME` is a snapshot's name or ID.
@@ -97,6 +115,7 @@ pub enum SnapshotCommand {
     Create {
         /// The name. The default is the date and time.
         name: Option<String>,
+        /// A description.
         #[arg(long, short, default_value = "")]
         description: String,
         /// Do not ask before stopping the engine.
@@ -111,6 +130,7 @@ pub enum SnapshotCommand {
     },
     /// Replace the engine with a snapshot. Quit Captain first.
     Restore {
+        /// The snapshot's name or ID.
         name: String,
         /// Do not ask first.
         #[arg(long, short)]
@@ -118,7 +138,9 @@ pub enum SnapshotCommand {
     },
     /// Rename a snapshot, or change its description. The engine keeps running.
     Rename {
+        /// The snapshot's name or ID.
         name: String,
+        /// The new name.
         new_name: String,
         /// The new description. Without it, the description stays.
         #[arg(long, short)]
@@ -126,6 +148,7 @@ pub enum SnapshotCommand {
     },
     /// Delete a snapshot.
     Delete {
+        /// The snapshot's name or ID.
         name: String,
         /// Do not ask first.
         #[arg(long, short)]

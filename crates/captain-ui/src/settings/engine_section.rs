@@ -1,133 +1,76 @@
-use captain_core::format::bytes_label;
-use captain_core::model::EngineInfo;
-use captain_core::settings::Settings;
+//! The Engine section: the engine menu, "…", and Captain Engine's resources, or
+//! the connection to another engine. See feature 0037.
+
+use captain_core::HostStatus;
+use captain_core::settings::EngineChoice;
 use gpui_kit::*;
 
-use super::SettingsView;
-use super::engine_source;
+use super::page_section::{row, section, sub_row};
+use super::{SettingsView, engine_menu, engine_resources, engine_source};
 use crate::help::HelpExt;
 use crate::theme::Palette;
-use crate::widgets::{ButtonTone, pill, settings_card, settings_row, text_button};
+use crate::widgets::{ButtonTone, text_button};
 use crate::workspace::Connection;
 
-/// The Connection card: the connection state, what the engine reports, and the endpoint
-/// Captain uses.
-pub fn render(
-    view: &SettingsView,
-    settings: &Settings,
-    palette: &Palette,
-    cx: &mut Context<SettingsView>,
-) -> Div {
-    let connection = view.workspace.read(cx).connection().clone();
-    let workspace = view.workspace.clone();
-    let reconnect = text_button(
-        "engine-reconnect",
-        "Reconnect",
-        ButtonTone::Accent,
-        !matches!(connection, Connection::Connecting),
-        palette,
-        move |_, _, cx| engine_source::reconnect(&workspace, cx),
-    );
-
-    let (state, color, note) = match &connection {
-        Connection::Connecting => ("Connecting", palette.orange, "Connecting...".into()),
-        Connection::Connected(info) => ("Connected", palette.green, info.endpoint.clone()),
-        Connection::Failed(error) => ("Not connected", palette.red, error.to_string()),
-    };
-    let mut rows = vec![
-        settings_row(
-            "Status",
-            Some(note.into()),
-            div()
-                .flex()
-                .items_center()
-                .gap(px(8.))
-                .child(pill(state, palette.readable(color), palette.tint(color)))
-                .child(reconnect),
-            palette,
-        )
-        .id("settings-connection")
-        .help("Connect to the engine again.")
-        .into_any_element(),
-    ];
-    if let Connection::Connected(info) = &connection {
-        rows.extend(info_rows(info, palette));
+pub fn render(view: &SettingsView, palette: &Palette, cx: &mut Context<SettingsView>) -> Div {
+    let head = row("Engine", palette)
+        .child(engine_menu::engine_button(view, palette, cx))
+        .child(div().flex_1())
+        .child(engine_menu::more_button(view, palette, cx));
+    let captain = view.host.as_ref().filter(|host| {
+        let host = host.read(cx);
+        host.choice(cx) == EngineChoice::Captain && host.can_control()
+    });
+    let section = section(palette).child(head);
+    match captain {
+        Some(model) => {
+            let host = model.read(cx);
+            let problem = match host.status() {
+                HostStatus::NotInstalled(why) | HostStatus::Failed(why) => Some(why.clone()),
+                _ => None,
+            };
+            section
+                .children(engine_resources::rows(model, host, view.free_disk, palette))
+                .children(problem.map(|why| {
+                    super::page_section::under_note(why, palette).text_color(palette.red)
+                }))
+        }
+        None => section.child(connection_row(view, palette, cx)),
     }
-    rows.push(endpoint_row(settings, palette, cx));
-
-    settings_card("Connection", rows, palette)
 }
 
-/// What the engine reports about itself.
-fn info_rows(info: &EngineInfo, palette: &Palette) -> Vec<AnyElement> {
-    let value = |text: String| div().text_color(palette.text2).child(text);
-    vec![
-        settings_row(
-            "Version",
-            None,
-            value(format!("{} (API {})", info.version, info.api_version)),
-            palette,
-        )
-        .into_any_element(),
-        settings_row(
-            "Platform",
-            None,
-            value(format!("{} / {}", info.os, info.arch)),
-            palette,
-        )
-        .into_any_element(),
-        settings_row(
-            "Resources",
-            None,
-            value(format!(
-                "{} CPUs · {} memory",
-                info.cpus,
-                bytes_label(info.memory_bytes)
-            )),
-            palette,
-        )
-        .into_any_element(),
-    ]
-}
-
-/// The saved endpoint, or discovery, with a way back to discovery.
-fn endpoint_row(
-    settings: &Settings,
-    palette: &Palette,
-    cx: &mut Context<SettingsView>,
-) -> AnyElement {
-    let Some(endpoint) = settings.engine_endpoint.clone() else {
-        return settings_row(
-            "Endpoint",
-            Some(
-                "Captain finds the engine: DOCKER_HOST, the current context, then known sockets."
-                    .into(),
-            ),
-            div().text_color(palette.text2).child("Automatic"),
-            palette,
-        )
-        .into_any_element();
+/// The connection to another engine, and Reconnect.
+fn connection_row(view: &SettingsView, palette: &Palette, cx: &App) -> Stateful<Div> {
+    let connection = view.workspace.read(cx).connection().clone();
+    let note = match &connection {
+        Connection::Connecting => "Connecting\u{2026}".to_string(),
+        Connection::Connected(info) => {
+            format!("{} \u{00b7} Docker {}", info.endpoint, info.version)
+        }
+        Connection::Failed(error) => error.to_string(),
     };
-    let automatic = text_button(
-        "engine-automatic",
-        "Use automatic",
-        ButtonTone::Accent,
-        true,
-        palette,
-        cx.listener(|view, _, _, cx| view.use_engine(None, cx)),
-    );
-    settings_row(
-        "Endpoint",
-        Some(endpoint.into()),
-        div()
-            .flex()
-            .items_center()
-            .gap(px(8.))
-            .child(div().text_color(palette.text2).child("Custom"))
-            .child(automatic),
-        palette,
-    )
-    .id("settings-endpoint")
-    .help("Go back to finding the engine automatically.")
-    .into_any_element()
+    let workspace = view.workspace.clone();
+    sub_row("Connection", palette)
+        .id("settings-connection")
+        .child(
+            div()
+                .flex_1()
+                .min_w_0()
+                .truncate()
+                .text_size(px(12.))
+                .text_color(match connection {
+                    Connection::Failed(_) => palette.red,
+                    _ => palette.text2,
+                })
+                .child(note),
+        )
+        .child(text_button(
+            "engine-reconnect",
+            "Reconnect",
+            ButtonTone::Accent,
+            !matches!(connection, Connection::Connecting),
+            palette,
+            move |_, _, cx| engine_source::reconnect(&workspace, cx),
+        ))
+        .help("Connect to the engine again.")
 }

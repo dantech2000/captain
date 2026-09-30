@@ -67,4 +67,7 @@ pub struct Facts {
     pub captain_engine: Option<HostStatus>,
     pub engine: EngineProbe,
     pub machine: MachineFacts,
+    /// The mistake in `settings.json` that keeps Captain on the last good
+    /// settings, as the user sees it. `None` when the file reads cleanly.
+    pub settings_problem: Option<String>,
 }

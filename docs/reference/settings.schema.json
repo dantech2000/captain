@@ -1,0 +1,405 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Captain settings",
+  "description": "Captain's settings.json. It holds only the settings you change; every other key has its default. See https://github.com/dantech2000/captain/blob/main/docs/reference/settings.md",
+  "type": "object",
+  "properties": {
+    "version": {
+      "description": "The format of this file. Captain writes it; leave it as it is.",
+      "type": "integer",
+      "format": "uint32",
+      "minimum": 0,
+      "default": 2
+    },
+    "appearance": {
+      "description": "Light or dark mode. `system` follows the operating system. Applies at once.",
+      "x-captain-group": "Appearance",
+      "examples": [
+        "dark"
+      ],
+      "default": "system",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Appearance"
+        }
+      ]
+    },
+    "theme": {
+      "description": "The color theme. Each theme has a light and a dark version. Applies at once.",
+      "x-captain-group": "Appearance",
+      "examples": [
+        "harbor"
+      ],
+      "default": "dusk",
+      "allOf": [
+        {
+          "$ref": "#/definitions/ThemeFamily"
+        }
+      ]
+    },
+    "engine_endpoint": {
+      "description": "A Docker API address that wins over the engines Captain finds, such as `unix:///var/run/docker.sock` or `tcp://10.0.0.5:2375`. Used when `engine` is `external`. Applies at the next launch.",
+      "type": [
+        "string",
+        "null"
+      ],
+      "examples": [
+        "tcp://10.0.0.5:2375"
+      ],
+      "default": null,
+      "x-captain-group": "Engine"
+    },
+    "engine": {
+      "description": "`captain` runs Captain Engine, and `external` connects to an engine that Captain does not control. Without it, Captain picks Captain Engine when it can run on this computer. Applies at the next launch.",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/EngineChoice"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "examples": [
+        "external"
+      ],
+      "default": null,
+      "x-captain-group": "Engine"
+    },
+    "stop_engine_on_quit": {
+      "description": "Stop Captain Engine when Captain quits. Applies at once.",
+      "type": "boolean",
+      "examples": [
+        false
+      ],
+      "default": true,
+      "x-captain-group": "Engine"
+    },
+    "engine_resources": {
+      "description": "The CPUs, memory, and disk of Captain Engine. Set all three, or leave the key out for this computer's defaults: half the CPUs (2 to 8), a quarter of the memory (4 to 16 GiB), and a 64 GiB disk. Applies at the next engine start.",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/HostResources"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "examples": [
+        {
+          "cpus": 4,
+          "memory_bytes": 8589934592,
+          "disk_bytes": 68719476736
+        }
+      ],
+      "default": null,
+      "x-captain-group": "Engine"
+    },
+    "engine_daemon": {
+      "description": "Captain Engine's Docker daemon. See the keys below.",
+      "x-captain-group": "Docker daemon",
+      "default": {
+        "registry_mirrors": [],
+        "insecure_registries": [],
+        "custom": {},
+        "tcp": false,
+        "tcp_port": 2375
+      },
+      "allOf": [
+        {
+          "$ref": "#/definitions/DaemonSettings"
+        }
+      ]
+    },
+    "kubernetes": {
+      "description": "The k3s cluster in Captain Engine. See the keys below.",
+      "x-captain-group": "Kubernetes",
+      "default": {
+        "enabled": false,
+        "version": null,
+        "port": 6443,
+        "traefik": true
+      },
+      "allOf": [
+        {
+          "$ref": "#/definitions/KubernetesSettings"
+        }
+      ]
+    },
+    "start_in_background": {
+      "description": "Launch with only the menu bar icon and no main window. It needs `show_menu_bar_icon`. Applies at the next launch.",
+      "type": "boolean",
+      "examples": [
+        true
+      ],
+      "default": false,
+      "x-captain-group": "Startup"
+    },
+    "show_menu_bar_icon": {
+      "description": "Show Captain's icon in the menu bar (macOS) or the notification area (Windows). Applies at once.",
+      "type": "boolean",
+      "examples": [
+        false
+      ],
+      "default": true,
+      "x-captain-group": "Startup"
+    },
+    "debug_logging": {
+      "description": "Write debug-level lines to Captain's log file. Applies at once.",
+      "type": "boolean",
+      "examples": [
+        true
+      ],
+      "default": false,
+      "x-captain-group": "Diagnostics"
+    },
+    "weekly_build_cache_cleanup": {
+      "description": "Once a week, while the engine runs, remove build cache older than 14 days.",
+      "type": "boolean",
+      "examples": [
+        true
+      ],
+      "default": false,
+      "x-captain-group": "Storage"
+    },
+    "build_cache_cleaned_at": {
+      "description": "When the weekly cleanup last ran, in Unix seconds. Captain sets it.",
+      "type": [
+        "integer",
+        "null"
+      ],
+      "format": "int64",
+      "examples": [
+        1790000000
+      ],
+      "default": null,
+      "x-captain-group": "Storage"
+    },
+    "command_line_tools": {
+      "description": "The `docker`, Compose, and `captain` links for your terminal. See the keys below.",
+      "x-captain-group": "Terminal",
+      "default": {
+        "enabled": false,
+        "path": "manual"
+      },
+      "allOf": [
+        {
+          "$ref": "#/definitions/CliToolsSettings"
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "Appearance": {
+      "description": "Light or dark mode. `System` follows the operating system.",
+      "type": "string",
+      "enum": [
+        "system",
+        "light",
+        "dark"
+      ]
+    },
+    "ThemeFamily": {
+      "description": "The color theme. Each one has a light and a dark version; [`super::Appearance`] picks which. The UI holds the exact colors.",
+      "type": "string",
+      "enum": [
+        "dusk",
+        "periwinkle",
+        "harbor"
+      ]
+    },
+    "EngineChoice": {
+      "description": "Which engine Captain uses. See ADR 0008.",
+      "oneOf": [
+        {
+          "description": "Captain Engine: a VM that Captain starts, stops, and configures.",
+          "type": "string",
+          "const": "captain"
+        },
+        {
+          "description": "Another engine that Captain connects to but does not control: `DOCKER_HOST`, the current context, a known socket, or the custom endpoint.",
+          "type": "string",
+          "const": "external"
+        }
+      ]
+    },
+    "HostResources": {
+      "description": "The CPUs, memory, and disk that the engine's machine gets.",
+      "type": "object",
+      "properties": {
+        "cpus": {
+          "description": "The number of CPUs, from 1 to the number of CPUs of this computer.",
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 1
+        },
+        "memory_bytes": {
+          "description": "Memory in bytes, at least 2 GiB (2147483648).",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 2147483648
+        },
+        "disk_bytes": {
+          "description": "The disk size in bytes, from 16 GiB to 1 TiB. The disk is sparse, so it takes only the space in use, and it cannot shrink.",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 17179869184,
+          "maximum": 1099511627776
+        }
+      },
+      "required": [
+        "cpus",
+        "memory_bytes",
+        "disk_bytes"
+      ]
+    },
+    "DaemonSettings": {
+      "description": "What the user saved for Captain Engine's Docker daemon. The next start applies it.",
+      "type": "object",
+      "properties": {
+        "registry_mirrors": {
+          "description": "Mirrors that Docker tries before Docker Hub, as `https://` or `http://` URLs. Applies at the next engine start.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "examples": [
+            [
+              "https://mirror.gcr.io"
+            ]
+          ],
+          "default": []
+        },
+        "insecure_registries": {
+          "description": "Registries that Docker may reach over plain HTTP or with an untrusted certificate, as `host:port` or CIDR entries. Applies at the next engine start.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "examples": [
+            [
+              "registry.local:5000"
+            ]
+          ],
+          "default": []
+        },
+        "custom": {
+          "description": "Other `daemon.json` keys for the engine's Docker daemon. Docker checks them before it starts, and Captain rolls back keys it rejects. Applies at the next engine start.",
+          "type": "object",
+          "additionalProperties": true,
+          "examples": [
+            {
+              "log-level": "warn"
+            }
+          ],
+          "default": {}
+        },
+        "tcp": {
+          "description": "Also serve the Docker API on `tcp://127.0.0.1:<tcp_port>`, without TLS. Applies at the next engine start.",
+          "type": "boolean",
+          "examples": [
+            true
+          ],
+          "default": false
+        },
+        "tcp_port": {
+          "description": "The port for `tcp`. Captain keeps it while `tcp` is off. Applies at the next engine start.",
+          "type": "integer",
+          "format": "uint16",
+          "minimum": 1,
+          "maximum": 65535,
+          "examples": [
+            23750
+          ],
+          "default": 2375
+        }
+      }
+    },
+    "KubernetesSettings": {
+      "description": "What the user saved for Kubernetes. The next engine start, or Apply, uses it.",
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "description": "Run a k3s cluster in Captain Engine. Give the engine 6 GiB of memory or more. Applies at the next engine start.",
+          "type": "boolean",
+          "examples": [
+            true
+          ],
+          "default": false
+        },
+        "version": {
+          "description": "The k3s version. When you turn Kubernetes on, Captain saves the stable version, so k3s never upgrades by itself. Applies at the next engine start.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "examples": [
+            "v1.36.4+k3s1"
+          ],
+          "default": null
+        },
+        "port": {
+          "description": "The port of the Kubernetes API on `127.0.0.1`. Applies at the next engine start.",
+          "type": "integer",
+          "format": "uint16",
+          "minimum": 1,
+          "maximum": 65535,
+          "examples": [
+            16443
+          ],
+          "default": 6443
+        },
+        "traefik": {
+          "description": "Install Traefik, the k3s ingress controller, on ports 80 and 443. Applies at the next engine start.",
+          "type": "boolean",
+          "examples": [
+            false
+          ],
+          "default": true
+        }
+      }
+    },
+    "CliToolsSettings": {
+      "description": "The saved choices for the command-line tools.",
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "description": "Keep the links in `~/.captain/bin`, the Docker CLI plugin folder, and (with `automatic`) the PATH lines in place at each launch. Off until you click Install or run `captain tools install`. Applies at the next launch.",
+          "type": "boolean",
+          "examples": [
+            true
+          ],
+          "default": false
+        },
+        "path": {
+          "description": "Who puts `~/.captain/bin` on PATH: `automatic` adds a marked block to your shell files, and `manual` leaves them to you. Applies at the next launch.",
+          "default": "manual",
+          "examples": [
+            "automatic"
+          ],
+          "allOf": [
+            {
+              "$ref": "#/definitions/PathMode"
+            }
+          ]
+        }
+      }
+    },
+    "PathMode": {
+      "description": "Who puts `~/.captain/bin` on `PATH`.",
+      "oneOf": [
+        {
+          "description": "Captain adds a marked block to each shell file it may write.",
+          "type": "string",
+          "const": "automatic"
+        },
+        {
+          "description": "The user adds the line; Captain only shows it.",
+          "type": "string",
+          "const": "manual"
+        }
+      ]
+    }
+  },
+  "allowComments": true,
+  "allowTrailingCommas": true
+}

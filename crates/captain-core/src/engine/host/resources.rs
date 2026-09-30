@@ -1,3 +1,4 @@
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use crate::format::bytes_label;
@@ -16,11 +17,17 @@ const MAX_DISK: u64 = 1024 * GIB;
 const MIN_USER_MEMORY: u64 = 2 * GIB;
 
 /// The CPUs, memory, and disk that the engine's machine gets.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
 pub struct HostResources {
+    /// The number of CPUs, from 1 to the number of CPUs of this computer.
+    #[schemars(range(min = 1))]
     pub cpus: u32,
+    /// Memory in bytes, at least 2 GiB (2147483648).
+    #[schemars(range(min = 2147483648u64))]
     pub memory_bytes: u64,
-    /// The disk is sparse, so it takes only the space that is in use.
+    /// The disk size in bytes, from 16 GiB to 1 TiB. The disk is sparse, so it takes
+    /// only the space in use, and it cannot shrink.
+    #[schemars(range(min = 17179869184u64, max = 1099511627776u64))]
     pub disk_bytes: u64,
 }
 

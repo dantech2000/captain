@@ -14,6 +14,7 @@ chrono.workspace = true
 dirs.workspace = true
 futures.workspace = true
 gpui-kit.workspace = true
+serde_json.workspace = true
 tracing.workspace = true
 
 # Extension windows need a native web view; gpui-wry supports macOS and Windows,
@@ -21,7 +22,6 @@ tracing.workspace = true
 [target.'cfg(target_os = "macos")'.dependencies]
 gpui-wry.workspace = true
 raw-window-handle.workspace = true
-serde_json.workspace = true
 wry.workspace = true
 
 [lints]

@@ -29,6 +29,7 @@ pub enum CheckId {
     DiskSpace,
     LimaLogs,
     Rosetta,
+    SettingsFile,
 }
 
 impl CheckId {
@@ -41,6 +42,7 @@ impl CheckId {
             Self::DiskSpace => "Free disk space",
             Self::LimaLogs => "Lima log size",
             Self::Rosetta => "Rosetta",
+            Self::SettingsFile => "Settings file",
         }
     }
 }
@@ -55,6 +57,8 @@ pub enum Fix {
     ShowEngineFiles,
     /// Copies a shell command that the user runs in a terminal.
     CopyCommand(&'static str),
+    /// Opens `settings.json` in the default text editor.
+    OpenSettingsFile,
 }
 
 impl Fix {
@@ -65,6 +69,7 @@ impl Fix {
             Self::RestartEngine => "Restart Captain Engine",
             Self::ShowEngineFiles => "Show engine files",
             Self::CopyCommand(_) => "Copy command",
+            Self::OpenSettingsFile => "Open settings.json",
         }
     }
 }

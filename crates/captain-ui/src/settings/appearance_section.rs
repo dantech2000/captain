@@ -1,13 +1,14 @@
 use captain_core::settings::{Appearance, Settings, ThemeFamily};
 use gpui_kit::*;
 
+use super::page_section::{row, section};
 use super::store;
 use super::theme_card::theme_card;
 use crate::help::HelpExt;
 use crate::theme::Palette;
-use crate::widgets::{Segment, segmented, settings_card, settings_row};
+use crate::widgets::{Segment, segmented};
 
-/// The Appearance card: the color theme, and light or dark mode.
+/// The Appearance section: the three themes, and System, Light, or Dark.
 pub fn render(settings: &Settings, palette: &Palette) -> Div {
     let modes = Appearance::ALL
         .into_iter()
@@ -26,34 +27,25 @@ pub fn render(settings: &Settings, palette: &Palette) -> Div {
         })
         .collect();
 
-    let themes = div().flex().items_center().gap(px(8.)).children(
-        ThemeFamily::ALL
-            .into_iter()
-            .map(|family| theme_card(family, settings.theme == family, palette)),
-    );
+    let themes = div()
+        .id("settings-theme")
+        .flex_1()
+        .flex()
+        .items_center()
+        .gap(px(8.))
+        .children(
+            ThemeFamily::ALL
+                .into_iter()
+                .map(|family| theme_card(family, settings.theme == family, palette)),
+        )
+        .help("Choose Captain's colors. Each theme has a light and a dark version.");
 
-    settings_card(
-        "Appearance",
-        [
-            settings_row(
-                "Theme",
-                Some("Each theme has a light and a dark version.".into()),
-                themes,
-                palette,
-            )
-            .id("settings-theme")
-            .help("Choose Captain's colors.")
-            .into_any_element(),
-            settings_row(
-                "Appearance",
-                Some("System follows the light or dark mode of your computer.".into()),
-                segmented("appearance-mode", modes, palette),
-                palette,
-            )
-            .id("settings-appearance")
-            .help("Choose light or dark, or follow the system.")
-            .into_any_element(),
-        ],
-        palette,
+    section(palette).child(
+        row("Appearance", palette).child(themes).child(
+            div()
+                .id("settings-appearance")
+                .child(segmented("appearance-mode", modes, palette))
+                .help("Choose light or dark, or follow the system."),
+        ),
     )
 }

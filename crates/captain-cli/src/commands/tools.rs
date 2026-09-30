@@ -11,8 +11,7 @@ use serde_json::json;
 use crate::cli::{PathArg, ToolsCommand};
 use crate::context::Context;
 
-const REFUSAL: &str =
-    "Captain is running. Use Settings > Command-line tools, or quit Captain first.";
+const REFUSAL: &str = "Captain is running. Use Settings > Terminal, or quit Captain first.";
 
 pub fn run(context: &Context, command: ToolsCommand) -> Result<()> {
     if !cli_tools::SUPPORTED {

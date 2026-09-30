@@ -37,8 +37,9 @@ pub use palette::{ToggleCommandPalette, init as palette_init};
 pub use port_forwarding::init as port_forwarding_init;
 pub use settings::{
     ContextJob, DetectedEndpoint, EngineSource, SystemIntegration, current as current_settings,
-    init as settings_init, init_engine_source as engine_source_init, init_system as system_init,
-    observe as observe_settings,
+    init as settings_init, init_engine_source as engine_source_init,
+    init_file_watch as settings_watch_init, init_system as system_init,
+    observe as observe_settings, open_settings_file, settings_file_path,
 };
 pub use shell::AppShell;
 pub use storage::init as storage_init;

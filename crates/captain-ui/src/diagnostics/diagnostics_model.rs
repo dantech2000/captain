@@ -7,6 +7,7 @@ use gpui_kit::*;
 
 use super::engine_probe;
 use crate::engine_host::host_model;
+use crate::settings;
 use crate::workspace::{Connection, Workspace};
 
 /// What the app gives the Diagnostics page.
@@ -63,6 +64,12 @@ pub fn init(cx: &mut App, workspace: &Entity<Workspace>, setup: DiagnosticsSetup
                 model.follow(cx)
             })
         }));
+        // A new mistake in settings.json, or its fix.
+        subscriptions.extend(settings::file_watch(cx).map(|watch| {
+            cx.observe(&watch, |model: &mut DiagnosticsModel, _, cx| {
+                model.run(false, cx)
+            })
+        }));
         let mut model = DiagnosticsModel {
             setup,
             workspace: workspace.downgrade(),
@@ -114,6 +121,11 @@ impl DiagnosticsModel {
         self.setup.engine_dir.clone()
     }
 
+    /// Raises or lowers the log level at once, as the Diagnostics switch does.
+    pub fn set_debug_logging(&self, on: bool) {
+        (self.setup.set_debug_logging)(on);
+    }
+
     pub fn is_running(&self) -> bool {
         self.task.is_some()
     }
@@ -158,6 +170,7 @@ impl DiagnosticsModel {
             (workspace.connection().clone(), workspace.engine())
         };
         let captain = captain_status(cx);
+        let settings_problem = settings::file_problem(cx);
         let cached = self.machine.clone().filter(|_| !machine);
         let probe = self.setup.probe.clone();
         let executor = cx.background_executor().clone();
@@ -175,6 +188,7 @@ impl DiagnosticsModel {
                 captain_engine: captain,
                 engine,
                 machine,
+                settings_problem,
             };
             this.update(cx, |model, cx| model.finish(facts, cx)).ok();
         }));

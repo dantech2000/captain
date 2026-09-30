@@ -4,8 +4,10 @@
 mod host_actions;
 mod host_daemon;
 mod host_event;
+mod host_files;
 mod host_kubernetes;
 mod host_model;
+mod host_reload;
 mod host_screen;
 mod host_snapshot;
 mod host_summary;

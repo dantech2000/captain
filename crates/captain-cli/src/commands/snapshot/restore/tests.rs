@@ -17,6 +17,9 @@ fn a_broken_settings_file_stops_the_restore_before_the_snapshot_lookup() {
     let host = context.host(&Settings::default());
     let snapshots = host.snapshots().expect("Lima snapshots");
     let error = run(&context, &host, &snapshots, "missing", true).unwrap_err();
-    assert!(format!("{error:#}").contains("not valid JSON"), "{error:#}");
+    assert!(
+        format!("{error:#}").contains("settings.json line 1:"),
+        "{error:#}"
+    );
     std::fs::remove_dir_all(&dir).ok();
 }

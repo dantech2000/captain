@@ -114,7 +114,7 @@ fn check_port(port: u16) -> Result<(), HostError> {
         .map(drop)
         .map_err(|_| {
             HostError(format!(
-                "Port {port} is in use on this Mac. Pick another Kubernetes port in Settings."
+                "Port {port} is in use on this Mac. Set another kubernetes.port in the settings file."
             ))
         })
 }
@@ -158,7 +158,7 @@ fn wait_host_port(port: u16, ca: &Path, cancel: &Cancel) -> Result<(), HostError
         std::thread::sleep(Duration::from_secs(1));
     }
     Err(HostError(format!(
-        "Kubernetes runs in the VM, but port {port} on this Mac does not reach it. Another program may use that port. Pick another Kubernetes port in Settings."
+        "Kubernetes runs in the VM, but port {port} on this Mac does not reach it. Another program may use that port. Set another kubernetes.port in the settings file."
     )))
 }
 

@@ -13,6 +13,7 @@ pub fn evaluate(facts: &Facts) -> Vec<Check> {
         checks::disk_space(platform, machine.free_disk),
         checks::lima_logs(platform, captain, machine.lima_logs),
         checks::rosetta(platform, captain, machine.rosetta),
+        checks::settings_file(facts.settings_problem.as_deref()),
     ]
 }
 

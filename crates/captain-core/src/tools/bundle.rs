@@ -55,6 +55,11 @@ impl Bundle {
         self.resources.join("bin/captain")
     }
 
+    /// `licenses`, the license texts of the bundled tools.
+    pub fn licenses(&self) -> PathBuf {
+        self.resources.join("licenses")
+    }
+
     /// `cli-plugins`, with `docker-compose` and `docker-buildx`.
     pub fn cli_plugins(&self) -> PathBuf {
         self.resources.join("cli-plugins")

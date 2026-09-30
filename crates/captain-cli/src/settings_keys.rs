@@ -42,6 +42,18 @@ impl SettingKey {
             .unwrap_or_default()
     }
 
+    /// The key in the settings file that holds this setting.
+    pub fn file_key(self) -> &'static str {
+        match self {
+            Self::Engine => "engine",
+            Self::Cpus | Self::Memory | Self::Disk => "engine_resources",
+            Self::StopEngineOnQuit => "stop_engine_on_quit",
+            Self::StartInBackground => "start_in_background",
+            Self::ShowMenuBarIcon => "show_menu_bar_icon",
+            Self::DebugLogging => "debug_logging",
+        }
+    }
+
     /// True for the keys that apply on the next start of the engine.
     pub fn is_resource(self) -> bool {
         matches!(self, Self::Cpus | Self::Memory | Self::Disk)

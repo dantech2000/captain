@@ -1,36 +1,29 @@
-//! The fields of the Kubernetes card: the version picker and the port. They need a
-//! window, so the Settings page creates them on its first render. See feature 0024.
+//! The Kubernetes version picker. It needs a window, so the Settings page creates
+//! it on its first render. The port lives in the settings file. See features 0024
+//! and 0037.
 
 use captain_core::kubernetes::{K3sVersion, KubernetesSettings, VersionList};
-use gpui_kit::component::input::InputState;
 use gpui_kit::component::select::{SelectEvent, SelectState};
 use gpui_kit::*;
 
 use super::{SettingsView, kube_dialogs};
-use crate::kubernetes::KubernetesModel;
 
 /// The version labels, such as `v1.36.4+k3s1 (stable)`.
 pub type VersionSelect = SelectState<Vec<SharedString>>;
 
 pub struct KubeForm {
     pub version: Entity<VersionSelect>,
-    pub port: Entity<InputState>,
     /// The versions behind the labels, in the same order.
     versions: Vec<K3sVersion>,
     labels: Vec<SharedString>,
-    /// Why the last Apply was refused.
-    pub error: Option<SharedString>,
 }
 
 impl KubeForm {
-    pub fn new(settings: &KubernetesSettings, window: &mut Window, cx: &mut App) -> Self {
-        let port = settings.port.to_string();
+    pub fn new(window: &mut Window, cx: &mut App) -> Self {
         Self {
             version: cx.new(|cx| SelectState::new(Vec::new(), None, window, cx)),
-            port: cx.new(|cx| InputState::new(window, cx).default_value(port)),
             versions: Vec::new(),
             labels: Vec::new(),
-            error: None,
         }
     }
 
@@ -86,7 +79,7 @@ impl SettingsView {
         }
         if self.kube_form.is_none() && self.kubernetes.is_some() {
             self.kube_form_source = Some(settings.clone());
-            let form = KubeForm::new(settings, window, cx);
+            let form = KubeForm::new(window, cx);
             let picked = cx.subscribe_in(
                 &form.version,
                 window,
@@ -122,30 +115,5 @@ impl SettingsView {
         } else {
             model.update(cx, |model, cx| model.save(wanted, cx));
         }
-    }
-
-    /// Checks the port, saves it, and applies the settings to the running engine.
-    pub(super) fn apply_kubernetes(&mut self, cx: &mut Context<Self>) {
-        let (Some(model), Some(form)) = (self.kubernetes.clone(), self.kube_form.as_mut()) else {
-            return;
-        };
-        let text = form.port.read(cx).value().trim().to_string();
-        let port = match text.parse::<u16>() {
-            Ok(port) if port > 0 => port,
-            _ => {
-                form.error = Some(format!("{text:?} is not a port number.").into());
-                cx.notify();
-                return;
-            }
-        };
-        form.error = None;
-        model.update(cx, |model: &mut KubernetesModel, cx| {
-            let wanted = KubernetesSettings {
-                port,
-                ..model.settings(cx)
-            };
-            model.save(wanted, cx);
-            model.apply(cx);
-        });
     }
 }

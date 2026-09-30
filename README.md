@@ -6,6 +6,8 @@ Captain connects to a Docker engine that is already running (Docker Desktop, Orb
 
 > Status: early development. See [ROADMAP.md](ROADMAP.md) for what works today.
 
+To install and use Captain, read the [user guide](docs/guide/README.md). The rest of this file is for building Captain.
+
 ## Build
 
 You need Rust 1.98 or later. `rust-toolchain.toml` pins the version.

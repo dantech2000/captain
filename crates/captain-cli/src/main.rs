@@ -4,6 +4,7 @@
 mod cli;
 mod commands;
 mod context;
+mod reference;
 mod settings_keys;
 
 use std::process::ExitCode;

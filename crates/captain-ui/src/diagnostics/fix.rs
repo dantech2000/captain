@@ -25,6 +25,7 @@ pub fn run(fix: &Fix, engine_dir: Option<&PathBuf>, window: &mut Window, cx: &mu
                 cx.open_with_system(dir);
             }
         }
+        Fix::OpenSettingsFile => crate::settings::open_settings_file(cx),
         Fix::CopyCommand(command) => {
             cx.write_to_clipboard(ClipboardItem::new_string(command.to_string()));
             let message = format!("Copied \"{command}\". Paste it into a terminal.");

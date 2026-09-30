@@ -1,44 +1,41 @@
-use captain_core::daemon::DaemonSettings;
 use captain_core::docker_context::ContextList;
 use captain_core::kubernetes::KubernetesSettings;
 use gpui_kit::component::input::{InputEvent, InputState};
 use gpui_kit::*;
 
-use super::admin_access_section::{self, AdminAccess};
+use super::admin_access::AdminAccess;
 use super::cli_tools_state::CliToolsCard;
 use super::context_actions::ContextChange;
-use super::daemon_form::DaemonForm;
 use super::engine_source::{self, DetectedEndpoint};
 use super::kube_form::KubeForm;
 use super::store::{self, SettingsStore};
 use super::{
-    about_section, appearance_section, behavior_section, captain_engine_section, cli_tools_section,
-    daemon_section, endpoint_picker, engine_section, kubernetes_section,
+    about_section, appearance_section, engine_section, file_section, kubernetes_section,
+    startup_section, terminal_section,
 };
 use crate::engine_host::{HostModel, host_model};
 use crate::kubernetes::{KubernetesModel, kubernetes_model};
 use crate::theme::Palette;
-use crate::widgets::{inline_error, page_header};
+use crate::widgets::inline_error;
 use crate::workspace::Workspace;
 
-/// The Settings page: appearance, behavior, the engine connection, and About.
+/// The one-page Settings: appearance, the engine, Kubernetes, startup, the
+/// terminal, the settings file, and About. See feature 0037.
 pub struct SettingsView {
     pub(super) workspace: Entity<Workspace>,
     /// Captain Engine, when the app has one.
     pub(super) host: Option<Entity<HostModel>>,
-    /// The Docker daemon fields. They need a window, so the first render creates them.
-    pub(super) daemon_form: Option<DaemonForm>,
-    /// The saved settings the daemon form shows. A change from elsewhere, such as a
-    /// snapshot restore, rebuilds the form so Save cannot write old values back.
-    daemon_form_source: Option<DaemonSettings>,
+    /// Free bytes on Captain Engine's disk, read in the background.
+    pub(super) free_disk: Option<u64>,
     /// The k3s cluster, when Captain Engine has one.
     pub(super) kubernetes: Option<Entity<KubernetesModel>>,
-    /// The Kubernetes version picker and port. The first render creates them.
+    /// The Kubernetes version picker. The first render creates it.
     pub(super) kube_form: Option<KubeForm>,
     /// The saved settings the Kubernetes form shows.
     pub(super) kube_form_source: Option<KubernetesSettings>,
-    /// The custom endpoint field. It needs a window, so the first render creates it.
-    input: Option<Entity<InputState>>,
+    /// The remote host field of the engines sheet. It needs a window, so the first
+    /// render creates it.
+    pub(super) input: Option<Entity<InputState>>,
     /// Why the custom endpoint is not valid.
     pub(super) hint: Option<SharedString>,
     /// Engines found on this machine. A rescan or a switch refreshes them.
@@ -49,8 +46,11 @@ pub struct SettingsView {
     /// Why the last change to the login item failed.
     pub(super) login_error: Option<SharedString>,
     pub(super) admin_access: AdminAccess,
-    /// The Command-line tools card. A background read fills it.
+    /// The terminal setup's state. A background read fills it.
     pub(super) cli_tools: CliToolsCard,
+    /// True when the terminal sheet shows the plain shell PATH line next to the
+    /// home-manager one.
+    pub(super) show_plain_line: bool,
     pub(super) subscriptions: Vec<Subscription>,
 }
 
@@ -73,8 +73,7 @@ impl SettingsView {
         let mut view = Self {
             workspace,
             host,
-            daemon_form: None,
-            daemon_form_source: None,
+            free_disk: None,
             kubernetes,
             kube_form: None,
             kube_form_source: None,
@@ -86,11 +85,29 @@ impl SettingsView {
             login_error: None,
             admin_access: AdminAccess::default(),
             cli_tools: CliToolsCard::default(),
+            show_plain_line: false,
             subscriptions,
         };
         view.rescan(cx);
         view.refresh_tools(cx);
+        view.read_free_disk(cx);
         view
+    }
+
+    /// Reads the free space on Captain Engine's disk in the background.
+    fn read_free_disk(&mut self, cx: &mut Context<Self>) {
+        let Some(task) = self.host.as_ref().map(|host| host.read(cx).free_disk(cx)) else {
+            return;
+        };
+        cx.spawn(async move |this, cx| {
+            let free = task.await;
+            this.update(cx, |view, cx| {
+                view.free_disk = free;
+                cx.notify();
+            })
+            .ok();
+        })
+        .detach();
     }
 
     /// Looks for engines on this machine again.
@@ -163,11 +180,7 @@ impl Render for SettingsView {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let palette = Palette::of(cx);
         let settings = store::current(cx);
-        let input = self.input(window, cx);
-        if self.daemon_form_source.as_ref() != Some(&settings.engine_daemon) {
-            self.daemon_form = Some(DaemonForm::new(&settings.engine_daemon, window, cx));
-            self.daemon_form_source = Some(settings.engine_daemon.clone());
-        }
+        self.input(window, cx);
         let versions = self
             .kubernetes
             .as_ref()
@@ -178,66 +191,51 @@ impl Render for SettingsView {
         {
             form.show_versions(&versions, saved.as_deref(), window, cx);
         }
+        let kubernetes =
+            self.kubernetes
+                .clone()
+                .zip(self.host.clone())
+                .and_then(|(model, host)| {
+                    let form = self.kube_form.as_ref()?;
+                    kubernetes_section::render(&model, &host, form, &palette, cx)
+                });
 
-        let cards =
-            div()
-                .w_full()
-                .max_w(px(720.))
-                .flex()
-                .flex_col()
-                .gap(px(22.))
-                .children(store::save_error(cx).map(|error| {
-                    inline_error(
-                        format!("Captain cannot save the settings. {error}"),
-                        &palette,
-                    )
-                }))
-                .child(appearance_section::render(&settings, &palette))
-                .children(behavior_section::render(self, &settings, &palette, cx))
-                .children(
-                    self.host
-                        .as_ref()
-                        .map(|host| captain_engine_section::render(host, &settings, &palette, cx)),
-                )
-                .children(
-                    self.host
-                        .as_ref()
-                        .zip(self.daemon_form.as_ref())
-                        .and_then(|(host, form)| daemon_section::render(host, form, &palette, cx)),
-                )
-                .children(self.kubernetes.clone().zip(self.host.clone()).and_then(
-                    |(model, host)| {
-                        let form = self.kube_form.as_ref()?;
-                        kubernetes_section::render(&model, &host, form, &palette, cx)
-                    },
-                ))
-                .children(admin_access_section::render(self, &palette, cx))
-                .child(engine_section::render(self, &settings, &palette, cx))
-                .child(endpoint_picker::render(self, &input, &palette, cx))
-                .child(cli_tools_section::render(self, &settings, &palette, cx))
-                .child(about_section::render(&palette));
-
-        div()
-            .size_full()
+        let column = div()
+            .w(px(760.))
+            .max_w_full()
             .flex()
             .flex_col()
-            .child(page_header(
-                "settings-header",
-                "Settings",
-                "Appearance, behavior, Captain Engine, the engine connection, and information about Captain",
-                None,
-                &palette,
-            ))
+            .gap(px(14.))
+            .py(px(34.))
             .child(
                 div()
-                    .id("settings-scroll")
-                    .flex_1()
-                    .min_h_0()
-                    .overflow_y_scroll()
-                    .px(px(24.))
-                    .pt(px(4.))
-                    .pb(px(24.))
-                    .child(cards),
+                    .mb(px(4.))
+                    .text_size(px(26.))
+                    .font_weight(FontWeight::EXTRA_BOLD)
+                    .child("Settings"),
             )
+            .children(store::save_error(cx).map(|error| {
+                inline_error(
+                    format!("Captain cannot save the settings. {error}"),
+                    &palette,
+                )
+            }))
+            .child(appearance_section::render(&settings, &palette))
+            .child(engine_section::render(self, &palette, cx))
+            .children(kubernetes)
+            .children(startup_section::render(self, &settings, &palette, cx))
+            .child(terminal_section::render(self, &settings, &palette, cx))
+            .child(file_section::render(&palette))
+            .child(about_section::render(self, &palette, cx));
+
+        div()
+            .id("settings-scroll")
+            .size_full()
+            .overflow_y_scroll()
+            .flex()
+            .justify_center()
+            .px(px(24.))
+            .text_color(palette.text)
+            .child(column)
     }
 }

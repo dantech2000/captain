@@ -1,10 +1,11 @@
-//! The Docker CLI contexts in the Switch engine card: one row per context, and a row
+//! The Docker CLI contexts in the engines sheet: one row per context, and a row
 //! that creates the `captain` context for Captain Engine. See
 //! docs/features/0026-contexts-and-remote-hosts.md.
 
 use captain_core::docker_context::{CAPTAIN_CONTEXT, DockerContext};
 use gpui_kit::*;
 
+use super::listen::listen;
 use super::{SettingsView, context_actions};
 use crate::engine_host::captain_socket;
 use crate::help::HelpExt;
@@ -14,9 +15,10 @@ use crate::widgets::{ButtonTone, settings_row, text_button};
 /// The context rows. `in_use` is the endpoint Captain is connected to.
 pub fn rows(
     view: &SettingsView,
+    this: &WeakEntity<SettingsView>,
     in_use: Option<&str>,
     palette: &Palette,
-    cx: &mut Context<SettingsView>,
+    cx: &App,
 ) -> Vec<AnyElement> {
     let mut rows: Vec<AnyElement> = view
         .contexts
@@ -25,10 +27,10 @@ pub fn rows(
         .enumerate()
         .map(|(ix, context)| {
             let default = view.contexts.is_current(&context.name);
-            context_row(ix, context, default, in_use, view, palette, cx)
+            context_row(ix, context, default, in_use, view, this, palette)
         })
         .collect();
-    rows.extend(captain_row(view, palette, cx));
+    rows.extend(captain_row(view, this, palette, cx));
     if let Some(error) = view.context_change.error.clone() {
         rows.push(
             div()
@@ -49,8 +51,8 @@ fn context_row(
     default: bool,
     in_use: Option<&str>,
     view: &SettingsView,
+    this: &WeakEntity<SettingsView>,
     palette: &Palette,
-    cx: &mut Context<SettingsView>,
 ) -> AnyElement {
     let host = context.host.clone();
     let active = host.is_some() && host.as_deref() == in_use;
@@ -67,10 +69,10 @@ fn context_row(
         ButtonTone::Accent,
         !active && host.is_some(),
         palette,
-        cx.listener(move |view, _, _, cx| view.use_engine(host.clone(), cx)),
+        listen(this, move |view, _, cx| view.use_engine(host.clone(), cx)),
     );
     let name = context.name.clone();
-    let this = cx.weak_entity();
+    let this = this.clone();
     let default_button = (!default).then(|| {
         text_button(
             ("context-default", ix),
@@ -108,8 +110,9 @@ fn context_row(
 /// there is no Captain Engine, or the context already points at it.
 fn captain_row(
     view: &SettingsView,
+    this: &WeakEntity<SettingsView>,
     palette: &Palette,
-    cx: &mut Context<SettingsView>,
+    cx: &App,
 ) -> Option<AnyElement> {
     let socket = captain_socket(cx)?;
     let existing = view.contexts.get(CAPTAIN_CONTEXT);
@@ -117,7 +120,7 @@ fn captain_row(
         return None;
     }
     let update = existing.is_some();
-    let this = cx.weak_entity();
+    let this = this.clone();
     let button = text_button(
         "context-create-captain",
         if update {

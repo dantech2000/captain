@@ -12,6 +12,7 @@ mod rc_block;
 mod rc_files;
 mod resolve;
 mod settings;
+mod setup;
 
 pub use install::{RcStatus, ToolsStatus, install, status, uninstall};
 pub use links::{LinkReport, LinkState, ToolLink, link_state, relink, remove_links, tool_links};
@@ -25,3 +26,4 @@ pub use rc_files::{
 };
 pub use resolve::{SHOWN_TOOLS, ToolSource, classify, parse_command_v, resolve_in_login_shell};
 pub use settings::{CliToolsSettings, PathMode};
+pub use setup::SetupSteps;

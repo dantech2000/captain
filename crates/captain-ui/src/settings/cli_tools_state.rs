@@ -1,14 +1,17 @@
-//! The Command-line tools card's state: the status, which a background thread
-//! reads (it runs a login shell and may ask chezmoi), and Relink. See feature 0035.
+//! The terminal setup's state: the status, which a background thread reads (it
+//! runs a login shell and may ask chezmoi), and Relink. See features 0035 and 0037.
 
 use captain_core::cli_tools::{
-    self, CliToolsSettings, SHOWN_TOOLS, ToolPaths, ToolSource, ToolsStatus,
+    self, CliToolsSettings, SHOWN_TOOLS, SetupSteps, ToolPaths, ToolSource, ToolsStatus,
 };
+use captain_core::docker_context::CAPTAIN_CONTEXT;
+use captain_core::settings::Settings;
 use gpui_kit::*;
 
 use super::SettingsView;
+use crate::engine_host::captain_socket;
 
-/// What the card shows, and the last error.
+/// What the Terminal section and its sheet show, and the last error.
 #[derive(Default)]
 pub struct CliToolsCard {
     pub status: Option<ToolsStatus>,
@@ -18,7 +21,52 @@ pub struct CliToolsCard {
     pub error: Option<SharedString>,
 }
 
+/// The steps, and what the context step needs.
+pub struct TerminalFacts {
+    pub steps: SetupSteps,
+    /// One sentence: all done, or the first thing left.
+    pub summary: String,
+    /// The docker CLI's default context.
+    pub current: String,
+    /// Captain Engine's socket, when there is one.
+    pub socket: Option<String>,
+    /// True if the `captain-engine` context points at that socket.
+    pub points_here: bool,
+}
+
 impl SettingsView {
+    /// The steps, once the background read is done.
+    pub(super) fn terminal_facts(&self, settings: &Settings, cx: &App) -> Option<TerminalFacts> {
+        let status = self.cli_tools.status.as_ref()?;
+        let docker = match &self.cli_tools.resolved {
+            Some(Ok(tools)) => tools
+                .iter()
+                .find(|(name, _)| name == "docker")
+                .map(|(_, source)| source),
+            _ => None,
+        };
+        let current = self
+            .contexts
+            .current
+            .clone()
+            .unwrap_or_else(|| "default".into());
+        let socket = captain_socket(cx);
+        let points_here = socket.is_some()
+            && self
+                .contexts
+                .get(CAPTAIN_CONTEXT)
+                .is_some_and(|context| context.host == socket);
+        let context = points_here && self.contexts.is_current(CAPTAIN_CONTEXT);
+        let steps = SetupSteps::of(status, settings.command_line_tools.enabled, docker, context);
+        Some(TerminalFacts {
+            summary: steps.summary(docker, &current),
+            steps,
+            current,
+            socket,
+            points_here,
+        })
+    }
+
     /// Reads the state again in the background.
     pub(super) fn refresh_tools(&mut self, cx: &mut Context<Self>) {
         self.run_tools(None, cx);

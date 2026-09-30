@@ -1,4 +1,4 @@
-use super::{SETTINGS_VERSION, Settings};
+use super::Settings;
 use crate::daemon::DaemonSettings;
 use crate::settings::{Appearance, EngineChoice, ThemeFamily};
 use crate::{GIB, HostResources};
@@ -33,7 +33,6 @@ fn a_file_with_the_old_accent_gets_the_default_theme() {
     let settings = Settings::from_json(json).unwrap();
     assert_eq!(settings.appearance, Appearance::Dark);
     assert_eq!(settings.theme, ThemeFamily::Dusk);
-    assert!(!settings.to_json().contains("accent"));
 }
 
 #[test]
@@ -45,27 +44,6 @@ fn blank_endpoint_is_none() {
 #[test]
 fn malformed_json_is_an_error() {
     assert!(Settings::from_json("{").is_err());
-}
-
-#[test]
-fn writes_the_current_version() {
-    let old = Settings {
-        version: 0,
-        ..Settings::default()
-    };
-    let written = Settings::from_json(&old.to_json()).unwrap();
-    assert_eq!(written.version, SETTINGS_VERSION);
-}
-
-#[test]
-fn writes_lowercase_names() {
-    let json = Settings {
-        theme: ThemeFamily::Periwinkle,
-        ..Settings::default()
-    }
-    .to_json();
-    assert!(json.contains(r#""theme": "periwinkle""#), "{json}");
-    assert!(json.contains(r#""appearance": "system""#), "{json}");
 }
 
 #[test]
@@ -92,8 +70,8 @@ fn round_trips() {
         },
         ..Settings::default()
     };
-    let json = settings.to_json();
-    assert!(json.contains(r#""engine": "external""#), "{json}");
+    let json = serde_json::to_string(&settings).unwrap();
+    assert!(json.contains(r#""engine":"external""#), "{json}");
     assert_eq!(Settings::from_json(&json).unwrap(), settings);
 }
 

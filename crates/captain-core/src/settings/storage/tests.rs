@@ -36,7 +36,7 @@ fn missing_file_gives_defaults() {
 }
 
 #[test]
-fn save_then_load() {
+fn save_then_load_leaves_no_temp_file() {
     let dir = TempDir::new();
     let path = dir.0.join("Captain").join("settings.json");
     let settings = Settings {
@@ -47,32 +47,67 @@ fn save_then_load() {
     };
     settings.save(&path).unwrap();
     assert_eq!(Settings::load(&path).unwrap(), settings);
-}
-
-#[test]
-fn save_replaces_the_file_and_leaves_no_temp_file() {
-    let dir = TempDir::new();
-    let path = dir.0.join("settings.json");
-    fs::write(&path, "old contents").unwrap();
-    Settings::default().save(&path).unwrap();
-
-    let names: Vec<_> = fs::read_dir(&dir.0)
+    let names: Vec<_> = fs::read_dir(path.parent().unwrap())
         .unwrap()
         .map(|entry| entry.unwrap().file_name())
         .collect();
     assert_eq!(names, ["settings.json"]);
-    assert_eq!(Settings::load(&path).unwrap(), Settings::default());
 }
 
 #[test]
-fn malformed_file_is_a_parse_error() {
+fn a_file_with_bad_json_is_never_overwritten() {
     let dir = TempDir::new();
     let path = dir.0.join("settings.json");
-    fs::write(&path, "not json").unwrap();
-    assert!(matches!(
-        Settings::load(&path),
-        Err(SettingsError::Parse { .. })
-    ));
+    fs::write(
+        &path,
+        "{\n  \"theme\": \"harbor\"\n  \"appearance\": \"dark\"\n}\n",
+    )
+    .unwrap();
+    let Err(SettingsError::Parse { problem, .. }) = Settings::load(&path) else {
+        panic!("expected a parse error");
+    };
+    assert_eq!(
+        problem.to_string().split(". See").next(),
+        Some("settings.json line 2: Expected comma")
+    );
+    let dark = Settings {
+        appearance: Appearance::Dark,
+        ..Settings::default()
+    };
+    assert!(dark.save(&path).is_err());
+    assert!(fs::read_to_string(&path).unwrap().contains("harbor"));
+}
+
+/// A file from format 1 held every key. The migration keeps only the changed ones
+/// and saves the old file once.
+#[test]
+fn migration_drops_defaults_and_keeps_one_backup() {
+    let dir = TempDir::new();
+    let path = dir.0.join("settings.json");
+    let mut old = serde_json::to_value(Settings {
+        theme: ThemeFamily::Harbor,
+        ..Settings::default()
+    })
+    .unwrap();
+    old["version"] = 1.into();
+    old["accent"] = "purple".into();
+    let old = serde_json::to_string_pretty(&old).unwrap();
+    fs::write(&path, &old).unwrap();
+
+    Settings::migrate_file(&path).unwrap();
+    let text = fs::read_to_string(&path).unwrap();
+    assert_eq!(
+        text,
+        "{\n  \"$schema\": \"./settings.schema.json\",\n  \"version\": 2,\n  \"theme\": \"harbor\",\n  \"accent\": \"purple\"\n}"
+    );
+    let loaded = Settings::read(&path).unwrap();
+    assert!(loaded.sets("theme") && !loaded.sets("appearance"));
+    let backup = dir.0.join("settings.json.captain-backup");
+    assert_eq!(fs::read_to_string(&backup).unwrap(), old);
+
+    fs::write(&path, old.replace("harbor", "dusk")).unwrap();
+    Settings::migrate_file(&path).unwrap();
+    assert_eq!(fs::read_to_string(&backup).unwrap(), old);
 }
 
 #[test]

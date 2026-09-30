@@ -37,7 +37,7 @@ impl Shell {
     /// Captain's marked block with [`Self::path_line`].
     pub fn block(self) -> String {
         format!(
-            "{START}\n# Added by Captain. Set PATH to Manual in Captain's Settings to remove it.\n{}\n{END}\n",
+            "{START}\n# Added by Captain. Set command_line_tools.path to manual in Captain's settings file to remove it.\n{}\n{END}\n",
             self.path_line()
         )
     }
@@ -86,6 +86,14 @@ pub enum RcAccess {
     Writable,
     /// Why not. The user adds the line.
     Skip(String),
+}
+
+impl RcAccess {
+    /// True if home-manager or Nix owns the file: it links into, or sits in,
+    /// `/nix/store`. The user then adds the folder in their Nix config.
+    pub fn in_nix_store(&self) -> bool {
+        matches!(self, RcAccess::Skip(why) if why.contains(NIX_STORE))
+    }
 }
 
 /// Captain writes only a regular file it can write, or a new file in a folder it

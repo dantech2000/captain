@@ -1,37 +1,38 @@
+//! The engines sheet's content: the endpoint Captain uses, the engines found on
+//! this machine, the Docker contexts, and a field for any other endpoint.
+
+use captain_core::settings::Settings;
 use gpui_kit::component::Sizable;
 use gpui_kit::component::input::{Input, InputState};
 use gpui_kit::*;
 
 use super::engine_source::DetectedEndpoint;
+use super::listen::listen;
 use super::{SettingsView, context_rows};
 use crate::help::HelpExt;
 use crate::theme::Palette;
 use crate::widgets::{ButtonTone, settings_card, settings_row, text_button};
 use crate::workspace::Connection;
 
-/// The Switch engine card: the engines found on this machine, and a field for any
-/// other endpoint.
 pub fn render(
     view: &SettingsView,
-    input: &Entity<InputState>,
+    this: &WeakEntity<SettingsView>,
+    settings: &Settings,
+    input: Option<&Entity<InputState>>,
     palette: &Palette,
-    cx: &mut Context<SettingsView>,
+    cx: &App,
 ) -> Div {
     let in_use = match view.workspace.read(cx).connection() {
         Connection::Connected(info) => Some(info.endpoint.clone()),
         _ => None,
     };
-    let mut rows: Vec<AnyElement> = view
-        .detected
-        .iter()
-        .enumerate()
-        .map(|(ix, detected)| {
-            let active = in_use.as_deref() == Some(detected.host.as_ref());
-            detected_row(ix, detected, active, palette, cx)
-        })
-        .collect();
+    let mut rows: Vec<AnyElement> = vec![endpoint_row(settings, this, palette)];
+    rows.extend(view.detected.iter().enumerate().map(|(ix, detected)| {
+        let active = in_use.as_deref() == Some(detected.host.as_ref());
+        detected_row(ix, detected, active, this, palette)
+    }));
     // Contexts are engines too, so the empty note shows only when neither list has any.
-    if rows.is_empty() && view.contexts.contexts.is_empty() {
+    if view.detected.is_empty() && view.contexts.contexts.is_empty() {
         rows.push(
             settings_row(
                 "No engines found",
@@ -42,18 +43,60 @@ pub fn render(
             .into_any_element(),
         );
     }
-    rows.extend(context_rows::rows(view, in_use.as_deref(), palette, cx));
-    rows.push(rescan_row(palette, cx));
-    rows.push(custom_row(view, input, palette, cx));
-    settings_card("Switch engine", rows, palette)
+    rows.extend(context_rows::rows(
+        view,
+        this,
+        in_use.as_deref(),
+        palette,
+        cx,
+    ));
+    rows.push(rescan_row(this, palette));
+    rows.extend(input.map(|input| custom_row(view, this, input, palette)));
+    settings_card("Engines", rows, palette)
+}
+
+/// The saved endpoint, or discovery, with a way back to discovery.
+fn endpoint_row(
+    settings: &Settings,
+    this: &WeakEntity<SettingsView>,
+    palette: &Palette,
+) -> AnyElement {
+    let Some(endpoint) = settings.engine_endpoint.clone() else {
+        return settings_row(
+            "Endpoint: Automatic",
+            Some(
+                "Captain finds the engine: DOCKER_HOST, the current context, then known sockets."
+                    .into(),
+            ),
+            div(),
+            palette,
+        )
+        .into_any_element();
+    };
+    settings_row(
+        "Endpoint: Custom",
+        Some(endpoint.into()),
+        text_button(
+            "engine-automatic",
+            "Use automatic",
+            ButtonTone::Accent,
+            true,
+            palette,
+            listen(this, |view, _, cx| view.use_engine(None, cx)),
+        ),
+        palette,
+    )
+    .id("settings-endpoint")
+    .help("Go back to finding the engine automatically.")
+    .into_any_element()
 }
 
 fn detected_row(
     ix: usize,
     detected: &DetectedEndpoint,
     active: bool,
+    this: &WeakEntity<SettingsView>,
     palette: &Palette,
-    cx: &mut Context<SettingsView>,
 ) -> AnyElement {
     let host = detected.host.to_string();
     let label = if active { "In use" } else { "Use" };
@@ -63,7 +106,9 @@ fn detected_row(
         ButtonTone::Accent,
         !active,
         palette,
-        cx.listener(move |view, _, _, cx| view.use_engine(Some(host.clone()), cx)),
+        listen(this, move |view, _, cx| {
+            view.use_engine(Some(host.clone()), cx)
+        }),
     );
     settings_row(
         div()
@@ -79,7 +124,7 @@ fn detected_row(
     .into_any_element()
 }
 
-fn rescan_row(palette: &Palette, cx: &mut Context<SettingsView>) -> AnyElement {
+fn rescan_row(this: &WeakEntity<SettingsView>, palette: &Palette) -> AnyElement {
     settings_row(
         "Look again",
         Some("Captain checks DOCKER_HOST, the Docker contexts, and known sockets.".into()),
@@ -89,7 +134,7 @@ fn rescan_row(palette: &Palette, cx: &mut Context<SettingsView>) -> AnyElement {
             ButtonTone::Accent,
             true,
             palette,
-            cx.listener(|view, _, _, cx| view.rescan(cx)),
+            listen(this, |view, _, cx| view.rescan(cx)),
         ),
         palette,
     )
@@ -100,22 +145,22 @@ fn rescan_row(palette: &Palette, cx: &mut Context<SettingsView>) -> AnyElement {
 
 fn custom_row(
     view: &SettingsView,
+    this: &WeakEntity<SettingsView>,
     input: &Entity<InputState>,
     palette: &Palette,
-    cx: &mut Context<SettingsView>,
 ) -> AnyElement {
     let field = div()
         .flex()
         .items_center()
         .gap(px(8.))
-        .child(div().w(px(300.)).child(Input::new(input).small()))
+        .child(div().w(px(260.)).child(Input::new(input).small()))
         .child(text_button(
             "engine-custom",
-            "Use this engine",
+            "Connect",
             ButtonTone::Accent,
             true,
             palette,
-            cx.listener(|view, _, window, cx| view.use_custom(window, cx)),
+            listen(this, |view, window, cx| view.use_custom(window, cx)),
         ));
     let control = div()
         .flex()
@@ -129,12 +174,12 @@ fn custom_row(
                 .map(|hint| div().text_size(px(11.)).text_color(palette.red).child(hint)),
         );
     settings_row(
-        "Custom endpoint",
-        Some("A unix://, npipe://, tcp://, http://, or ssh://user@host URL.".into()),
+        "Remote host",
+        Some("ssh://user@host, or a unix://, npipe://, tcp://, or http:// URL.".into()),
         control,
         palette,
     )
     .id("settings-custom-endpoint")
-    .help("Type the URL of an engine, then connect to it with Use this engine.")
+    .help("Type the URL of an engine, such as ssh://user@host, then connect to it.")
     .into_any_element()
 }

@@ -46,6 +46,16 @@ impl ToolSource {
     }
 }
 
+impl ToolSource {
+    /// A short name for a sentence, such as "Rancher Desktop".
+    pub fn name(&self) -> String {
+        match self {
+            ToolSource::RancherDesktop => "Rancher Desktop".into(),
+            other => other.label(),
+        }
+    }
+}
+
 /// Names the source of the tool at `path`, which links to `resolved` in the end.
 pub fn classify(path: &Path, resolved: &Path, home: &Path) -> ToolSource {
     let either = |test: &dyn Fn(&Path) -> bool| test(path) || test(resolved);

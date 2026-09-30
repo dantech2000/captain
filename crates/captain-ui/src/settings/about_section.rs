@@ -1,55 +1,48 @@
+//! The About line at the bottom of Settings: Captain's version, the engine
+//! runtime, the Docker version, and the licenses.
+
+use captain_core::cli_tools::running_bundle;
 use gpui_kit::*;
 
+use super::SettingsView;
 use crate::help::HelpExt;
 use crate::theme::Palette;
-use crate::widgets::{ButtonTone, settings_card, settings_row, text_button};
+use crate::workspace::Connection;
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
-const LICENSE: &str = env!("CARGO_PKG_LICENSE");
 const REPOSITORY: &str = env!("CARGO_PKG_REPOSITORY");
 
-/// The About card: version, license, and links to the project.
-pub fn render(palette: &Palette) -> Div {
-    let value = |text: &'static str| div().text_color(palette.text2).child(text);
-    let link = |id: &'static str, label: &'static str, url: String| {
-        text_button(
-            id,
-            label,
-            ButtonTone::Accent,
-            true,
-            palette,
-            move |_, _, cx| cx.open_url(&url),
+pub fn render(view: &SettingsView, palette: &Palette, cx: &App) -> Div {
+    let mut parts = vec![format!("Captain {VERSION}")];
+    parts.extend(
+        view.host
+            .as_ref()
+            .and_then(|host| host.read(cx).runtime_version()),
+    );
+    if let Connection::Connected(info) = view.workspace.read(cx).connection() {
+        parts.push(format!("Docker {}", info.version));
+    }
+    parts.push(String::new());
+    let licenses = running_bundle().map(|bundle| bundle.licenses());
+    div()
+        .flex()
+        .justify_center()
+        .items_center()
+        .pt(px(6.))
+        .text_size(px(11.5))
+        .text_color(palette.text3)
+        .child(parts.join(" \u{00b7} "))
+        .child(
+            div()
+                .id("settings-licenses")
+                .text_color(palette.text2)
+                .underline()
+                .cursor_pointer()
+                .on_click(move |_, _, cx| match &licenses {
+                    Some(dir) if dir.exists() => cx.open_with_system(dir),
+                    _ => cx.open_url(REPOSITORY),
+                })
+                .child("Licenses")
+                .help("Show the licenses of Captain and the tools it ships."),
         )
-    };
-
-    settings_card(
-        "About",
-        [
-            settings_row("Captain", None, value(VERSION), palette).into_any_element(),
-            settings_row("License", None, value(LICENSE), palette).into_any_element(),
-            settings_row(
-                "Source code",
-                Some(REPOSITORY.trim_start_matches("https://").into()),
-                link("about-source", "Open", REPOSITORY.to_string()),
-                palette,
-            )
-            .id("settings-source")
-            .help("Open Captain's source code in your browser.")
-            .into_any_element(),
-            settings_row(
-                "Feedback",
-                Some("Report a bug or ask for a feature.".into()),
-                link(
-                    "about-issues",
-                    "Open issues",
-                    format!("{REPOSITORY}/issues"),
-                ),
-                palette,
-            )
-            .id("settings-feedback")
-            .help("Open Captain's issues in your browser, to report a bug or ask for a feature.")
-            .into_any_element(),
-        ],
-        palette,
-    )
 }
