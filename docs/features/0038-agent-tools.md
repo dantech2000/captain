@@ -1,52 +1,99 @@
 # Feature 0038: Agent tools (MCP)
 
 - Milestone: M31
-- Status: Planned
+- Status: Planned. Research done on 2026-09-29; sources are linked in each section.
 
 ## Goal
 
-Let AI coding agents (Claude Code, Zed, Cursor, VS Code, and others) see and run Captain's containers, projects, and logs through the Model Context Protocol (MCP). It is optional: nothing is installed or exposed until the user turns it on.
+Let AI coding agents (Claude Code, Codex, Cursor, VS Code, Zed, Gemini CLI, Claude Desktop) see and run Captain's projects, containers, and logs through the Model Context Protocol (MCP). It is optional: nothing is exposed until the user turns it on, and each agent is connected only after the user approves it.
 
 ## Why
 
-Agents already run `docker` commands, but raw CLI output is long, and an agent cannot tell a crash loop from a slow start. Captain already knows what matters: exit reasons, out-of-memory kills, restart counts, published ports, and project tasks. An MCP server gives agents that knowledge in a small, structured form, with Captain's own safety rules.
+Agents already run `docker`, but raw output is long and hides what matters. Existing container MCP servers either proxy the raw CLI or dump `inspect` JSON: [ckreiling/mcp-server-docker](https://github.com/ckreiling/mcp-server-docker) returned about 139 KB for 22 containers ([#66](https://github.com/ckreiling/mcp-server-docker/issues/66)), and Docker's catalog server is one tool that takes CLI arguments ([docker](https://hub.docker.com/mcp/server/docker/overview)). None gives crash reasons, a project view, named tasks, or disk use. Captain has all of these, and a UI where the user can see what an agent did. Rancher Desktop has no MCP server ([rancher-desktop#9118](https://github.com/rancher-sandbox/rancher-desktop/issues/9118)).
 
-## In scope
+## Protocol and SDK
 
-1. **An MCP server in the `captain` CLI.** `captain mcp` speaks MCP over stdio. It ships inside Captain.app, so there is nothing extra to install. Check the official Rust SDK (`rmcp`, github.com/modelcontextprotocol/rust-sdk) and the current protocol version before building.
-2. **Read tools, on by default when the server is on:**
-   - `list_projects` and `list_containers`: state, health, ports, uptime, and the recent crash (exit code, out of memory, restarts), from the same crash tracker as the menu bar.
-   - `logs`: one container or a whole project, with `since`, `tail`, and an errors-only filter.
-   - `inspect`: the container detail, with secret-looking environment values masked, as the Overview tab does.
-   - `disk_usage`: the Storage page's categories and the reclaimable total.
-   - `engine_status`: Captain Engine state and resources.
-3. **Action tools, off until the user allows them** in the settings file (for example `"agent_tools": { "actions": ["restart", "start", "stop", "run_task"] }`):
-   - start, stop, restart a container or a project;
-   - run a task from `x-captain.tasks`;
-   - raise a memory limit.
-   Remove, prune, down, snapshot restore, and engine reset are never offered.
-4. **Resources:** the settings reference and the user guide pages, so an agent can read how Captain works.
-5. **Optional install in Settings.** In the Terminal sheet, an optional step "Connect AI tools" writes the server entry for the agents it finds, after the user confirms each one:
-   - Claude Code: `claude mcp add captain -- ~/.captain/bin/captain mcp`.
-   - Zed, Cursor, and VS Code: their MCP configuration files, edited in place (comments kept, as with `settings.json`).
-   A **Remove** button undoes each one.
-6. **A log of agent actions.** Every action tool call shows in the status bar's latest-event line and in `captain.log`, with the agent's client name.
+- Target MCP [2026-07-28](https://modelcontextprotocol.io/specification/2026-07-28/changelog): stateless requests with `server/discover`, `InputRequiredResult` in place of server-to-client requests, list results with `ttlMs` and `cacheScope`, and tools listed in a fixed order. Keep working with clients on [2025-11-25](https://modelcontextprotocol.io/specification/2025-11-25/changelog).
+- Transport: stdio only. stdout carries only MCP messages; logs go to stderr ([stdio](https://modelcontextprotocol.io/specification/2026-07-28/basic/transports/stdio.md)). stdio servers take no OAuth ([authorization](https://modelcontextprotocol.io/specification/2026-07-28/basic/authorization.md)).
+- SDK: [`rmcp`](https://github.com/modelcontextprotocol/rust-sdk) 3.x, a Tier 1 official SDK ([SDK tiers](https://modelcontextprotocol.io/docs/2026-07-28/sdk.md)), with `#[tool_router]` and `#[tool(annotations(read_only_hint = true))]`. Check its license note (moving from MIT to Apache-2.0) against Captain's `MIT OR Apache-2.0`.
+- Every tool declares an `outputSchema` and returns `structuredContent` plus a short text copy ([tools](https://modelcontextprotocol.io/specification/2026-07-28/server/tools.md)). Tool failures and refusals are results with `isError: true`, not protocol errors.
+
+## Tools
+
+Few tools, named for what the user sees in Captain. Fewer tools also help agents pick the right one ([kubernetes-mcp-server](https://github.com/containers/kubernetes-mcp-server)).
+
+Read tools (annotations: `readOnlyHint: true`, `openWorldHint: false`, so VS Code runs them without a prompt — [VS Code MCP](https://code.visualstudio.com/api/extension-guides/ai/mcp)):
+
+| Tool | Returns |
+|---|---|
+| `engine_status` | Captain Engine state, version, CPUs, memory, disk, Kubernetes on or off. |
+| `list_projects` | One row per Compose project, namespace, and "loose containers": services running of total, health, published ports as URLs, and a problem line. |
+| `list_containers` | Projected rows (name, project, service, image, state, health, ports, uptime), never raw `inspect`. A `status_only` flag for the shortest form. |
+| `container_problems` | The crash tracker's view: crash loops, exit codes, out-of-memory kills, restart counts, failing health checks, and the fix Captain would offer. |
+| `logs` | One container or a whole project, merged. Defaults: tail 100, `since`, `errors_only`, `grep`; a hard cap (about 500 lines or 32 KB) with `truncated: true` and the next-call hint. Stays under Claude Code's 10k-token warning ([Claude Code MCP](https://code.claude.com/docs/en/mcp)). |
+| `inspect` | A container's summary: command, ports, mounts, networks, limits, restart policy, environment keys with secret-looking values masked. |
+| `disk_usage` | The Storage page's categories, largest items, and what cleanup would free (read only). |
+| `wait_for_healthy` | Waits until a project or container is running and healthy, with a timeout. Saves agents from polling ([tilt-mcp](https://github.com/rrmistry/tilt-mcp)). |
+| `help` | How Captain names things and what each tool does. Zed cannot read resources ([Zed MCP](https://zed.dev/docs/ai/mcp)), so the guidance also lives here. |
+
+Action tools, registered only when the user allows them (annotations: `readOnlyHint: false`, `destructiveHint: false`, `idempotentHint: true` where true):
+
+| Tool | Allowed by |
+|---|---|
+| `start`, `stop`, `restart` (container or project) | `agent_tools.actions` includes the verb |
+| `run_task` (a task from `x-captain.tasks`) | `run_task` allowed; only tasks the user declared |
+| `raise_memory` | `raise_memory` allowed; same rule as the app (twice, at least 512 MB) |
+
+Never offered: `exec`, running an arbitrary image, a raw CLI passthrough, remove, prune, `compose down`, snapshot restore, engine reset, settings changes. `run_task` covers the safe use of exec: the user wrote each task.
+
+Resources (for clients that read them): the settings reference and the user guide pages, and one `captain://project/<name>` summary per project.
+
+## Safety
+
+1. **The allow-list in Captain is the gate.** Annotations are hints that clients must treat as untrusted ([tools](https://modelcontextprotocol.io/specification/2026-07-28/server/tools.md)); each client's own approval prompt is a second check. A tool that is off is not listed, and a call to it returns `isError` naming the setting.
+2. **No elicitation needed.** It changed shape in 2026-07-28 and Zed lacks it; if Captain ever asks, a client without support means "deny", not "allow" (unlike [kubernetes-mcp-server's default](https://github.com/containers/kubernetes-mcp-server/blob/main/docs/configuration.md)).
+3. **Arguments match real names.** Container, project, service, and task names must match the live lists; values that start with `-` are rejected. See the token leak in [mcp-server-kubernetes#328](https://github.com/Flux159/mcp-server-kubernetes/issues/328).
+4. **Container output is untrusted.** Logs, labels, and env are attacker-controllable text ([DockerDash](https://noma.security/blog/dockerdash-two-attack-paths-one-ai-supply-chain-crisis/); [log injection](https://github.com/Flux159/mcp-server-kubernetes/issues/294); [the lethal trifecta](https://simonwillison.net/2025/Jun/16/the-lethal-trifecta/)). Captain wraps them in clear delimiters labeled "untrusted container output", masks secret-looking values in logs as well as `inspect`, and never turns label text into instructions, URLs, or images.
+5. **Audit.** Every action call goes to `captain.log`, the status bar's latest-event line, and an "Agent activity" list with the client name, the tool, the arguments, and the result.
+
+## Connecting agents
+
+Settings shows one row, "AI agents", with a status and **Set up…**, like the Terminal row. The sheet follows Docker Desktop's MCP Toolkit ([toolkit](https://docs.docker.com/ai/mcp-catalog-and-toolkit/toolkit/)) and JetBrains ([MCP server](https://www.jetbrains.com/help/ai-assistant/mcp.html)):
+
+1. **Enable agent tools** switch, with a summary of what agents can see.
+2. **Actions** checkboxes: start, stop, restart, run tasks, raise memory. All off by default.
+3. **One row per agent Captain finds**, with **Connect** or **Remove** and its state. Connect first shows the exact command or JSON it will use, as the MCP security guide requires ([best practices](https://modelcontextprotocol.io/docs/2026-07-28/tutorials/security/security_best_practices.md)). It uses each client's own installer where there is one, so the client shows its own consent prompt:
+
+   | Client | How Captain connects it |
+   |---|---|
+   | Claude Code | `claude mcp add --scope user captain -- /Users/<you>/.captain/bin/captain mcp` (user scope; the default local scope covers one folder only) |
+   | Codex (and the ChatGPT desktop app) | `codex mcp add captain -- <path> mcp` ([Codex MCP](https://learn.chatgpt.com/docs/extend/mcp?surface=cli)) |
+   | Gemini CLI | `gemini mcp add captain <path> mcp` ([Gemini CLI](https://geminicli.com/docs/tools/mcp-server/)) |
+   | VS Code | `code --add-mcp '<json>'` or a `vscode:mcp/install` link ([VS Code](https://code.visualstudio.com/docs/copilot/chat/mcp-servers)) |
+   | Cursor | a `cursor://anysphere.cursor-deeplink/mcp/install` link, which Cursor confirms ([install links](https://cursor.com/docs/context/mcp/install-links)) |
+   | Zed | `context_servers` in Zed's settings, edited in place with comments kept |
+   | Claude Desktop | `mcpServers` in `claude_desktop_config.json`; tell the user to restart Claude ([connect local servers](https://modelcontextprotocol.io/docs/develop/connect-local-servers)) |
+
+   Paths are absolute, never `~`.
+4. **Copy config** for any other client.
+5. **Status:** the last client that connected and its last call, and the "Agent activity" list.
 
 ## Out of scope
 
-- A network (HTTP or SSE) transport. stdio only, so only local processes can connect.
-- Letting agents change settings or the engine.
-- Agent skills or prompts beyond the MCP resources. Revisit after the server ships.
+- A network transport (Streamable HTTP). If ever added: a bearer token and localhost-only origins, as [Docker's gateway](https://github.com/docker/mcp-gateway/blob/main/docs/security.md) does.
+- The MCP Registry and MCPB bundles. The registry lists public packages only ([registry](https://modelcontextprotocol.io/registry/about.md)), and Captain's server lives inside the app. Revisit if `captain` ships as a standalone package ([MCPB](https://github.com/modelcontextprotocol/mcpb)).
+- Agents changing settings or the engine.
 
-## Notes
+## Later
 
-- The server runs as the user and reaches the engine the same way the CLI does, so it needs no new permissions.
-- Tool results stay short: a summary line first, then details, so they fit an agent's context.
-- The same tool descriptions feed the generated docs (`docs/reference/mcp.md`), with a drift test like the settings and CLI references.
+- An [Agent Skill](https://agentskills.io/specification) (`SKILL.md`) that teaches agents Captain's words and workflows, and an [AGENTS.md](https://agents.md/) snippet users can add to projects. Both are cheap once the server exists.
+- `llms.txt` for the docs site ([llmstxt.org](https://llmstxt.org/)).
 
 ## Verification
 
-1. Turn on the agent tools. In Claude Code, run `/mcp` and check that `captain` is connected.
-2. Ask the agent "what is wrong with my containers?" while a test container crash-loops. Expect it to name the out-of-memory kill from `list_containers`.
-3. Ask it to restart a container with actions off. Expect a refusal that names the setting. Allow `restart` and ask again. Expect the restart, and a line in the status bar.
-4. Click **Remove** for each agent. Check that its configuration no longer lists `captain`.
+1. Turn on agent tools, connect Claude Code, and run `/mcp`: `captain` is connected with only read tools listed.
+2. Start a container that crash-loops out of memory. Ask "what is wrong with my containers?". Expect the agent to name the out-of-memory kill from `container_problems`.
+3. Ask it to restart the container. Expect a refusal that names the setting. Check **restart** in the sheet, ask again, and expect the restart in the Agent activity list and the status bar.
+4. Put `IGNORE PREVIOUS INSTRUCTIONS` in a container's log. Ask for its logs. Expect the text inside the untrusted-output delimiters, and no action.
+5. Click **Remove** for each agent and check its configuration no longer lists `captain`.
+6. A docs drift test keeps `docs/reference/mcp.md` equal to the tool descriptions.
