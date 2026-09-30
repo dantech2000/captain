@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use super::{EngineFuture, EngineStream};
 use crate::model::{Image, ImageDetail, ImageLayer, PullProgress, RunSpec, ScanProgress};
 
@@ -40,4 +42,9 @@ pub trait ImageApi {
     /// stream yields status lines, then one report, or one error. Dropping the stream
     /// stops the scan.
     fn scan_image(&self, reference: &str) -> EngineStream<ScanProgress>;
+
+    /// Removes build cache that no build used for `older_than`, like
+    /// `docker builder prune --filter until=336h`. Internal and frontend records stay.
+    /// Returns the bytes reclaimed.
+    fn prune_build_cache(&self, older_than: Duration) -> EngineFuture<u64>;
 }

@@ -7,6 +7,7 @@ use crate::runtime::{self, BackgroundRuntime};
 use crate::{Endpoint, mapping};
 
 mod containers;
+mod disk;
 mod images;
 mod networks;
 mod volumes;

@@ -16,7 +16,7 @@ pub struct Segment {
 }
 
 /// Engine, CPU, memory, Kubernetes, and context, left to right. CPU and memory show
-/// only while connected. Disk comes with feature 0031.
+/// only while connected. The Disk segment comes from [`disk`].
 pub fn segments(
     workspace: &Workspace,
     host: Option<&HostSummary>,
@@ -58,6 +58,25 @@ pub fn segments(
         dot: None,
     }));
     segments
+}
+
+/// "Disk 18.2 GB of 64 GB", or without the size for an engine Captain does not run.
+/// See feature 0031.
+pub fn disk(used: u64, capacity: Option<u64>, freeable: u64) -> Segment {
+    let label = match capacity {
+        Some(capacity) => format!("Disk {} of {}", bytes_label(used), bytes_label(capacity)),
+        None => format!("Disk {}", bytes_label(used)),
+    };
+    Segment {
+        id: "status-disk",
+        label: label.into(),
+        help: format!(
+            "Engine disk use. {} can be freed on the Storage page.",
+            bytes_label(freeable)
+        )
+        .into(),
+        dot: None,
+    }
 }
 
 fn engine(connection: &Connection, host: Option<&HostSummary>, palette: &Palette) -> Segment {
@@ -147,7 +166,7 @@ fn kubernetes_segment(status: &KubernetesStatus, palette: &Palette) -> Segment {
 }
 
 /// A name for an engine that is not Captain Engine, from its socket path.
-fn engine_name(endpoint: &str) -> &'static str {
+pub(crate) fn engine_name(endpoint: &str) -> &'static str {
     const KNOWN: [(&str, &str); 5] = [
         (".docker/run/", "Docker Desktop"),
         (".orbstack/", "OrbStack"),

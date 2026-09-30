@@ -7,6 +7,8 @@ mod follow;
 mod icon;
 mod menu;
 mod menu_model;
+mod placement;
+mod screens;
 mod snapshot;
 
 pub use controller::is_running;

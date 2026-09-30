@@ -37,6 +37,7 @@ pub fn init(
     });
     engine.install(&workspace, cx);
     captain_ui::diagnostics_init(cx, &workspace, diagnostics);
+    captain_ui::storage_init(cx, &workspace);
     cx.set_global(MainWindow {
         workspace,
         handle: None,

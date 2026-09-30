@@ -89,5 +89,7 @@ impl LogLevel {
 
 mod timestamp;
 
+pub use timestamp::parse as parse_rfc3339;
+
 #[cfg(test)]
 mod tests;

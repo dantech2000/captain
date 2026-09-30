@@ -13,6 +13,7 @@ use crate::workspace::{Page, Workspace};
 pub fn build(workspace: &Workspace, palette: &Palette) -> Vec<Command> {
     let mut commands = navigation(workspace, palette);
     commands.push(bring_data(palette));
+    commands.push(disk(palette));
     commands.extend(filters(workspace, palette));
     if workspace.has_project_runner() {
         for project in workspace.compose_projects() {
@@ -44,6 +45,19 @@ fn navigation(workspace: &Workspace, palette: &Palette) -> Vec<Command> {
             kind: CommandKind::GoTo(page),
         })
         .collect()
+}
+
+/// Opens the Storage page. Typing `disk` finds it.
+fn disk(palette: &Palette) -> Command {
+    Command {
+        section: Section::Navigate,
+        title: "disk: Storage and cleanup".into(),
+        meta: "What fills the engine's disk".into(),
+        icon: CaptainIcon::Reclaim.into(),
+        color: palette.accent,
+        suggested: false,
+        kind: CommandKind::GoTo(Page::Storage),
+    }
 }
 
 /// Opens the Migration Assistant.

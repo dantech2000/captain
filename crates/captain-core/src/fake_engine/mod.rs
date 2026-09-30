@@ -11,7 +11,9 @@ pub use images::FakeImages;
 pub use networks::FakeNetworks;
 pub use volumes::FakeVolumes;
 
-use crate::model::{Container, EngineEvent, EngineInfo, LogLine, ProcessTable, StatsSample};
+use crate::model::{
+    Container, DiskUsage, EngineEvent, EngineInfo, LogLine, ProcessTable, StatsSample,
+};
 
 #[derive(Debug, Clone, Default)]
 pub struct FakeEngine {
@@ -26,4 +28,6 @@ pub struct FakeEngine {
     pub images: FakeImages,
     pub volumes: FakeVolumes,
     pub networks: FakeNetworks,
+    /// What `disk_usage` returns.
+    pub disk: DiskUsage,
 }

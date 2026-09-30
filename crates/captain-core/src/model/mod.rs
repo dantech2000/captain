@@ -5,6 +5,7 @@ mod compose_labels;
 mod compose_project;
 mod container;
 mod container_detail;
+mod disk_usage;
 mod engine_info;
 mod env_var;
 mod event;
@@ -26,6 +27,7 @@ pub use compose_labels::ComposeLabels;
 pub use compose_project::{ComposeProject, ComposeService, ProjectStatus};
 pub use container::{Container, ContainerState};
 pub use container_detail::{ContainerDetail, HealthCheck, Mount};
+pub use disk_usage::{BuildCacheRecord, DiskContainer, DiskUsage};
 pub use engine_info::EngineInfo;
 pub use env_var::EnvVar;
 pub use event::{EngineEvent, EventKind};
@@ -37,7 +39,7 @@ pub use file::{
 pub use health::Health;
 #[allow(unused_imports)]
 pub use image::*;
-pub use log_line::{LogLevel, LogLine, LogStream};
+pub use log_line::{LogLevel, LogLine, LogStream, parse_rfc3339};
 #[allow(unused_imports)]
 pub use network::*;
 pub use port::PortMapping;

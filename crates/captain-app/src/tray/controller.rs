@@ -12,8 +12,9 @@ use tray_icon::{Icon, TrayIcon, TrayIconBuilder};
 
 use super::menu::NativeMenu;
 use super::menu_model::{self, TrayCommand};
+use super::placement::{Rect, popover_rect};
 use super::snapshot::{EngineStatus, TraySnapshot};
-use super::{events, icon};
+use super::{events, icon, screens};
 use crate::window;
 
 /// Changes often come in bursts, for example `docker compose up`. Wait this long
@@ -41,7 +42,7 @@ struct Tray {
     workspace: Entity<Workspace>,
     contexts: KubeContexts,
     _observe: Vec<Subscription>,
-    _events: Task<()>,
+    _events: [Task<()>; 2],
     _contexts: Option<Task<()>>,
 }
 
@@ -62,6 +63,8 @@ pub fn start(cx: &mut App) {
         .with_tooltip("Captain")
         .with_icon(status_icon(snapshot.icon()))
         .with_icon_as_template(true)
+        // A left click opens the popover; a right click still opens the menu.
+        .with_menu_on_left_click(false)
         .build();
     let icon = match icon {
         Ok(icon) => icon,
@@ -70,7 +73,7 @@ pub fn start(cx: &mut App) {
             return;
         }
     };
-    let events = events::listen(command, cx);
+    let events = events::listen(command, icon_clicked, cx);
     let tray = cx.new(|cx| {
         let mut observe = vec![cx.observe(&workspace, |tray: &mut Tray, workspace, cx| {
             tray.workspace_changed(workspace, cx);
@@ -108,8 +111,26 @@ pub fn is_running(cx: &App) -> bool {
 /// Removes the icon. The settings turned it off.
 pub fn stop(cx: &mut App) {
     if is_running(cx) {
+        captain_ui::close_popover(cx);
         cx.remove_global::<TrayHandle>();
     }
+}
+
+/// Opens or closes the popover under the icon. `icon` is in physical pixels.
+fn icon_clicked(icon: Rect, cx: &mut App) {
+    let screens = screens::screens(cx);
+    let place = move |wanted: Size<Pixels>| {
+        let relative = cfg!(target_os = "macos");
+        let width = wanted.width.as_f32();
+        let height = wanted.height.as_f32();
+        let (display, rect) = popover_rect(icon, &screens, width, height, relative)?;
+        let bounds = Bounds::new(
+            point(px(rect.x), px(rect.y)),
+            size(px(rect.width), px(rect.height)),
+        );
+        Some((display, bounds))
+    };
+    captain_ui::toggle_popover(window::workspace(cx), place, window::show, cx);
 }
 
 /// Reads the kubeconfig again now, after the menu switched the context.

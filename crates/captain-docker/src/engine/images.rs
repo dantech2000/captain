@@ -7,6 +7,7 @@ mod scan;
 
 use std::collections::HashMap;
 use std::pin::pin;
+use std::time::Duration;
 
 use bollard::query_parameters::{
     CreateImageOptionsBuilder, ListContainersOptionsBuilder, ListImagesOptionsBuilder,
@@ -167,6 +168,13 @@ impl ImageApi for DockerEngine {
         // To the end, so the scan always removes its Trivy container.
         runtime::forward_to_end(self.runtime.handle(), move |tx| {
             scan::scan(docker, reference, tx)
+        })
+    }
+
+    fn prune_build_cache(&self, older_than: Duration) -> EngineFuture<u64> {
+        let docker = self.docker.clone();
+        runtime::spawn(self.runtime.handle(), async move {
+            super::disk::prune_build_cache(&docker, older_than).await
         })
     }
 }

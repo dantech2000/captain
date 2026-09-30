@@ -3,6 +3,8 @@
 mod actions;
 mod connect;
 mod diagnostics;
+#[cfg(target_os = "macos")]
+mod dock_badge;
 #[cfg(unix)]
 mod docker_socket;
 mod engine;
@@ -58,6 +60,8 @@ fn main() {
         })
         .detach();
         window::init(endpoint, engine, diagnostics, cx);
+        #[cfg(target_os = "macos")]
+        dock_badge::follow(cx);
         // The app has launched, so the platform run loop is up; see ADR 0006.
         #[cfg(any(target_os = "macos", target_os = "windows"))]
         tray::follow_settings(cx);

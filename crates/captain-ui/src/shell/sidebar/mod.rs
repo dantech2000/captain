@@ -54,6 +54,13 @@ pub fn render(
             None,
             palette,
         ))
+        .child(page_link::render(
+            handle,
+            workspace,
+            Page::Storage,
+            None,
+            palette,
+        ))
         .children(
             forwarding
                 .then(|| page_link::render(handle, workspace, Page::PortForwarding, None, palette)),

@@ -12,13 +12,14 @@ pub enum Page {
     Networks,
     Extensions,
     Snapshots,
+    Storage,
     PortForwarding,
     Diagnostics,
     Settings,
 }
 
 impl Page {
-    /// The pages in the sidebar's main list. Extensions, Snapshots, Port Forwarding,
+    /// The pages in the sidebar's main list. Extensions, Snapshots, Storage, Port Forwarding,
     /// Diagnostics, and Settings have their own entries at the bottom.
     pub const ALL: [Page; 4] = [
         Page::Containers,
@@ -35,6 +36,7 @@ impl Page {
             Page::Networks => "Networks",
             Page::Extensions => "Extensions",
             Page::Snapshots => "Snapshots",
+            Page::Storage => "Storage",
             Page::PortForwarding => "Port Forwarding",
             Page::Diagnostics => "Diagnostics",
             Page::Settings => "Settings",
@@ -50,6 +52,7 @@ impl Page {
             Page::Networks => CaptainIcon::Network.into(),
             Page::Extensions => CaptainIcon::Extension.into(),
             Page::Snapshots => CaptainIcon::Snapshot.into(),
+            Page::Storage => CaptainIcon::Reclaim.into(),
             Page::PortForwarding => CaptainIcon::Forward.into(),
             Page::Diagnostics => IconName::Stethoscope.into(),
             Page::Settings => IconName::Settings.into(),

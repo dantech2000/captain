@@ -12,8 +12,8 @@ pub use files::FakeFiles;
 
 use super::FakeEngine;
 use crate::model::{
-    Container, ContainerAction, ContainerDetail, ContainerState, EngineEvent, EngineInfo,
-    ExecSession, ExecSpec, FileEntry, FilePreview, LogLine, ProcessTable, StatsSample,
+    Container, ContainerAction, ContainerDetail, ContainerState, DiskUsage, EngineEvent,
+    EngineInfo, ExecSession, ExecSpec, FileEntry, FilePreview, LogLine, ProcessTable, StatsSample,
 };
 use crate::{ContainerApi, EngineError, EngineFuture, EngineStream};
 
@@ -82,6 +82,19 @@ impl ContainerApi for FakeEngine {
     fn top(&self, id: &str) -> EngineFuture<ProcessTable> {
         let result = self.running(id).map(|()| self.processes.clone());
         ready(result).boxed()
+    }
+
+    fn update_memory(&self, id: &str, _memory_bytes: i64) -> EngineFuture<()> {
+        let result = if self.containers.iter().any(|c| c.id == id) {
+            Ok(())
+        } else {
+            Err(EngineError::Api(format!("No such container: {id}")))
+        };
+        ready(result).boxed()
+    }
+
+    fn disk_usage(&self) -> EngineFuture<DiskUsage> {
+        ready(Ok(self.disk.clone())).boxed()
     }
 }
 

@@ -4,12 +4,13 @@ use gpui_kit::component::Icon;
 use gpui_kit::*;
 
 use super::latest_event::LatestEvent;
-use super::segments::{Segment, segments};
+use super::segments::{Segment, disk, segments};
 use crate::engine_host::{host_model, summary as host_summary};
 use crate::help::{self, HelpExt, Hint};
 use crate::kubernetes::kubernetes_model;
 use crate::palette::key_hint;
 use crate::settings::engine_source;
+use crate::storage::storage_model;
 use crate::theme::Palette;
 use crate::workspace::{Connection, Workspace};
 
@@ -39,6 +40,8 @@ impl StatusBar {
         subscriptions.extend(host_model(cx).map(|host| cx.observe(&host, |_, _, cx| cx.notify())));
         subscriptions
             .extend(kubernetes_model(cx).map(|model| cx.observe(&model, |_, _, cx| cx.notify())));
+        subscriptions
+            .extend(storage_model(cx).map(|model| cx.observe(&model, |_, _, cx| cx.notify())));
         let mut bar = Self {
             workspace: workspace.clone(),
             latest: LatestEvent::default(),
@@ -117,6 +120,18 @@ impl StatusBar {
     }
 }
 
+/// The Disk segment, once the storage model has read the disk use.
+fn disk_segment(cx: &App) -> Option<Segment> {
+    let model = storage_model(cx)?;
+    let model = model.read(cx);
+    let breakdown = model.breakdown(cx)?;
+    Some(disk(
+        breakdown.used,
+        breakdown.capacity,
+        model.default_bytes(),
+    ))
+}
+
 fn segment(segment: Segment, palette: &Palette) -> Stateful<Div> {
     let hover = palette.nav_selected;
     div()
@@ -148,13 +163,20 @@ impl Render for StatusBar {
             .as_ref()
             .and(kubernetes_model(cx))
             .map(|model| model.read(cx).status().clone());
-        let right = segments(
+        let mut right = segments(
             self.workspace.read(cx),
             host.as_ref(),
             kubernetes.as_ref(),
             self.context.as_deref(),
             &palette,
         );
+        if let Some(segment) = disk_segment(cx) {
+            let at = right
+                .iter()
+                .position(|s| s.id == "status-memory")
+                .map_or(right.len().min(1), |ix| ix + 1);
+            right.insert(at, segment);
+        }
         div()
             .h(px(30.))
             .flex_shrink_0()

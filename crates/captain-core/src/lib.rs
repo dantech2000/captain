@@ -13,12 +13,14 @@ pub mod kubernetes;
 pub mod link_target;
 pub mod migration;
 pub mod model;
+pub mod problems;
 pub mod process_lock;
 pub mod registry;
 pub mod search;
 pub mod settings;
 pub mod snapshot;
 pub mod ssh;
+pub mod storage;
 pub mod store;
 pub mod tools;
 

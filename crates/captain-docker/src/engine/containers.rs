@@ -7,13 +7,14 @@ use std::path::{Path, PathBuf};
 
 use std::pin::pin;
 
+use bollard::models::ContainerUpdateBody;
 use bollard::query_parameters::{
     ListContainersOptionsBuilder, LogsOptionsBuilder, RemoveContainerOptionsBuilder,
     StatsOptionsBuilder, TopOptions,
 };
 use captain_core::model::{
-    Container, ContainerAction, ContainerDetail, EngineEvent, EngineInfo, ExecSession, ExecSpec,
-    FileEntry, FilePreview, LogLine, ProcessTable, StatsSample,
+    Container, ContainerAction, ContainerDetail, DiskUsage, EngineEvent, EngineInfo, ExecSession,
+    ExecSpec, FileEntry, FilePreview, LogLine, ProcessTable, StatsSample,
 };
 use captain_core::{ContainerApi, EngineFuture, EngineStream};
 use futures::StreamExt;
@@ -169,6 +170,31 @@ impl ContainerApi for DockerEngine {
                 .await
                 .map_err(mapping::engine_error)?;
             Ok(mapping::processes(response))
+        })
+    }
+
+    fn update_memory(&self, id: &str, memory_bytes: i64) -> EngineFuture<()> {
+        let docker = self.docker.clone();
+        let id = id.to_string();
+        runtime::spawn(self.runtime.handle(), async move {
+            // The engine refuses a memory limit above the old swap limit, so both
+            // change together.
+            let body = ContainerUpdateBody {
+                memory: Some(memory_bytes),
+                memory_swap: Some(memory_bytes.saturating_mul(2)),
+                ..Default::default()
+            };
+            docker
+                .update_container(&id, body)
+                .await
+                .map_err(mapping::engine_error)
+        })
+    }
+
+    fn disk_usage(&self) -> EngineFuture<DiskUsage> {
+        let docker = self.docker.clone();
+        runtime::spawn(self.runtime.handle(), async move {
+            super::disk::disk_usage(&docker).await
         })
     }
 }

@@ -18,6 +18,7 @@ use crate::palette::{CommandPalette, ToggleCommandPalette};
 use crate::port_forwarding::PortForwardingView;
 use crate::settings::{self, SettingsView};
 use crate::snapshots::SnapshotsView;
+use crate::storage::StorageView;
 use crate::theme::Palette;
 use crate::volumes::VolumesView;
 use crate::workspace::{Connection, Connector, Page, Workspace, WorkspaceEvent};
@@ -33,6 +34,7 @@ pub struct AppShell {
     networks: Entity<NetworksView>,
     extensions: Entity<ExtensionsView>,
     snapshots: Entity<SnapshotsView>,
+    storage: Entity<StorageView>,
     forwarding: Entity<PortForwardingView>,
     diagnostics: Entity<DiagnosticsView>,
     settings: Entity<SettingsView>,
@@ -91,6 +93,7 @@ impl AppShell {
             networks: cx.new(|cx| NetworksView::new(workspace.clone(), cx)),
             extensions: cx.new(|cx| ExtensionsView::new(workspace.clone(), window, cx)),
             snapshots: cx.new(|cx| SnapshotsView::new(workspace.clone(), window, cx)),
+            storage: cx.new(|cx| StorageView::new(workspace.clone(), window, cx)),
             forwarding: cx.new(|cx| PortForwardingView::new(workspace.clone(), window, cx)),
             diagnostics: cx.new(DiagnosticsView::new),
             settings: cx.new(|cx| SettingsView::new(workspace.clone(), cx)),
@@ -168,6 +171,7 @@ impl AppShell {
             Page::Networks => row.child(main.child(self.networks.clone())),
             Page::Extensions => row.child(main.child(self.extensions.clone())),
             Page::Snapshots => row.child(main.child(self.snapshots.clone())),
+            Page::Storage => row.child(main.child(self.storage.clone())),
             Page::PortForwarding => row.child(main.child(self.forwarding.clone())),
             Page::Diagnostics => row.child(main.child(self.diagnostics.clone())),
             Page::Settings => row.child(main.child(self.settings.clone())),

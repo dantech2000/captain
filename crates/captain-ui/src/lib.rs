@@ -9,6 +9,7 @@ mod icons;
 mod images;
 mod inspector;
 mod kubernetes;
+mod menu_bar;
 mod migration;
 mod networks;
 mod palette;
@@ -16,6 +17,7 @@ mod port_forwarding;
 mod settings;
 mod shell;
 mod snapshots;
+mod storage;
 mod theme;
 mod volumes;
 mod widgets;
@@ -28,6 +30,7 @@ pub use engine_host::{
 };
 pub use icons::{CaptainAssets, CaptainIcon, cap_icon};
 pub use kubernetes::init as kubernetes_init;
+pub use menu_bar::{close_popover, observe_problem_count, open_float_log, toggle_popover};
 pub use migration::OpenMigrationAssistant;
 pub use palette::{ToggleCommandPalette, init as palette_init};
 pub use port_forwarding::init as port_forwarding_init;
@@ -37,4 +40,5 @@ pub use settings::{
     observe as observe_settings,
 };
 pub use shell::AppShell;
+pub use storage::init as storage_init;
 pub use workspace::{Connection, Connector, Page, Workspace};

@@ -15,6 +15,7 @@ pub fn page_help(page: Page, count: Option<usize>) -> String {
         (Page::Networks, _) => "Show the networks on the engine and their containers.".into(),
         (Page::Extensions, _) => "Install, open, and remove Docker Desktop extensions.".into(),
         (Page::Snapshots, _) => "Save and restore snapshots of Captain Engine.".into(),
+        (Page::Storage, _) => "Show what fills the engine's disk, and free up space.".into(),
         (Page::PortForwarding, _) => {
             "Forward Kubernetes services to ports on this computer.".into()
         }

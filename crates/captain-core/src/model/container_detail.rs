@@ -14,6 +14,12 @@ pub struct ContainerDetail {
     pub health_checks: Vec<HealthCheck>,
     /// RFC 3339 start time. Empty if the container never started.
     pub started_at: String,
+    /// The kernel killed the last run for using too much memory.
+    pub oom_killed: bool,
+    /// The memory limit in bytes. 0 means no limit.
+    pub memory_limit: i64,
+    /// How many times the engine restarted the container.
+    pub restart_count: i64,
 }
 
 /// A volume or bind mount.

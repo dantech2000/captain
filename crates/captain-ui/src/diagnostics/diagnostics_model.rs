@@ -109,6 +109,11 @@ impl DiagnosticsModel {
         &self.checks
     }
 
+    /// Captain Engine's instance folder, for the Show engine files fix.
+    pub fn engine_dir(&self) -> Option<PathBuf> {
+        self.setup.engine_dir.clone()
+    }
+
     pub fn is_running(&self) -> bool {
         self.task.is_some()
     }

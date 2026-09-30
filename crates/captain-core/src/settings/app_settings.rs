@@ -56,6 +56,13 @@ pub struct Settings {
     /// Write debug-level logs. The Diagnostics page has the switch.
     #[serde(deserialize_with = "lenient")]
     pub debug_logging: bool,
+    /// Remove build cache older than 14 days once a week while the engine runs. See
+    /// feature 0031.
+    #[serde(deserialize_with = "lenient")]
+    pub weekly_build_cache_cleanup: bool,
+    /// When the weekly cleanup last ran, in Unix seconds.
+    #[serde(deserialize_with = "lenient")]
+    pub build_cache_cleaned_at: Option<i64>,
 }
 
 impl Default for Settings {
@@ -73,6 +80,8 @@ impl Default for Settings {
             start_in_background: false,
             show_menu_bar_icon: true,
             debug_logging: false,
+            weekly_build_cache_cleanup: false,
+            build_cache_cleaned_at: None,
         }
     }
 }

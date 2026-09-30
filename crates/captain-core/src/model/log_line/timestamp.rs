@@ -14,7 +14,7 @@ pub(super) fn split(raw: &str) -> Option<(i64, &str)> {
 
 /// Reads `YYYY-MM-DDTHH:MM:SS`, an optional fraction, then `Z` or `±HH:MM`, as Unix
 /// seconds. The fraction is dropped.
-pub(super) fn parse(s: &str) -> Option<i64> {
+pub fn parse(s: &str) -> Option<i64> {
     let b = s.as_bytes();
     if b.len() < 20 || b[4] != b'-' || b[7] != b'-' || b[10] != b'T' {
         return None;

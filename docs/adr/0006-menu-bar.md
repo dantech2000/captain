@@ -25,3 +25,10 @@ M10 puts a Captain icon in the macOS menu bar and the Windows notification area 
 - Rebuilding the whole menu on a change is simple, but an open menu can change under the pointer. Rebuilds happen only on real changes, so this is rare.
 - Linux has no tray. A later change can add one with a GTK loop on a helper thread, or with a StatusNotifierItem over D-Bus.
 - The icon, the menu, and the window lifecycle need a manual check in the running app; unit tests cover the snapshot, the menu model, and the icon drawing.
+
+## Update: the popover (M26)
+
+- A left click on the icon now opens a GPUI popover instead of the menu; a right click still opens the `muda` menu. The icon is built with `with_menu_on_left_click(false)`, and the `TrayIconEvent` handler forwards left-button releases, with the icon's rectangle, through a second channel to a GPUI task. Other icon events are still dropped in the handler.
+- The popover is a `WindowKind::PopUp` window: on macOS a non-activating `NSPanel` at the pop-up level. It is not a native `NSPopover`, because GPUI owns the window and draws the content, and an `NSPopover` would need `unsafe` AppKit code that the workspace forbids.
+- It closes when it loses focus, so a click on the icon while it is open closes it first; the click that follows within 500 ms does not open it again.
+- See [feature 0032](../features/0032-menu-bar-popover.md).

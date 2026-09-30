@@ -25,9 +25,10 @@ pub fn detail(response: ContainerInspectResponse) -> ContainerDetail {
         .map(|n| n.into_keys().collect())
         .unwrap_or_default();
     networks.sort();
-    let restart_policy = response
-        .host_config
-        .and_then(|h| h.restart_policy)
+    let host_config = response.host_config.unwrap_or_default();
+    let memory_limit = host_config.memory.unwrap_or_default();
+    let restart_policy = host_config
+        .restart_policy
         .and_then(|p| p.name)
         .map(|name| name.to_string())
         .unwrap_or_default();
@@ -54,6 +55,9 @@ pub fn detail(response: ContainerInspectResponse) -> ContainerDetail {
         restart_policy,
         health_checks,
         started_at: state.started_at.unwrap_or_default(),
+        oom_killed: state.oom_killed.unwrap_or_default(),
+        memory_limit,
+        restart_count: response.restart_count.unwrap_or_default(),
     }
 }
 

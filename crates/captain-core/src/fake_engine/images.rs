@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use futures::future::ready;
 use futures::stream;
 use futures::{FutureExt, StreamExt};
@@ -134,6 +136,11 @@ impl ImageApi for FakeEngine {
             None => Err(EngineError::Api("the scan failed".into())),
         };
         stream::once(ready(result)).boxed()
+    }
+
+    /// Removes nothing and reports nothing reclaimed.
+    fn prune_build_cache(&self, _older_than: Duration) -> EngineFuture<u64> {
+        ready(Ok(0)).boxed()
     }
 }
 

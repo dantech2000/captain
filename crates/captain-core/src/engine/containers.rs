@@ -2,8 +2,8 @@ use std::path::{Path, PathBuf};
 
 use super::{EngineFuture, EngineStream};
 use crate::model::{
-    Container, ContainerAction, ContainerDetail, EngineEvent, EngineInfo, ExecSession, ExecSpec,
-    FileEntry, FilePreview, LogLine, ProcessTable, StatsSample,
+    Container, ContainerAction, ContainerDetail, DiskUsage, EngineEvent, EngineInfo, ExecSession,
+    ExecSpec, FileEntry, FilePreview, LogLine, ProcessTable, StatsSample,
 };
 
 /// Engine info, events, and containers.
@@ -47,4 +47,12 @@ pub trait ContainerApi {
 
     /// The processes of a running container, like `docker top`.
     fn top(&self, id: &str) -> EngineFuture<ProcessTable>;
+
+    /// Sets the container's memory limit, like `docker update --memory`. The swap
+    /// limit becomes twice the memory, as `docker run` sets it by default.
+    fn update_memory(&self, id: &str, memory_bytes: i64) -> EngineFuture<()>;
+
+    /// What the engine stores on its disk, by category and item, like
+    /// `docker system df -v`.
+    fn disk_usage(&self) -> EngineFuture<DiskUsage>;
 }
