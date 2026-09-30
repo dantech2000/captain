@@ -9,7 +9,16 @@ use crate::help::{HelpExt, Hint};
 /// default footer, whose buttons take no help. The dialog's `on_ok` still runs on
 /// confirm.
 pub fn danger_footer(label: impl Into<SharedString>, help: impl Into<Hint>) -> DialogFooter {
-    let label = label.into();
+    footer(Button::new("ok").label(label.into()).danger(), help)
+}
+
+/// Like [`danger_footer`], with the accent color, for a confirm that is not a
+/// removal, such as applying saved files.
+pub fn confirm_footer(label: impl Into<SharedString>, help: impl Into<Hint>) -> DialogFooter {
+    footer(Button::new("ok").label(label.into()).primary(), help)
+}
+
+fn footer(confirm: Button, help: impl Into<Hint>) -> DialogFooter {
     DialogFooter::new()
         .child(
             div()
@@ -20,7 +29,7 @@ pub fn danger_footer(label: impl Into<SharedString>, help: impl Into<Hint>) -> D
         .child(
             div()
                 .id("dialog-confirm")
-                .child(DialogAction::new().child(Button::new("ok").label(label).danger()))
+                .child(DialogAction::new().child(confirm))
                 .help(help),
         )
 }

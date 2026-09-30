@@ -1,0 +1,23 @@
+{
+  "type": "object",
+  "description": "Captain's settings for this project. Compose ignores top-level keys that start with x-, so the file still works everywhere.",
+  "properties": {
+    "tasks": {
+      "type": "object",
+      "description": "Named commands that run in a service, such as a database migration. The project page lists them and runs them with docker compose exec.",
+      "additionalProperties": {
+        "type": "object",
+        "description": "One task: the service it runs in and its command.",
+        "properties": {
+          "service": {
+            "type": "string",
+            "description": "The service to run the task in. Its container must be running."
+          },
+          "command": {
+            "description": "The command. A string runs with sh -c; a list runs as it is."
+          }
+        }
+      }
+    }
+  }
+}

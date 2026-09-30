@@ -32,6 +32,9 @@ gpui-kit = "0.7"
 # The web view for extension windows; see docs/adr/0011-extensions.md.
 gpui-wry = "0.7"
 k8s-openapi = { version = "0.28", features = ["latest"] }
+# The LSP types of the project editor's completion and hover; GPUI Kit does not
+# re-export them. See docs/features/0039-compose-and-dockerfile-editor.md.
+lsp-types = "0.97"
 kube = { version = "4.2", default-features = false, features = ["client", "rustls-tls", "ring", "ws"] }
 muda = { version = "0.20", default-features = false }
 # The Dock badge, macOS only. tray-icon already pulls these versions in.
@@ -53,6 +56,9 @@ tar = { version = "0.4", default-features = false }
 thiserror = "2"
 tokio = { version = "1", features = ["io-util", "rt-multi-thread", "time"] }
 tracing = "0.1"
+# The Dockerfile grammar for the project editor; tree-sitter-dockerfile needs an
+# older tree-sitter. See docs/features/0039-compose-and-dockerfile-editor.md.
+tree-sitter-containerfile = "0.9.2"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 tray-icon = "0.25"
 winreg = "0.55"

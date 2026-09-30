@@ -21,14 +21,15 @@ Each page says when a feature needs macOS.
 1. [Getting started](getting-started.md): install Captain, set up Captain Engine, and learn the main window and the menu bar.
 2. [Moving from Docker Desktop or Rancher Desktop](moving-from-docker-desktop-or-rancher.md): copy your data, set up your terminal, and uninstall the old app.
 3. [Projects and tasks](projects-and-tasks.md): the project page, `x-captain.tasks`, the Open row, and the Map tab.
-4. [Storage](storage.md): see what fills the engine disk and free space.
-5. [The command palette](command-palette.md): every ⌘K command.
-6. [Kubernetes](kubernetes.md): a one-node cluster in Captain Engine.
-7. [Snapshots](snapshots.md): save and restore the state of Captain Engine.
-8. [Extensions](extensions.md): Docker Desktop extensions in Captain.
-9. [Settings](settings.md): the Settings page and the settings file.
-10. [Troubleshooting](troubleshooting.md): the Diagnostics checks and their fixes, and the logs.
-11. [The command line](cli.md): the `captain` command.
+4. [Editing a project's files](editing-projects.md): the Files tab, checks as you type, and Save and apply.
+5. [Storage](storage.md): see what fills the engine disk and free space.
+6. [The command palette](command-palette.md): every ⌘K command.
+7. [Kubernetes](kubernetes.md): a one-node cluster in Captain Engine.
+8. [Snapshots](snapshots.md): save and restore the state of Captain Engine.
+9. [Extensions](extensions.md): Docker Desktop extensions in Captain.
+10. [Settings](settings.md): the Settings page and the settings file.
+11. [Troubleshooting](troubleshooting.md): the Diagnostics checks and their fixes, and the logs.
+12. [The command line](cli.md): the `captain` command.
 
 ## Reference
 

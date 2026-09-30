@@ -8,14 +8,18 @@ repository.workspace = true
 rust-version.workspace = true
 
 [dependencies]
+anyhow.workspace = true
 captain-core.workspace = true
 captain-terminal.workspace = true
 chrono.workspace = true
 dirs.workspace = true
 futures.workspace = true
-gpui-kit.workspace = true
+# YAML highlighting for the project editor.
+gpui-kit = { workspace = true, features = ["tree-sitter-yaml"] }
+lsp-types.workspace = true
 serde_json.workspace = true
 tracing.workspace = true
+tree-sitter-containerfile.workspace = true
 
 # Extension windows need a native web view; gpui-wry supports macOS and Windows,
 # and Captain runs extensions on macOS only for now. See docs/adr/0011-extensions.md.

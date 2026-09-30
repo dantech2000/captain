@@ -5,7 +5,7 @@ use gpui_kit::*;
 use super::group_info::{is_sandbox, service_name};
 use super::service_card::{self, Card};
 use super::view_tabs::{self, ProjectTab};
-use super::{ProjectView, header, map, open_row, tasks_card};
+use super::{ProjectView, files, header, map, open_row, tasks_card};
 use crate::engine_host::host_screen;
 use crate::theme::Palette;
 use crate::workspace::Connection;
@@ -55,7 +55,7 @@ pub fn render(view: &ProjectView, cx: &mut Context<ProjectView>) -> AnyElement {
         .iter()
         .filter(|c| containers.iter().any(|shown| shown.id == c.container_id))
         .count();
-    let tabs = view_tabs::render(view.tab, staged, &weak, &palette);
+    let tabs = view_tabs::render(view.tab, staged, project.is_some(), &weak, &palette);
     let header = header::render(
         (&key, project),
         (active, containers.len()),
@@ -65,6 +65,15 @@ pub fn render(view: &ProjectView, cx: &mut Context<ProjectView>) -> AnyElement {
         tabs,
         &palette,
     );
+    if view.tab == ProjectTab::Files && project.is_some() {
+        return div()
+            .size_full()
+            .flex()
+            .flex_col()
+            .child(header)
+            .child(files::render(view, &weak, &palette, cx))
+            .into_any_element();
+    }
     if view.tab == ProjectTab::Map {
         return div()
             .size_full()

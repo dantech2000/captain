@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::rc::Rc;
 
-use captain_core::model::{ContainerState, EngineEvent, EventKind, LogOptions};
+use captain_core::model::{ContainerState, EngineEvent, EventKind, LogLine, LogOptions, LogStream};
 use captain_core::store::{GroupKey, LogCursor, ProjectLog, ProjectLogEntry};
 use futures::StreamExt;
 use gpui_kit::*;
@@ -162,6 +162,19 @@ impl ProjectLogView {
         if self.log.len() != before {
             self.changed(cx);
         }
+    }
+
+    /// Adds the output of a Compose command, one row per line, under `compose`.
+    pub fn push_output(&mut self, text: &str, cx: &mut Context<Self>) {
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map_or(0, |since| since.as_secs() as i64);
+        for line in text.lines().filter(|line| !line.trim().is_empty()) {
+            let mut line = LogLine::new(LogStream::Stderr, line);
+            line.timestamp = Some(now);
+            self.log.push_line("compose", line);
+        }
+        self.changed(cx);
     }
 
     fn changed(&mut self, cx: &mut Context<Self>) {

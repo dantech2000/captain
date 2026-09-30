@@ -24,6 +24,11 @@ pub enum ProjectNotice {
         task: String,
         exit_code: i32,
     },
+    /// `up` ran after Save and apply, or `up --build` for one service.
+    Applied {
+        project: String,
+        rebuilt: Option<String>,
+    },
 }
 
 impl ProjectNotice {
@@ -39,6 +44,16 @@ impl ProjectNotice {
             Self::Failed { title, error } => Notification::error(error.clone())
                 .title(title.clone())
                 .autohide(false),
+            Self::Applied {
+                project,
+                rebuilt: None,
+            } => Notification::success(format!(
+                "Applied the files of {project}. The project log shows Compose's output."
+            )),
+            Self::Applied {
+                rebuilt: Some(service),
+                ..
+            } => Notification::success(format!("Rebuilt {service} and recreated its container.")),
             Self::TaskDone { task, exit_code: 0 } => {
                 Notification::success(format!("The task {task} finished."))
             }

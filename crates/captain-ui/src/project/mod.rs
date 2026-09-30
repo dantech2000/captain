@@ -4,6 +4,7 @@
 mod action_help;
 mod card_actions;
 mod card_note;
+mod files;
 mod group_info;
 mod header;
 mod log_rows;

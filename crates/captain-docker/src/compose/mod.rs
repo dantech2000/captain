@@ -4,6 +4,7 @@
 mod cli;
 mod command;
 mod docker_cli;
+mod editor;
 mod labeled;
 mod locate;
 mod output;

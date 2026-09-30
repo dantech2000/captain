@@ -39,7 +39,7 @@ pub use brand_mark::brand_mark;
 pub use column_header::{Column, column_header};
 pub use container_link::container_link;
 pub use create_field::create_field;
-pub use danger_footer::danger_footer;
+pub use danger_footer::{confirm_footer, danger_footer};
 pub use detail_panel::{DetailHeader, detail_panel};
 pub use detail_section::{detail_note, detail_section, key_values, map_or_note};
 pub use drag_region::drag_region;

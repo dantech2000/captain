@@ -14,12 +14,16 @@ pub enum ProjectTab {
     Overview,
     /// Ports, services by network, and volumes, with staged changes.
     Map,
+    /// The Compose files and Dockerfiles in an editor. Compose projects only.
+    Files,
 }
 
-/// "Overview | Map", and a pill for the staged changes of the shown containers.
+/// "Overview | Map | Files", and a pill for the staged changes of the shown
+/// containers. `files` is false for an entry that is not a Compose project.
 pub fn render(
     tab: ProjectTab,
     staged: usize,
+    files: bool,
     view: &WeakEntity<ProjectView>,
     palette: &Palette,
 ) -> Div {
@@ -35,46 +39,56 @@ pub fn render(
             "Map",
             "Show the ports, networks, and volumes of the services, and stage changes to their limits.",
         ),
+        (
+            ProjectTab::Files,
+            "Files",
+            "Edit the Compose files and Dockerfiles of this project, with checks as you type.",
+        ),
     ];
     let control = div()
         .flex()
         .p(px(2.))
         .rounded(px(9.))
         .bg(palette.field)
-        .children(segments.into_iter().map(|(choice, label, help)| {
-            let selected = choice == tab;
-            let view = view.clone();
-            div()
-                .id(SharedString::from(format!("project-tab-{label}")))
-                .h(px(26.))
-                .px(px(12.))
-                .flex()
-                .items_center()
-                .rounded(px(7.))
-                .cursor_pointer()
-                .text_size(px(12.))
-                .font_weight(FontWeight::MEDIUM)
-                .text_color(if selected {
-                    palette.text
-                } else {
-                    palette.text2
-                })
-                .when(selected, |this| {
-                    this.bg(palette.segment).shadow(vec![BoxShadow {
-                        color: hsla(0., 0., 0., shadow),
-                        offset: point(px(0.), px(1.)),
-                        blur_radius: px(2.),
-                        spread_radius: px(0.),
-                        inset: false,
-                    }])
-                })
-                .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
-                .on_click(move |_, _, cx| {
-                    view.update(cx, |view, cx| view.show_tab(choice, cx)).ok();
-                })
-                .child(label)
-                .help(help)
-        }));
+        .children(
+            segments
+                .into_iter()
+                .filter(|(choice, _, _)| files || *choice != ProjectTab::Files)
+                .map(|(choice, label, help)| {
+                    let selected = choice == tab;
+                    let view = view.clone();
+                    div()
+                        .id(SharedString::from(format!("project-tab-{label}")))
+                        .h(px(26.))
+                        .px(px(12.))
+                        .flex()
+                        .items_center()
+                        .rounded(px(7.))
+                        .cursor_pointer()
+                        .text_size(px(12.))
+                        .font_weight(FontWeight::MEDIUM)
+                        .text_color(if selected {
+                            palette.text
+                        } else {
+                            palette.text2
+                        })
+                        .when(selected, |this| {
+                            this.bg(palette.segment).shadow(vec![BoxShadow {
+                                color: hsla(0., 0., 0., shadow),
+                                offset: point(px(0.), px(1.)),
+                                blur_radius: px(2.),
+                                spread_radius: px(0.),
+                                inset: false,
+                            }])
+                        })
+                        .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
+                        .on_click(move |_, _, cx| {
+                            view.update(cx, |view, cx| view.show_tab(choice, cx)).ok();
+                        })
+                        .child(label)
+                        .help(help)
+                }),
+        );
     let pill = (staged > 0).then(|| {
         let view = view.clone();
         let text = count_label(staged, "staged change");

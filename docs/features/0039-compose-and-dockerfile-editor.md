@@ -1,11 +1,11 @@
 # Feature 0039: Compose and Dockerfile editor
 
 - Milestone: M32
-- Status: Planned; checks done 2026-09-30
+- Status: Phases 1–3 implemented 2026-09-30. They need a check by hand in the app.
 
 ## Goal
 
-Edit a project's Compose files and Dockerfiles inside Captain, see mistakes before saving, and see what a change will do before applying it. It complements the user's own editor; **Open in editor** stays for bigger work.
+Edit a project's Compose files and Dockerfiles inside Captain, see mistakes before saving, and see what a change will do before applying it. It complements the user's own editor; **Open folder** stays for bigger work.
 
 ## Why
 
@@ -47,6 +47,21 @@ All runs used the tools in `/Applications/Captain.app/Contents/Resources` (Docke
    - The temp copy shows up in errors (`validating <dir>/.compose.yaml.captain-edit: ...`) and would touch the project folder (the Compose file watcher, `git status`). Stdin shows `validating -: ...` and writes nothing. Use `docker compose -p <project> --project-directory <working_dir label> -f <other files> -f - config --quiet`, with the edited file at its original place in the `-f` list.
    - Error forms: schema errors give a key path, not a line (`services.web additional properties 'imgae' not allowed`, `services.web.ports must be a array`); YAML errors give a range (`... at L2.C3-L4.C4: did not find expected key`). Captain maps a key path to a line through the tree-sitter YAML tree.
 
+## What was built
+
+- **Files tab.** The Project page header has **Overview | Map | Files**; Files shows only for a Compose project. The list holds the Compose files from the `config_files` label (`captain_core::project_files::compose_files`) and the Dockerfile of each service that builds from a local folder (`dockerfiles`, from `docker compose config --format json`; services that share a file share its row). A file outside the project's working folder is left out (`is_inside`, on the path text; a symlink inside the folder counts, and a save writes to its target). Remote build contexts and `dockerfile_inline` are left out.
+- **Editor.** GPUI Kit's `EditorState` with the `tree-sitter-yaml` feature for Compose files and `tree-sitter-containerfile` 0.9.2, registered once as `dockerfile`, for Dockerfiles (`crates/captain-ui/src/project/files/grammar.rs`). Line numbers, find (⌘F), and undo come with the editor. Each open file keeps its unsaved text when the page shows another file, tab, or project; the list marks it with an orange dot.
+- **Safe saves.** `captain_core::project_files::save_text` writes through `file_replace` (a temp file, sync, rename, permissions kept) to the symlink's target, and only when the SHA-256 of the file on disk still matches the version the editor loaded. Otherwise it refuses with `SaveError::Changed`.
+- **Outside changes.** Every 2 seconds the editor compares the file on disk with its version. A file without unsaved edits takes the new text. A file with edits shows a bar: **Reload** drops the edits; **Keep mine** makes the next Save replace the disk version. A file that cannot be read shows the bar with Reload only.
+- **Checks (phase 2).** 0.7 s after typing stops, the unsaved text goes on stdin to `docker compose --ansi never -p <name> --project-directory <working_dir> -f <other files> -f - config --quiet`, in the file's place in the `-f` list, or to `docker build --call check,format=json -q -f - <context>` for a Dockerfile. A new edit drops the waiting check and kills a running one. `compose_problems` maps schema key paths to lines through `key_line`, a small indentation reader of block YAML (`yaml_outline.rs`), and falls back to the nearest parent key; YAML errors use the end of their `L2.C3-L4.C4` range unless that line is blank. An error in another Compose file has no line. `build_check_problems` reads warnings and `buildError`; a base-image lookup failure (`failed to resolve source metadata`) is a warning. Problems show on their lines in the editor and in a list under it; a click moves the cursor.
+- **Completion and hover.** `ComposeSchema` reads compose-go v2.15.0's `compose-spec.json`, vendored in `crates/captain-core/vendor/compose-go` with its LICENSE and NOTICE, and adds `x-captain` (`x_captain.json`: `tasks`, and `service` and `command` per task). It follows `$ref`, spreads `oneOf`/`anyOf`/`allOf`, and treats a list index as the list's items. Typing a letter in a key offers the keys allowed in that mapping; hovering a key shows its description.
+- **Save and apply (phase 3).** For a Compose file: save, then `docker compose --ansi never --progress json -p <name> -f <files> up -d --dry-run --remove-orphans` with a 60 s timeout. `parse_dry_run` keeps the first action per container, skips the fake `<12 hex>_<name>` copies, maps existing containers to services through their labels and new ones through their `<project>-<service>-<n>` name, and lists pulls and builds. The dialog lists each service as Recreate, Create, Remove, Start, or No change, with Compose's warnings. **Apply** runs `up -d --remove-orphans`; its output goes to the project log under `compose`, and a toast says it finished. For a Dockerfile, **Rebuild <service>** saves and runs `up -d --build <service>`.
+- `ProjectRunner` gained `dockerfiles`, `check_compose`, `check_dockerfile`, `preview_up`, and `apply_up`, implemented by `ComposeCli` in `crates/captain-docker/src/compose/editor.rs` with the bundled `docker` the other Compose commands use.
+
+Tests: unit tests with real output of Compose v5.5.1 and Buildx 0.37.1 for each reader in `captain-core`, a highlight test for the Dockerfile grammar, and `crates/captain-docker/tests/live_editor.rs` (ignored; project `captain-agent-editor`), which checks that the preview names exactly the services the real `up` recreates.
+
+Left for later: ⌘S to save, completion of values (image names, service names in `depends_on`), and a merged view of `extends` files.
+
 ## Build plan
 
 | # | Phase | Delivers | Done when |
@@ -70,7 +85,9 @@ All runs used the tools in `/Applications/Captain.app/Contents/Resources` (Docke
 
 ## Verification
 
-1. Open stokecrm's Files tab and its `docker-compose.yml`.
-2. Type a wrong key under a service. Expect an error on that line before saving.
-3. Change the Postgres image tag and click **Save and apply**. Expect the preview to name only `postgres` as recreated; cancel, and check nothing changed.
-4. Edit the file in another editor while it is open in Captain. Expect a reload bar, not a silent overwrite.
+The steps are in [docs/testing.md](../testing.md), test 14. In short:
+
+1. Open a project's **Files** tab and its Compose file.
+2. Type a wrong key under a service. Expect an error on that line before saving, and completions for service keys.
+3. Change an image tag and click **Save and apply**. Expect the preview to name only that service as recreated; cancel, and check nothing changed.
+4. Edit the file in another editor while it has unsaved edits in Captain. Expect the reload bar, not a silent overwrite.

@@ -186,6 +186,42 @@ x-captain:
 
 Clean up: `docker compose down` in the test folder.
 
+## 14. Files tab: the Compose and Dockerfile editor (M32)
+
+Uses the test project of test 9. Add a folder `app` next to `compose.yaml` with a `Dockerfile` that holds `FROM alpine:3.21`, and add this service to `compose.yaml`:
+
+```yaml
+  api:
+    build: ./app
+    command: ["sleep", "3600"]
+```
+
+Run `docker compose up -d` in the folder once.
+
+1. Open the project and click **Files**.
+   - Expect: `compose.yaml`, then `app/Dockerfile` with "Builds api". `compose.yaml` is open, with colors and line numbers.
+2. Under `web:`, type `imgae: nginx` on a new line and wait a second.
+   - Expect: a red mark on that line, and "additional properties 'imgae' not allowed" in the list under the editor. The file on disk is unchanged.
+3. Delete the line. On a new line under `web:`, type `heal`.
+   - Expect: a completion list with `healthcheck`. Hover `image:` to see its description.
+4. Press ⌘F and search for `worker`. Press ⌘Z a few times.
+   - Expect: the matches are marked; undo steps back through your edits.
+5. Change `nginx:alpine` to `nginx:1.29-alpine`. Click **Save and apply**.
+   - Expect: a dialog with **Recreate** only for web, and a pull of `nginx:1.29-alpine` if the engine does not have it. Click **Cancel**. `docker compose ps` shows the old web container. `compose.yaml` on disk has the new tag.
+6. Click **Save and apply** again, then **Apply**.
+   - Expect: a toast; the Overview log shows lines tagged `compose`; only web has a new container.
+7. Type a change without saving. In another editor, change and save `compose.yaml`.
+   - Expect: within 2 seconds, a bar "This file changed on disk". **Save** refuses. **Keep mine** then **Save** writes your text; **Reload** loads the other text.
+8. Without unsaved changes, change the file in another editor.
+   - Expect: the editor shows the new text by itself.
+9. Make `compose.yaml` a symlink (`mv compose.yaml real.yaml; ln -s real.yaml compose.yaml`), edit it in Captain, and save.
+   - Expect: `ls -l` still shows the link, `real.yaml` has the change, and its permissions are unchanged.
+10. Open `app/Dockerfile`. Type `RUNN echo hi` on line 2.
+    - Expect: a red mark on line 2, "unknown instruction: RUNN (did you mean RUN?)". Change it to `RUN echo hi` and click **Rebuild api**.
+    - Expect: a toast "Rebuilt api"; the api container is new.
+
+Clean up: `docker compose down --rmi local` in the test folder.
+
 ## Last run
 
 2026-09-29, commit c656372, macOS, on the real Captain Engine. Tests 1–3 ran first through the `captain` CLI (the same host code as the app), then the UI steps in the app.

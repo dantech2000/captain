@@ -6,6 +6,7 @@ use std::process::{Command, Output, Stdio};
 use std::time::Duration;
 
 use captain_core::model::{ComposeProject, ProjectAction, ProjectTask, ProjectTasks, TaskOutput};
+use captain_core::project_files::{EditableFile, LineProblem, UpPreview};
 use captain_core::{EngineError, EngineFuture, ProjectRunner};
 use futures::FutureExt;
 
@@ -89,6 +90,31 @@ impl ProjectRunner for ComposeCli {
 
     fn run_task(&self, project: &ComposeProject, task: &ProjectTask) -> EngineFuture<TaskOutput> {
         self.exec_task(project, task)
+    }
+
+    fn dockerfiles(&self, project: &ComposeProject) -> EngineFuture<Vec<EditableFile>> {
+        self.list_dockerfiles(project)
+    }
+
+    fn check_compose(
+        &self,
+        project: &ComposeProject,
+        file: &Path,
+        text: String,
+    ) -> EngineFuture<Vec<LineProblem>> {
+        self.check_text(project, file, text)
+    }
+
+    fn check_dockerfile(&self, context: &Path, text: String) -> EngineFuture<Vec<LineProblem>> {
+        self.check_build(context, text)
+    }
+
+    fn preview_up(&self, project: &ComposeProject) -> EngineFuture<UpPreview> {
+        self.dry_run(project)
+    }
+
+    fn apply_up(&self, project: &ComposeProject, build: &[String]) -> EngineFuture<String> {
+        self.up_now(project, build)
     }
 }
 

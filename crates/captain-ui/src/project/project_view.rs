@@ -9,6 +9,7 @@ use captain_core::project_map::StagedChanges;
 use captain_core::store::{GroupKey, compose_project};
 use gpui_kit::*;
 
+use super::files::FilesState;
 use super::group_info::{is_sandbox, service_name};
 use super::log_view::ProjectLogView;
 use super::map::MapState;
@@ -42,6 +43,8 @@ pub struct ProjectView {
     /// Changes that wait for Apply, for all entries. They stay when the page shows
     /// another entry, and leave with their container.
     pub(super) staged: StagedChanges,
+    /// The Files tab: the Dockerfile list and the open files.
+    pub(super) files: FilesState,
     _subscriptions: Vec<Subscription>,
 }
 
@@ -77,6 +80,7 @@ impl ProjectView {
             tab: ProjectTab::default(),
             map: MapState::default(),
             staged: StagedChanges::default(),
+            files: FilesState::default(),
             _subscriptions: subscriptions,
         };
         view.follow(cx);
@@ -103,6 +107,10 @@ impl ProjectView {
             self.exits.clear();
             self.tasks.forget_list();
             self.map.draft = None;
+            self.files.forget_list();
+            if self.tab == ProjectTab::Files && !matches!(focus, Some(GroupKey::Project(_))) {
+                self.tab = ProjectTab::Overview;
+            }
             if self.tab == ProjectTab::Map {
                 self.load_volumes(cx);
             }
@@ -212,7 +220,8 @@ impl ProjectView {
 }
 
 impl Render for ProjectView {
-    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        self.prepare_files(window, cx);
         page::render(self, cx)
     }
 }
