@@ -116,6 +116,76 @@ Use `target/debug/Captain.app/Contents/Resources/bin/captain`.
 2. Start a snapshot, then press Cmd-Q.
    - Expect: Captain exits only after the snapshot step ends.
 
+## 9. The v3 window: projects, tasks, and the status bar (M22–M24)
+
+Uses a throwaway Compose project. Save this as `compose.yaml` in an empty folder:
+
+```yaml
+name: captain-test-v3
+services:
+  web:
+    image: nginx:alpine
+    ports: ["18089:80"]
+    environment:
+      API_URL: http://worker:9000
+  worker:
+    image: alpine:3.21
+    command: ["sh", "-c", "sleep 5; tail /dev/zero"]
+    mem_limit: 64m
+    restart: always
+x-captain:
+  tasks:
+    hello:
+      service: web
+      command: echo hello from a Captain task
+```
+
+1. Run `docker compose up -d` in that folder. Open the project in the sidebar.
+   - Expect: a red dot on the project, and a red **worker** card: "Restarting", "Exit 137 · out of memory", and **Raise memory to 512 MB**.
+2. Hover controls. Expect a sentence in the status bar for each. With nothing hovered, the bar shows "…worker-1 exited again at …, after N restarts".
+3. Click **hello** in Tasks.
+   - Expect: the output under the button, "hello exited with 0", and a toast.
+4. Wait for the worker to crash again.
+   - Expect: a red line in the project log, "worker exited 137 (out of memory) · …".
+5. Click **Raise memory to 512 MB**. Run `docker inspect -f '{{.HostConfig.Memory}}' captain-test-v3-worker-1`.
+   - Expect: `536870912`.
+6. Click the panel button at the top right of the details panel.
+   - Expect: the panel hides, and a rail with a button stays at the right edge.
+
+## 10. Map and staged changes (M28)
+
+1. On the test project, click **Map**.
+   - Expect: `:18089` on the left, **web** and **worker** in one network lane, and a line from web to worker (from `API_URL`).
+2. Click **Stage** on the worker, then **Apply**.
+   - Expect: a toast, and `docker inspect` shows the new limit.
+
+## 11. Menu bar popover and floating log (M26)
+
+1. Left-click the wheel in the menu bar while the worker crash-loops.
+   - Expect: a warning card, "…worker-1 keeps restarting: out of memory at …", with **Raise**, **Show logs**, and **Stop**. It stays while the worker runs between crashes.
+2. Click **Float logs**, or the window button in the details panel header.
+   - Expect: a small window with that container's log that stays on top.
+3. Check the Dock icon (if the Dock shows).
+   - Expect: a red badge with the number of problems.
+4. Right-click the wheel.
+   - Expect: the plain menu.
+
+## 12. ⌘K commands (M27)
+
+1. Press ⌘K and type `restart po`.
+   - Expect: rows for the matching containers with the typed part in bold. Tab completes.
+2. Type `logs <container> --since 10m --errors` and press Return.
+   - Expect: the Logs tab with a Since chip and the Error filter.
+
+## 13. Storage (M25)
+
+1. Open Storage from the sidebar Disk card.
+   - Expect: the disk bar, the largest items with who uses them, and the five cleanup groups. Unused volumes are unchecked.
+2. Click **Review…**.
+   - Expect: a list of every item to remove. Cancel it unless you want the cleanup.
+
+Clean up: `docker compose down` in the test folder.
+
 ## Last run
 
 2026-09-29, commit c656372, macOS, on the real Captain Engine. Tests 1–3 ran first through the `captain` CLI (the same host code as the app), then the UI steps in the app.
@@ -137,6 +207,11 @@ Use `target/debug/Captain.app/Contents/Resources/bin/captain`.
 | 7. Command line | Pass. |
 | 8.1 Quit stops the engine; the next launch starts it | Pass. The engine was up 9 s after launch. |
 | 8.2 Quit during a snapshot | Pass. Captain waited for the snapshot step, then quit. |
+| 9. v3 window (test project) | Pass, 2026-09-30: the red worker card, the task output, the out-of-memory marker, Raise memory (536870912), and the collapsible panel. The status bar first said "then exited" during a crash loop; now "exited again at …, after N restarts". |
+| 10. Map and staged changes | Pass: the talks-to line, Stage, and Apply (1 GB). The failing node's text overlapped; fixed. |
+| 11. Popover and floating log | Pass after a fix: the warning card came and went during the crash loop, and Float logs opened the selected container. A crash tracker on the event stream fixed both. The Dock badge was not checked. |
+| 12. ⌘K commands | Pass for completions. |
+| 13. Storage | Pass for the page and the Disk card. No cleanup was run. |
 
 Notes for the UI/UX pass:
 

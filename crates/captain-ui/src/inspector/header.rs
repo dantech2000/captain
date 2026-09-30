@@ -1,18 +1,47 @@
 use captain_core::model::Container;
 use gpui_kit::assets::IconName;
+use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::*;
 
 use crate::icons::{CaptainIcon, cap_icon};
+use crate::menu_bar::open_float_log;
 use crate::theme::Palette;
 use crate::widgets::{icon_button, pill};
+use crate::workspace::Workspace;
 
-/// The container icon, name, state, image, uptime, and project, and a button that
-/// hides the panel.
+/// The container icon, name, state, image, uptime, and project, and buttons that
+/// float its log in a small window and hide the panel.
 pub fn render(
     container: &Container,
+    workspace: &Entity<Workspace>,
     palette: &Palette,
-    hide: impl Fn(&ClickEvent, &mut Window, &mut App) + 'static,
 ) -> impl IntoElement {
+    let buttons = div()
+        .flex()
+        .gap(px(4.))
+        .when(container.state.is_active(), |row| {
+            let (workspace, id) = (workspace.clone(), container.id.clone());
+            let name = container.display_name().to_string();
+            row.child(icon_button(
+                "details-float-log",
+                IconName::WindowRestore,
+                format!("Open the log of {name} in a small window that stays on top."),
+                palette,
+                move |_, _, cx| open_float_log(workspace.clone(), id.clone(), name.clone(), cx),
+            ))
+        })
+        .child({
+            let workspace = workspace.clone();
+            icon_button(
+                "details-hide",
+                IconName::PanelRightClose,
+                "Hide the details panel. Select a container, or use the button at the right edge, to show it again.",
+                palette,
+                move |_, _, cx| {
+                    workspace.update(cx, |workspace, cx| workspace.set_details_hidden(true, cx));
+                },
+            )
+        });
     let color = container
         .compose_project
         .as_deref()
@@ -78,11 +107,5 @@ pub fn render(
                         .child(format!("{} · {project}", container.status)),
                 ),
         )
-        .child(icon_button(
-            "details-hide",
-            IconName::PanelRightClose,
-            "Hide the details panel. Select a container, or use the button at the right edge, to show it again.",
-            palette,
-            hide,
-        ))
+        .child(buttons)
 }

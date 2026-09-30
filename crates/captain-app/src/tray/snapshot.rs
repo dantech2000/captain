@@ -138,14 +138,25 @@ impl TraySnapshot {
             || EngineStatus::of(connection),
             |host| EngineStatus::of_host(&host.status, connection),
         );
-        Self {
+        // Hidden Kubernetes containers do not count, as on the Containers page.
+        let shown = shown(workspace);
+        let mut snapshot = Self {
             host: host.map(|host| HostEntry {
                 status: host.status.clone(),
                 can_control: host.can_control,
             }),
-            // Hidden Kubernetes containers do not count, as on the Containers page.
-            ..Self::new(engine, &shown(workspace))
+            ..Self::new(engine, &shown)
+        };
+        // A crash loop runs most of the time between restarts; the recent crashes
+        // from the event stream keep the icon's dot steady through it.
+        if engine == EngineStatus::Running {
+            snapshot.problem = first_problem(None, &[], &shown, &HashMap::new(), &|id| {
+                workspace.recent_crash(id)
+            })
+            .as_ref()
+            .map(Problem::line);
         }
+        snapshot
     }
 
     /// The state the menu bar icon shows: a running engine needs attention while a
