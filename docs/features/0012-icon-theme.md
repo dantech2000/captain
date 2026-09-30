@@ -32,11 +32,11 @@ Every glyph in the app was a stock Lucide icon. Lucide has no good glyph for Cap
    - The empty states for those pages, the shell's "not running" state, and the "engine unreachable" state.
    - Palette results for pages and containers.
    - The engine card in the sidebar.
-6. The menu bar glyph: a rounded-square bezel with a porthole, drawn in code as a template image, one shape per state:
-   - Stopped: a dashed, empty porthole.
-   - Starting: a half-filled porthole.
-   - Running: a filled porthole.
-   - Needs attention: a filled porthole and a notch dot at the top right. Captain shows it when Captain Engine failed to start, or when a container is restarting or unhealthy.
+6. The menu bar glyph stays the ship's wheel, to match the app icon. It is drawn in code as a template image, one look per state:
+   - Stopped: the wheel dimmed to 40%, like a macOS menu bar icon that is off.
+   - Starting: the wheel turns, one frame every 120 ms.
+   - Running: the full wheel.
+   - Needs attention: the full wheel with a notch dot at the top right, over the upper right handle. Captain shows it when Captain Engine failed to start, or when a container is restarting or unhealthy.
 
 ## Out of scope
 

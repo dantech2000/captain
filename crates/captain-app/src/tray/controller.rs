@@ -21,6 +21,9 @@ use crate::window;
 /// after a change before rebuilding the menu.
 const REBUILD_DEBOUNCE: Duration = Duration::from_millis(200);
 
+/// How long each frame of the turning wheel shows while the engine starts.
+const TURN_FRAME: Duration = Duration::from_millis(120);
+
 /// How often the tray reads the kubeconfig for the Kubernetes Contexts submenu.
 /// kubectl and other tools change it too.
 const CONTEXTS_POLL: Duration = Duration::from_secs(5);
@@ -44,6 +47,8 @@ struct Tray {
     _observe: Vec<Subscription>,
     _events: [Task<()>; 2],
     _contexts: Option<Task<()>>,
+    /// Turns the wheel while the engine starts.
+    spin: Option<Task<()>>,
 }
 
 /// Keeps the tray alive for the life of the app.
@@ -61,7 +66,7 @@ pub fn start(cx: &mut App) {
     let host = captain_ui::host_model(cx);
     let icon = TrayIconBuilder::new()
         .with_tooltip("Captain")
-        .with_icon(status_icon(snapshot.icon()))
+        .with_icon(status_icon(snapshot.icon(), 0))
         .with_icon_as_template(true)
         // A left click opens the popover; a right click still opens the menu.
         .with_menu_on_left_click(false)
@@ -95,8 +100,9 @@ pub fn start(cx: &mut App) {
             _observe: observe,
             _events: events,
             _contexts: None,
+            spin: None,
         };
-        tray.show(snapshot);
+        tray.show(snapshot, cx);
         tray.poll_contexts(cx);
         tray
     });
@@ -160,7 +166,7 @@ impl Tray {
             cx.background_executor().timer(REBUILD_DEBOUNCE).await;
             this.update(cx, |this, cx| {
                 this.rebuild = None;
-                this.show(snapshot(&workspace, &this.contexts, cx));
+                this.show(snapshot(&workspace, &this.contexts, cx), cx);
             })
             .ok();
         }));
@@ -192,22 +198,47 @@ impl Tray {
         }
     }
 
-    fn show(&mut self, snapshot: TraySnapshot) {
+    fn show(&mut self, snapshot: TraySnapshot, cx: &mut Context<Self>) {
         if self.shown.as_ref() == Some(&snapshot) {
             return;
         }
-        let icon_changed = self.shown.as_ref().map(TraySnapshot::icon) != Some(snapshot.icon());
-        if icon_changed
-            && let Err(error) = self
-                .icon
-                .set_icon_with_as_template(Some(status_icon(snapshot.icon())), true)
-        {
-            tracing::warn!(%error, "cannot update the menu bar icon");
+        let status = snapshot.icon();
+        if self.shown.as_ref().map(TraySnapshot::icon) != Some(status) {
+            self.set_icon(status, 0);
+            self.spin = (status == EngineStatus::Starting).then(|| Self::turn(cx));
         }
         let native = NativeMenu::new(&menu_model::build(&snapshot));
         self.icon.set_menu(Some(Box::new(native.menu)));
         self.commands = native.commands;
         self.shown = Some(snapshot);
+    }
+}
+
+impl Tray {
+    fn set_icon(&self, status: EngineStatus, frame: u32) {
+        if let Err(error) = self
+            .icon
+            .set_icon_with_as_template(Some(status_icon(status, frame)), true)
+        {
+            tracing::warn!(%error, "cannot update the menu bar icon");
+        }
+    }
+
+    /// Advances the wheel one frame at a time until the task is dropped.
+    fn turn(cx: &mut Context<Self>) -> Task<()> {
+        cx.spawn(async move |this, cx| {
+            let mut frame = 0;
+            loop {
+                cx.background_executor().timer(TURN_FRAME).await;
+                frame = (frame + 1) % icon::TURN_FRAMES;
+                if this
+                    .update(cx, |tray, _| tray.set_icon(EngineStatus::Starting, frame))
+                    .is_err()
+                {
+                    return;
+                }
+            }
+        })
     }
 }
 
@@ -218,7 +249,7 @@ fn snapshot(workspace: &Entity<Workspace>, contexts: &KubeContexts, cx: &App) ->
     }
 }
 
-fn status_icon(status: EngineStatus) -> Icon {
-    Icon::from_rgba(icon::rgba(status, COLOR), icon::SIZE, icon::SIZE)
+fn status_icon(status: EngineStatus, frame: u32) -> Icon {
+    Icon::from_rgba(icon::rgba(status, frame, COLOR), icon::SIZE, icon::SIZE)
         .expect("the icon buffer matches its size")
 }

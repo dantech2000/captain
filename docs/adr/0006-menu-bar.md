@@ -31,6 +31,6 @@ M10 puts a Captain icon in the macOS menu bar and the Windows notification area 
 - A left click on the icon now opens a GPUI popover instead of the menu; a right click still opens the `muda` menu. The icon is built with `with_menu_on_left_click(false)`, and the `TrayIconEvent` handler forwards left-button releases, with the icon's rectangle, through a second channel to a GPUI task. Other icon events are still dropped in the handler.
 - The popover is a `WindowKind::PopUp` window: on macOS a non-activating `NSPanel` at the pop-up level. It is not a native `NSPopover`, because GPUI owns the window and draws the content, and an `NSPopover` would need `unsafe` AppKit code that the workspace forbids.
 - It closes when it loses focus, so a click on the icon while it is open closes it first; the click that follows within 500 ms does not open it again.
-- The icon is no longer the ship's wheel. Since M11 it is the porthole glyph of the Captain icon family: a rounded bezel with a porthole whose fill shows the engine state. See [feature 0012](../features/0012-icon-theme.md).
+- The icon is still the ship's wheel, to match the app icon. Since M11 it shows the engine state: dimmed when stopped, turning while starting, full when running, and with a notch dot when something needs attention. See [feature 0012](../features/0012-icon-theme.md).
 - The right-click menu names the worst container problem under its status line, in the same words as the popover. Both take the sentence from `captain_core::problems`.
 - See [feature 0032](../features/0032-menu-bar-popover.md).

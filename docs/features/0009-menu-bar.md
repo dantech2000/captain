@@ -33,7 +33,7 @@ Reach Captain from the menu bar (macOS) or the notification area (Windows) witho
 - The design is in [ADR 0006](../adr/0006-menu-bar.md): `tray-icon` and `muda` on GPUI's main-thread run loop, menu clicks forwarded into a GPUI task, and a snapshot of the workspace that decides when to rebuild the menu.
 - The code is in `crates/captain-app/src/tray/`. The menu model (`menu_model.rs`), the snapshot (`snapshot.rs`), and the icon drawing (`icon.rs`) have unit tests.
 - The app owns the `Workspace` entity now, and `AppShell::with_workspace` builds a window around it. So the tray keeps working with no window open, and a new window keeps the connection.
-- The icon is a porthole in a rounded bezel, drawn in code as a template image on macOS. Its fill shows the engine state: dashed when stopped, half full while starting, full when running, and full with a notch dot when it needs attention. See [0012](0012-icon-theme.md).
+- The icon is a ship's wheel, drawn in code as a template image on macOS. It shows the engine state: dimmed when stopped, turning while starting, full when running, and full with a notch dot when it needs attention. See [0012](0012-icon-theme.md).
 
 ## Verification
 
