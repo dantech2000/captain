@@ -78,6 +78,21 @@ Settings shows one row, "AI agents", with a status and **Set up…**, like the T
 4. **Copy config** for any other client.
 5. **Status:** the last client that connected and its last call, and the "Agent activity" list.
 
+## Build plan
+
+Six phases, each one pull request with its own tests. Phases 2 and 3 can run in parallel after 1; 4 needs 2; 5 needs 1 and 4; 6 closes the milestone.
+
+| # | Phase | Delivers | Done when |
+|---|---|---|---|
+| 1 | Server skeleton | `captain mcp` on rmcp over stdio; connects to the engine the settings choose (as the CLI does); `server/discover`; the `help` tool; stderr-only logging; a test that drives the server with rmcp's client. | An MCP client lists `help` and calls it. |
+| 2 | Read tools | `engine_status`, `list_projects`, `list_containers` (`status_only`), `container_problems` (the crash tracker, shared with the app), `inspect` (masked), `disk_usage`; `outputSchema` + `structuredContent` + text; annotations; names checked against live lists. | Each tool has a schema test and a size test (22 containers stay under 8 KB). |
+| 3 | Logs and waiting | `logs` (container or project, tail, `since`, `errors_only`, `grep`, caps, `truncated`), secret masking in log lines, untrusted-output delimiters, `wait_for_healthy`. | A log line with injected instructions comes back inside the delimiters; caps hold. |
+| 4 | Actions and audit | The `agent_tools` settings group (`enabled`, `actions`) in the schema and reference; `start`, `stop`, `restart`, `run_task`, `raise_memory` listed only when allowed; refusals as `isError` naming the setting; an activity log file (`~/.captain/agent-activity.jsonl`) that the app watches for the status bar and the Agent activity list. | A call to an action that is off is refused; an allowed one runs and shows in the app. |
+| 5 | Connect agents | Detection of Claude Code, Codex, Gemini CLI, VS Code, Cursor, Zed, and Claude Desktop; Connect and Remove through each client's installer (or an in-place edit for Zed and Claude Desktop), showing the exact command first; the "AI agents" Settings row and sheet; Copy config. | Connect then Remove leaves each client's configuration as it was. |
+| 6 | Docs and verification | `docs/reference/mcp.md` generated from the tool descriptions with a drift test; `docs/guide/agents.md`; the Verification steps below run by hand; ROADMAP and testing guide updated. | CI green on three OSes; the hand checks pass. |
+
+After M31: an Agent Skill and an AGENTS.md snippet (see Later).
+
 ## Out of scope
 
 - A network transport (Streamable HTTP). If ever added: a bearer token and localhost-only origins, as [Docker's gateway](https://github.com/docker/mcp-gateway/blob/main/docs/security.md) does.
