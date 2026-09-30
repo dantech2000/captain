@@ -57,7 +57,7 @@ The daily questions are "what is running" and "which port". A left click on the 
 2. Open Captain. Left-click the menu bar icon. Check that the popover opens under the icon, inside the screen, with the engine, projects, and ports. Right-click the icon; check that the menu with Quit opens.
 3. Click the icon again, click another app, and press Escape with the popover open. Check that each closes the popover.
 4. Hover the controls in the popover. Check that the line at the bottom shows each sentence.
-5. Run `docker run -d --name captain-agent-oom --memory 64m --restart always alpine sh -c 'tail /dev/zero'`. Open the popover. Check the card "captain-agent-oom keeps restarting: out of memory at 64 MB" and the Dock badge. Click Raise to 128 MB; check `docker inspect -f '{{.HostConfig.Memory}}' captain-agent-oom` shows 134217728.
+5. Run `docker run -d --name captain-agent-oom --memory 64m --restart always alpine sh -c 'tail /dev/zero'`. Open the popover. Check the card "captain-agent-oom keeps restarting: out of memory at 64 MB" and the Dock badge. Click Raise to 512 MB; check `docker inspect -f '{{.HostConfig.Memory}}' captain-agent-oom` shows 536870912.
 6. Click Show logs. Check that a small window stays on top of other apps, with the health strip and the log. Click Show logs again; check that the same window comes forward.
 7. Click Stop captain-agent-oom. Check that the card and the badge go away. Remove the container.
 8. Turn a project off and on with its switch. Click a web port and a database port.

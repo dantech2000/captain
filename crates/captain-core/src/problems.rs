@@ -126,7 +126,8 @@ pub fn problem_count(
             .count()
 }
 
-/// The limit the popover offers when a container runs out of memory: twice the old one.
+/// The limit the popover offers when a container runs out of memory: twice the old
+/// one, at least 512 MB, like the project page and the map.
 pub fn raised_memory(limit: i64) -> i64 {
     limit.saturating_mul(2)
 }
