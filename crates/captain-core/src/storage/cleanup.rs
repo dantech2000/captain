@@ -58,8 +58,12 @@ pub async fn run_cleanup(
     for item in &items {
         let result = match &item.target {
             ReclaimTarget::BuildCache { id } => {
-                // A record a build used since the preview stays and frees nothing.
+                // A record a build used since the preview stays and frees nothing;
+                // the report says so, so the freed total adds up.
                 match engine.prune_build_record(id, BUILD_CACHE_AGE).await {
+                    Ok(0) if item.size > 0 => {
+                        Err("a build used it since the preview, so it stays".into())
+                    }
                     Ok(bytes) => {
                         report.freed_bytes += bytes;
                         continue;

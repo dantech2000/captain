@@ -51,3 +51,6 @@ impl LogsPane {
         }
     }
 }
+
+#[cfg(test)]
+mod tests;

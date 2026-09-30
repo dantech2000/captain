@@ -110,3 +110,17 @@ fn build_cache_prunes_only_previewed_records() {
     let items = vec![item(ReclaimGroup::OldBuildCache, "RUN make", 30, target)];
     assert_eq!(run(engine(), items).unwrap().freed_bytes, 30);
 }
+
+#[test]
+fn a_record_used_since_the_preview_is_reported_and_kept() {
+    let mut engine = engine();
+    engine.disk.build_cache[0].in_use = true;
+    let target = ReclaimTarget::BuildCache {
+        id: "previewed".into(),
+    };
+    let items = vec![item(ReclaimGroup::OldBuildCache, "RUN make", 30, target)];
+    let report = run(engine, items).unwrap();
+    assert_eq!(report.freed_bytes, 0);
+    assert_eq!(report.failures.len(), 1);
+    assert!(report.failures[0].starts_with("RUN make: a build used it"));
+}
