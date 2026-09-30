@@ -16,7 +16,7 @@ The daily questions are "what is running" and "which port". A left click on the 
 - **Engine header.** The engine glyph, the engine name, "Running · 5 CPUs · 463 MB of 5.8 GB" (the containers' memory use of the engine's memory), and a switch that starts or stops Captain Engine. Another engine shows the switch off and disabled.
 - **Warning card.** Only when there is a problem, and only the worst one:
   1. Captain Engine did not start: the reason, and the fix from Diagnostics (Start or Restart Captain Engine, Show engine files, or Copy command).
-  2. A container keeps restarting and `inspect` says the kernel killed it for memory (`State.OOMKilled`): "worker keeps restarting: out of memory at 256 MB, restarted 3 times." Buttons: **Raise to 512 MB** (twice the limit, through `docker update`), **Show logs** (the floating log), and **Stop worker**. With no memory limit, the engine ran out, and Raise is not offered.
+  2. A container keeps restarting and `inspect` says the kernel killed it for memory (`State.OOMKilled`): "worker keeps restarting: out of memory at 256 MB, restarted 3 times." Buttons: **Raise to 512 MB** (twice the limit, at least 512 MB, through `docker update`), **Show logs** (the floating log), and **Stop worker**. With no memory limit, the engine ran out, and Raise is not offered.
   3. A container keeps restarting for another reason: Show logs and Stop.
   4. A container fails its health check: Show logs and Restart.
   5. Another failed diagnostics check: its title, its detail, and its fix.
