@@ -1,4 +1,4 @@
-use captain_core::model::{ContainerAction, ProjectAction};
+use captain_core::model::{ContainerAction, ProjectAction, count_label};
 use captain_core::store::ContainerGroup;
 use gpui_kit::assets::IconName;
 use gpui_kit::component::spinner::Spinner;
@@ -54,14 +54,17 @@ fn compose_buttons(
         actions.push((
             ProjectAction::Stop,
             IconName::Square,
-            format!("Stop all {count} services of {name}. The containers stay."),
+            format!(
+                "Stop the {} of {name}. The containers stay.",
+                count_label(count, "service")
+            ),
         ));
     }
     actions.extend([
         (
             ProjectAction::Restart,
             IconName::RotateCw,
-            format!("Restart all {count} services of {name}."),
+            format!("Restart the {} of {name}.", count_label(count, "service")),
         ),
         (
             ProjectAction::Pull,
@@ -71,7 +74,10 @@ fn compose_buttons(
         (
             ProjectAction::Down,
             IconName::PowerOff,
-            format!("Stop and remove the {count} containers of {name}. Volumes and images stay."),
+            format!(
+                "Stop and remove the {} of {name}. Volumes and images stay.",
+                count_label(count, "container")
+            ),
         ),
     ]);
     actions
@@ -118,7 +124,7 @@ fn engine_buttons(
         (
             "Start all",
             IconName::Play,
-            format!("Start all {count} containers of {name}."),
+            format!("Start the {} of {name}.", count_label(count, "container")),
             ContainerAction::Start,
             all.clone(),
         )
@@ -126,7 +132,10 @@ fn engine_buttons(
         (
             "Stop all",
             IconName::Square,
-            format!("Stop the {} running containers of {name}.", active.len()),
+            format!(
+                "Stop the {} of {name}.",
+                count_label(active.len(), "running container")
+            ),
             ContainerAction::Stop,
             active,
         )
@@ -134,7 +143,7 @@ fn engine_buttons(
     let restart = (
         "Restart all",
         IconName::RotateCw,
-        format!("Restart all {count} containers of {name}."),
+        format!("Restart the {} of {name}.", count_label(count, "container")),
         ContainerAction::Restart,
         all,
     );

@@ -41,7 +41,9 @@ pub fn render(
         .child(
             div()
                 .flex()
+                .items_center()
                 .justify_between()
+                .gap(px(8.))
                 .child(
                     div()
                         .flex()
