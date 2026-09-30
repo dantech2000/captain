@@ -15,6 +15,7 @@ use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::*;
 use gpui_wry::WebView;
 
+use super::super::MainWindow;
 use super::webview::{self, Inbound};
 use crate::theme::Palette;
 use crate::widgets::{drag_region, inline_error};
@@ -25,6 +26,8 @@ const TOAST_TIME: Duration = Duration::from_secs(5);
 pub struct ExtensionWindow {
     pub(super) extension: InstalledExtension,
     pub(super) manager: Arc<dyn ExtensionManager>,
+    /// The window that `desktopUI.navigate` calls bring forward.
+    pub(super) main: MainWindow,
     pub(super) webview: Option<Entity<WebView>>,
     error: Option<String>,
     toast: Option<(ToastLevel, String)>,
@@ -38,6 +41,7 @@ impl ExtensionWindow {
     pub fn new(
         extension: InstalledExtension,
         manager: Arc<dyn ExtensionManager>,
+        main: MainWindow,
         window: &mut Window,
         cx: &mut Context<Self>,
     ) -> Self {
@@ -72,6 +76,7 @@ impl ExtensionWindow {
         Self {
             extension,
             manager,
+            main,
             webview,
             error,
             toast: None,

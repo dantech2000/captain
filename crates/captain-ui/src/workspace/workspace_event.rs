@@ -3,6 +3,8 @@ use captain_core::model::{BulkOutcome, ContainerAction, EngineEvent, ProjectActi
 use gpui_kit::EventEmitter;
 use gpui_kit::component::notification::Notification;
 
+use crate::widgets::error_notification;
+
 /// Something the window should tell the user about. The workspace has no window, so
 /// the shell subscribes and turns these into notifications.
 #[derive(Debug, Clone)]
@@ -44,25 +46,28 @@ impl WorkspaceEvent {
                 name,
                 action,
                 error,
-            } => Notification::error(error.to_string())
-                .title(format!("{} {name} failed", action.label()))
-                .id1::<WorkspaceEvent>(id.clone())
-                .autohide(false),
+            } => error_notification(
+                format!("{} {name} failed", action.label()),
+                error.to_string(),
+            )
+            .id1::<WorkspaceEvent>(id.clone()),
             Self::BulkDone { action, outcome } if outcome.failed.is_empty() => {
                 Notification::success(outcome.done_message(action.done_label(), "container"))
             }
-            Self::BulkDone { action, outcome } => Notification::error(outcome.failed_lines())
-                .title(outcome.failed_title(action.label(), "container"))
-                .autohide(false),
+            Self::BulkDone { action, outcome } => error_notification(
+                outcome.failed_title(action.label(), "container"),
+                outcome.failed_lines(),
+            ),
             Self::ContainerRemoved { name } => Notification::success(format!("Deleted {name}.")),
             Self::ProjectFailed {
                 project,
                 action,
                 error,
-            } => Notification::error(error.to_string())
-                .title(format!("{} {project} failed", action.label()))
-                .id1::<WorkspaceEvent>(format!("project-{project}"))
-                .autohide(false),
+            } => error_notification(
+                format!("{} {project} failed", action.label()),
+                error.to_string(),
+            )
+            .id1::<WorkspaceEvent>(format!("project-{project}")),
             Self::ProjectDone { project, action } => {
                 Notification::success(action.done_message(project))
             }

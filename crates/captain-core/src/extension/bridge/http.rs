@@ -32,11 +32,36 @@ pub fn request_bytes(port: u16, request: &ServiceRequest) -> Vec<u8> {
 
 /// The status and the body of a whole response. A chunked body is decoded.
 pub fn parse_response(bytes: &[u8]) -> Result<(u16, String), String> {
+    parse_response_parts(bytes).map(|response| (response.status, response.body))
+}
+
+/// A whole HTTP/1.1 response.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct HttpResponse {
+    pub status: u16,
+    /// Header names and values in the order sent.
+    pub headers: Vec<(String, String)>,
+    pub body: String,
+}
+
+impl HttpResponse {
+    /// The first header named `name`, ignoring case.
+    pub fn header(&self, name: &str) -> Option<&str> {
+        self.headers
+            .iter()
+            .find(|(key, _)| key.eq_ignore_ascii_case(name))
+            .map(|(_, value)| value.as_str())
+    }
+}
+
+/// The status, the headers, and the body of a whole response. A chunked body is
+/// decoded.
+pub fn parse_response_parts(bytes: &[u8]) -> Result<HttpResponse, String> {
     // Some small servers end lines with a bare LF.
     let (split, gap) = find(bytes, b"\r\n\r\n")
         .map(|at| (at, 4))
         .or_else(|| find(bytes, b"\n\n").map(|at| (at, 2)))
-        .ok_or("the backend sent no complete answer")?;
+        .ok_or("the server sent no complete answer")?;
     let head = String::from_utf8_lossy(&bytes[..split]);
     let body = &bytes[split + gap..];
     let mut lines = head.lines();
@@ -44,10 +69,13 @@ pub fn parse_response(bytes: &[u8]) -> Result<(u16, String), String> {
         .next()
         .and_then(|line| line.split_whitespace().nth(1))
         .and_then(|code| code.parse().ok())
-        .ok_or("the backend's answer has no status")?;
-    let chunked = lines.any(|line| {
-        let (name, value) = line.split_once(':').unwrap_or((line, ""));
-        name.trim().eq_ignore_ascii_case("transfer-encoding")
+        .ok_or("the server's answer has no status")?;
+    let headers: Vec<(String, String)> = lines
+        .filter_map(|line| line.split_once(':'))
+        .map(|(name, value)| (name.trim().to_string(), value.trim().to_string()))
+        .collect();
+    let chunked = headers.iter().any(|(name, value)| {
+        name.eq_ignore_ascii_case("transfer-encoding")
             && value.to_ascii_lowercase().contains("chunked")
     });
     let body = if chunked {
@@ -55,7 +83,11 @@ pub fn parse_response(bytes: &[u8]) -> Result<(u16, String), String> {
     } else {
         body.to_vec()
     };
-    Ok((status, String::from_utf8_lossy(&body).into_owned()))
+    Ok(HttpResponse {
+        status,
+        headers,
+        body: String::from_utf8_lossy(&body).into_owned(),
+    })
 }
 
 fn dechunk(mut body: &[u8]) -> Result<Vec<u8>, String> {

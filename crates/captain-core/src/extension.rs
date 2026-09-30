@@ -5,12 +5,15 @@
 
 mod bridge;
 mod compose;
+mod compose_refs;
 mod id;
 mod installed;
 mod labels;
 mod manager;
 mod metadata;
 mod paths;
+mod registry;
+mod tags;
 mod update;
 
 pub use bridge::*;
@@ -18,6 +21,7 @@ pub use compose::{
     COMPOSE_FILE, GUEST_SERVICES, PROXY_IMAGE, PROXY_PORT, PROXY_SERVICE, image_project,
     with_guest_services,
 };
+pub use compose_refs::compose_references;
 pub use id::{PROJECT_PREFIX, data_store_id, extension_id, image_repository, project_name};
 pub use installed::{ExtensionCandidate, InstalledExtension, binary_name, engine_key};
 pub use labels::{API_VERSION_LABEL, ExtensionLabels};
@@ -27,6 +31,8 @@ pub use metadata::{
     PLUGIN_IMAGE_VARIABLE, PlatformBinaries, UiSection, VmSection, host_platform,
 };
 pub use paths::{ExtensionPaths, MANIFEST_FILE, mime_type, ui_file};
+pub use registry::{RegistryRepository, next_page, token_url};
+pub use tags::{FALLBACK_TAG, choose_tag, newest_version_tag, tag_version, untagged_repository};
 pub use update::{
     DEFAULT_UPDATE_TAG, ExtensionUpdate, UpdateCheck, compare_versions, update_reference,
 };

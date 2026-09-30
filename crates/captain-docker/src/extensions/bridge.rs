@@ -4,11 +4,14 @@
 use std::process::Command;
 use std::time::Duration;
 
-use bollard::query_parameters::{ListContainersOptionsBuilder, ListImagesOptionsBuilder};
+use bollard::query_parameters::{
+    InspectContainerOptions, ListContainersOptionsBuilder, ListImagesOptionsBuilder,
+};
 use captain_core::EngineError;
 use captain_core::extension::{
     BridgeEvent, BridgeRequest, BridgeStream, ExecRequest, ExecScope, InstalledExtension,
-    ListOptions, ServiceRequest, host_binary, parse_response, request_bytes, service_result,
+    ListOptions, NavigateIntent, ServiceRequest, host_binary, parse_response, request_bytes,
+    service_result,
 };
 use futures::{FutureExt, StreamExt};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
@@ -58,6 +61,34 @@ pub fn call(
     }
 }
 
+/// The full ID of the container, image, or volume that a navigate call names. The
+/// SDK's promise fails when it does not exist.
+async fn find(context: &Context, intent: &NavigateIntent) -> Result<BridgeEvent, EngineError> {
+    let docker = &context.docker;
+    let missing = |kind: &str, name: &str| EngineError::Api(format!("No {kind} \"{name}\" exists"));
+    let id = match intent {
+        NavigateIntent::Container { id, .. } => docker
+            .inspect_container(id, None::<InspectContainerOptions>)
+            .await
+            .ok()
+            .and_then(|found| found.id)
+            .ok_or_else(|| missing("container", id))?,
+        NavigateIntent::Image { id, .. } => docker
+            .inspect_image(id)
+            .await
+            .ok()
+            .and_then(|found| found.id)
+            .ok_or_else(|| missing("image", id))?,
+        NavigateIntent::Volume(name) => docker
+            .inspect_volume(name)
+            .await
+            .map(|found| found.name)
+            .map_err(|_| missing("volume", name))?,
+        _ => return Ok(BridgeEvent::Resolve(serde_json::Value::Null)),
+    };
+    Ok(BridgeEvent::Resolve(serde_json::Value::String(id)))
+}
+
 fn failed(message: String) -> BridgeStream {
     futures::stream::once(async move { BridgeEvent::error(message) }).boxed()
 }
@@ -77,6 +108,7 @@ async fn answer(
         }
         BridgeRequest::ListContainers(options) => list_containers(context, &options).await,
         BridgeRequest::ListImages(options) => list_images(context, &options).await,
+        BridgeRequest::Navigate(intent) => find(context, &intent).await,
         other => Err(EngineError::Api(format!("{other:?} is not an engine call"))),
     }
 }

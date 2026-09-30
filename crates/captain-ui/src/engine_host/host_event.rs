@@ -1,5 +1,7 @@
 use gpui_kit::component::notification::Notification;
 
+use crate::widgets::error_notification;
+
 /// Something about Captain Engine that the window should act on. The host model
 /// has no window, so the shell subscribes.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -18,10 +20,8 @@ impl HostEvent {
     pub fn notification(&self) -> Option<Notification> {
         match self {
             Self::Failed { action, message } => Some(
-                Notification::error(message.clone())
-                    .title(format!("Captain Engine: {action} failed"))
-                    .id1::<HostEvent>(*action)
-                    .autohide(false),
+                error_notification(format!("Captain Engine: {action} failed"), message.clone())
+                    .id1::<HostEvent>(*action),
             ),
             Self::OpenMigration => None,
         }

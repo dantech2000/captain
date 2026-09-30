@@ -11,8 +11,11 @@ An extension runs code from its publisher on your Mac and in the engine, with yo
 1. Click the Extensions button in the sidebar.
 2. Enter the image, for example `docker/disk-usage-extension`.
 3. Click **Install**, or press Return. Captain pulls the image.
+   If you do not give a tag, Captain pulls the newest version tag, for example `0.2.9`. It uses `latest` only when no tag is a version.
 4. Read the dialog. It shows the **Publisher**, the **Website**, whether it has a **Page**, its **Backend**, and any **Host binaries** that run on your Mac.
-5. Click **Install**.
+5. Click **Install**. Click **Cancel** to stop; Captain then removes the image it pulled.
+
+If the install fails, Captain removes what it made, and the image if it pulled it.
 
 The extension's files go in `~/.captain/extensions`. A backend runs as a Compose project in the engine.
 
@@ -22,10 +25,14 @@ Captain lists the extensions of the engine it is connected to.
 
 Click **Open**. The extension opens in its own window. Click **Open** again to bring the window to the front.
 
+Some extensions, such as Portainer, show a page that their backend serves on `localhost`. The window loads that page once the backend runs.
+
+A link in an extension to a container, an image, or a volume brings Captain's main window to the front and shows that item.
+
 ## Update an extension
 
 1. Click **Update…**.
-2. Enter a **Tag**. The default is `latest`.
+2. Captain looks up the newest version tag and fills in the **Tag** field. The dialog shows the installed image, and says when no newer version is published. You can enter another tag.
 3. Click **Check**. If the image is the same, a message says the extension is up to date.
 4. If a new image exists, the dialog shows both versions. Click **Update**.
 
@@ -37,4 +44,4 @@ Click **Remove…** and confirm. Captain closes the window, removes the backend 
 
 ## What works
 
-Captain supports the common part of the Docker extension SDK: backend calls, `docker` and host commands, container and image lists, toasts, the file dialog, and opening links. A call that Captain does not support fails with "`<method>` is not supported by Captain". There is no marketplace. Install extensions by their image name.
+Captain supports the common part of the Docker extension SDK: backend calls, `docker` and host commands, container and image lists, toasts, the file dialog, links to containers, images, and volumes in Captain, and opening links. A call that Captain does not support fails with "`<method>` is not supported by Captain". There is no marketplace. Install extensions by their image name.

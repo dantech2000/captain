@@ -8,7 +8,13 @@ use gpui_kit::App;
 
 pub const CAN_OPEN: bool = false;
 
-pub fn open_window(_: InstalledExtension, _: Arc<dyn ExtensionManager>, _: &mut App) {}
+pub fn open_window(
+    _: InstalledExtension,
+    _: Arc<dyn ExtensionManager>,
+    _: super::MainWindow,
+    _: &mut App,
+) {
+}
 
 pub fn close_window(_: &str, _: &mut App) {}
 

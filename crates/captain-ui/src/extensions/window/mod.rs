@@ -3,6 +3,7 @@
 
 mod bridge;
 mod extension_window;
+mod navigate;
 mod protocol;
 mod registry;
 mod webview;

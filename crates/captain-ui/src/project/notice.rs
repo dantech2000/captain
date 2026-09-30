@@ -1,5 +1,7 @@
 use gpui_kit::component::notification::Notification;
 
+use crate::widgets::error_notification;
+
 /// Something the Project page tells the user in a toast. The shell subscribes and
 /// shows it, as it does for workspace events.
 #[derive(Debug, Clone)]
@@ -46,11 +48,9 @@ impl ProjectNotice {
             Self::Updated { name, summary } => {
                 Notification::success(format!("Updated {name}: {summary}."))
             }
-            Self::Failed { title, error } => Notification::error(error.clone())
-                .title(title.clone())
-                .autohide(false),
+            Self::Failed { title, error } => error_notification(title.clone(), error.clone()),
             Self::EditorFailed { title } => {
-                Notification::error("The editor and the project log show why.").title(title.clone())
+                error_notification(title.clone(), "The editor and the project log show why.")
             }
             Self::Applied {
                 project,
@@ -65,10 +65,10 @@ impl ProjectNotice {
             Self::TaskDone { task, exit_code: 0 } => {
                 Notification::success(format!("The task {task} finished."))
             }
-            Self::TaskDone { task, exit_code } => {
-                Notification::error(format!("The task {task} exited with {exit_code}."))
-                    .title(format!("{task} failed"))
-            }
+            Self::TaskDone { task, exit_code } => error_notification(
+                format!("{task} failed"),
+                format!("The task {task} exited with {exit_code}."),
+            ),
         }
     }
 }

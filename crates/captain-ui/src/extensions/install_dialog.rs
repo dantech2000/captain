@@ -109,13 +109,24 @@ impl Render for InstallDialog {
                 window.close_dialog(cx);
             },
         );
+        let this = cx.entity().downgrade();
         let cancel = text_button(
             "extension-install-cancel",
             "Cancel",
             ButtonTone::Accent,
             true,
             &palette,
-            |_, window, cx| window.close_dialog(cx),
+            move |_, window, cx| {
+                // An image Captain pulled only to ask goes again.
+                this.update(cx, |dialog, cx| {
+                    let candidate = dialog.candidate.clone();
+                    dialog
+                        .model
+                        .update(cx, |model, cx| model.discard(candidate, cx));
+                })
+                .ok();
+                window.close_dialog(cx);
+            },
         );
         let description = self.candidate.labels.description.clone();
         div()
@@ -190,6 +201,8 @@ fn show(
             .title(title.clone())
             .w(px(520.))
             .overlay_closable(false)
+            // Cancel removes an image the check pulled; the close button would not.
+            .close_button(false)
             .child(dialog.clone())
     });
 }

@@ -25,9 +25,14 @@ pub fn render(
             ButtonTone::Accent,
             can_open,
             palette,
-            move |_, _, cx| {
-                if let Some(manager) = model.read(cx).manager(cx) {
-                    super::open_window(extension.clone(), manager, cx);
+            move |_, window, cx| {
+                let model = model.read(cx);
+                if let Some(manager) = model.manager(cx) {
+                    let main = super::MainWindow {
+                        workspace: model.workspace(),
+                        window: window.window_handle(),
+                    };
+                    super::open_window(extension.clone(), manager, main, cx);
                 }
             },
         )

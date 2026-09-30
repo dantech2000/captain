@@ -3,12 +3,15 @@
 
 mod backend;
 mod bridge;
+mod copy;
 mod exec_policy;
 mod files;
 mod install;
 mod manager;
 mod process;
+mod registry;
 mod swap;
+mod tags;
 mod update;
 
 pub use manager::DockerExtensions;

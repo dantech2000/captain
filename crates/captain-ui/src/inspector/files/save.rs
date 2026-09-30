@@ -5,6 +5,8 @@ use std::path::Path;
 use captain_core::model::{FileKind, join_path};
 use gpui_kit::component::WindowExt;
 use gpui_kit::component::notification::Notification;
+
+use crate::widgets::error_notification;
 use gpui_kit::*;
 
 use super::files_pane::FilesPane;
@@ -30,7 +32,10 @@ impl FilesPane {
             return;
         };
         let Some(dir) = dirs::download_dir().or_else(dirs::home_dir) else {
-            let note = Notification::error("Captain could not find your Downloads folder.");
+            let note = error_notification(
+                "Could not save the file",
+                "Captain could not find your Downloads folder.",
+            );
             window.push_notification(note, cx);
             return;
         };
@@ -46,9 +51,9 @@ impl FilesPane {
                 this.saving = false;
                 let note = match result {
                     Ok(saved) => Notification::success(format!("Saved to {}", short(&saved))),
-                    Err(error) => Notification::error(error.to_string())
-                        .title(format!("Could not save {path}"))
-                        .autohide(false),
+                    Err(error) => {
+                        error_notification(format!("Could not save {path}"), error.to_string())
+                    }
                 };
                 window.push_notification(note, cx);
                 cx.notify();

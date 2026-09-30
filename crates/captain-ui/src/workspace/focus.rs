@@ -10,8 +10,10 @@ use super::{Page, Workspace};
 /// An inspector tab that a button outside the inspector can open.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum InspectorTab {
+    Overview,
     Logs,
     Terminal,
+    Stats,
 }
 
 /// Filters for the Logs tab, from a command such as `logs api --since 10m --errors`.

@@ -108,6 +108,21 @@ impl ExtensionManager for DockerExtensions {
         })
     }
 
+    fn discard(&self, candidate: ExtensionCandidate) -> EngineFuture<()> {
+        let context = self.context.clone();
+        runtime::spawn(self.runtime.handle(), async move {
+            install::discard(&context, &candidate).await;
+            Ok(())
+        })
+    }
+
+    fn newest_tag(&self, extension: InstalledExtension) -> EngineFuture<String> {
+        let context = self.context.clone();
+        runtime::spawn(self.runtime.handle(), async move {
+            Ok(update::newest_tag(&context, &extension).await)
+        })
+    }
+
     fn install(&self, candidate: ExtensionCandidate) -> EngineFuture<InstalledExtension> {
         let context = self.context.clone();
         runtime::spawn(self.runtime.handle(), async move {

@@ -64,6 +64,7 @@ impl ExtensionWindow {
                 };
                 self.deliver(id, &event, cx);
             }
+            BridgeRequest::Navigate(intent) => self.navigate(id, intent, cx),
             BridgeRequest::Close(target) => {
                 // Dropping the task drops the stream, which stops the command.
                 self.calls.remove(&target);

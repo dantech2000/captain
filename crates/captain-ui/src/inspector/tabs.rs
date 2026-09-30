@@ -48,8 +48,10 @@ impl Tab {
 impl From<InspectorTab> for Tab {
     fn from(tab: InspectorTab) -> Self {
         match tab {
+            InspectorTab::Overview => Tab::Overview,
             InspectorTab::Logs => Tab::Logs,
             InspectorTab::Terminal => Tab::Terminal,
+            InspectorTab::Stats => Tab::Stats,
         }
     }
 }

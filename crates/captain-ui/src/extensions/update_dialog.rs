@@ -1,7 +1,7 @@
-//! The Update dialog: the tag to pull, `latest` by default. Check pulls it and
-//! compares it with the installed image.
+//! The Update dialog: the tag to pull, the newest version tag of the repository by
+//! default. Check pulls it and compares it with the installed image.
 
-use captain_core::extension::{DEFAULT_UPDATE_TAG, InstalledExtension};
+use captain_core::extension::{InstalledExtension, tag_version};
 use gpui_kit::component::Sizable;
 use gpui_kit::component::WindowExt;
 use gpui_kit::component::input::{Input, InputEvent, InputState};
@@ -16,6 +16,9 @@ struct UpdateDialog {
     model: Entity<ExtensionsModel>,
     extension: InstalledExtension,
     tag: Entity<InputState>,
+    /// The newest tag of the repository, once the lookup answers.
+    newest: Option<String>,
+    _lookup: Option<Task<()>>,
     _subscription: Subscription,
 }
 
@@ -26,7 +29,25 @@ impl UpdateDialog {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) -> Self {
-        let tag = cx.new(|cx| InputState::new(window, cx).default_value(DEFAULT_UPDATE_TAG));
+        let tag = cx.new(|cx| InputState::new(window, cx).placeholder("Newest version"));
+        let lookup = model.read(cx).manager(cx).map(|manager| {
+            let newest = manager.newest_tag(extension.clone());
+            cx.spawn_in(window, async move |this, cx| {
+                let Ok(newest) = newest.await else {
+                    return;
+                };
+                this.update_in(cx, |this, window, cx| {
+                    // Keep a tag the user typed meanwhile.
+                    if this.tag.read(cx).value().trim().is_empty() {
+                        this.tag
+                            .update(cx, |input, cx| input.set_value(newest.clone(), window, cx));
+                    }
+                    this.newest = Some(newest);
+                    cx.notify();
+                })
+                .ok();
+            })
+        });
         let subscription = cx.subscribe_in(&tag, window, |this, _, event, window, cx| {
             if let InputEvent::PressEnter { .. } = event {
                 this.submit(window, cx);
@@ -36,6 +57,8 @@ impl UpdateDialog {
             model,
             extension,
             tag,
+            newest: None,
+            _lookup: lookup,
             _subscription: subscription,
         }
     }
@@ -71,9 +94,17 @@ impl Render for UpdateDialog {
             &palette,
             |_, window, cx| window.close_dialog(cx),
         );
+        let installed = installed_tag(&self.extension.image);
+        let found = match (&self.newest, installed) {
+            (None, _) => "Looking up the newest version tag...".to_string(),
+            (Some(newest), Some(installed)) if !is_newer(newest, installed) => format!(
+                "No version newer than {installed} is published. Check pulls {newest} \
+                 and compares it anyway."
+            ),
+            (Some(newest), _) => format!("The newest published version is {newest}."),
+        };
         let note = format!(
-            "Captain pulls this tag of the extension's repository and compares it with \
-             the installed image, {}. The update keeps the backend's volumes.",
+            "Installed: {}. {found} The update keeps the backend's volumes.",
             self.extension.image
         );
         div()
@@ -100,6 +131,21 @@ impl Render for UpdateDialog {
                     .child(cancel)
                     .child(check),
             )
+    }
+}
+
+/// The tag of an image reference, if it names one.
+fn installed_tag(image: &str) -> Option<&str> {
+    let last = image.rsplit('/').next()?;
+    last.split_once(':').map(|(_, tag)| tag)
+}
+
+/// Whether `newest` is a later version than `installed`. Tags that are not
+/// versions count as newer unless they are the same tag.
+fn is_newer(newest: &str, installed: &str) -> bool {
+    match (tag_version(newest), tag_version(installed)) {
+        (Some(newest), Some(installed)) => newest > installed,
+        _ => newest != installed,
     }
 }
 

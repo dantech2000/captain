@@ -6,6 +6,7 @@ use std::sync::Arc;
 use captain_core::extension::{ExtensionManager, InstalledExtension};
 use gpui_kit::*;
 
+use super::super::MainWindow;
 use super::extension_window::ExtensionWindow;
 
 pub const CAN_OPEN: bool = true;
@@ -21,6 +22,7 @@ impl Global for Windows {}
 pub fn open_window(
     extension: InstalledExtension,
     manager: Arc<dyn ExtensionManager>,
+    main: MainWindow,
     cx: &mut App,
 ) {
     let handle = cx.default_global::<Windows>().0.get(&extension.id).copied();
@@ -46,7 +48,7 @@ pub fn open_window(
     };
     let id = extension.id.clone();
     let opened = gpui_kit::open_window(options, cx, |window, cx| {
-        cx.new(|cx| ExtensionWindow::new(extension, manager, window, cx))
+        cx.new(|cx| ExtensionWindow::new(extension, manager, main, window, cx))
     });
     match opened {
         Ok((handle, _)) => {

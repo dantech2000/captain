@@ -30,8 +30,11 @@ pub fn build(
     window: &mut Window,
 ) -> Result<wry::WebView, String> {
     let id = extension.id.clone();
-    let url = extension.page_url().ok_or("The extension has no page.")?;
-    let own = format!("{SCHEME}://{id}/");
+    let url = extension
+        .page_url()
+        .ok_or("The extension's page is not on this computer, so Captain does not open it.")?;
+    // The files on `captain-ext://<id>/`, or the backend's page on localhost.
+    let own = format!("{}/", extension.page_origin().unwrap_or_default());
     let context = ShimContext::for_host(id.clone(), extension.image.clone(), hostname);
     let (messages, links, windows) = (tx.clone(), tx.clone(), tx);
     let builder = WebViewBuilder::new()
@@ -45,7 +48,9 @@ pub fn build(
                 .ok();
         })
         .with_navigation_handler(move |url| {
-            let allowed = url.starts_with(&own) || url.starts_with("about:");
+            let allowed = url.starts_with(&own)
+                || url == own.trim_end_matches('/')
+                || url.starts_with("about:");
             if !allowed {
                 links.unbounded_send(Inbound::External(url)).ok();
             }

@@ -43,7 +43,17 @@ pub async fn up(
         Backend::Compose(file) => {
             let name = captain_core::extension::binary_name(&file).to_string();
             let mut command = compose(context, extension.pinned_image(), &dir)?;
-            command.args(["-f", &name, "config", "--format", "json"]);
+            // The project name makes Compose name volumes and networks after it, not
+            // after the `compose` folder, which every extension has.
+            command.args([
+                "-p",
+                &project_name(id),
+                "-f",
+                &name,
+                "config",
+                "--format",
+                "json",
+            ]);
             let config: Value = serde_json::from_str(&run(command).await?).map_err(|error| {
                 EngineError::Api(format!("cannot read the Compose file: {error}"))
             })?;

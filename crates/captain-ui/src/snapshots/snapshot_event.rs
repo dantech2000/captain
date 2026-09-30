@@ -1,5 +1,7 @@
 use gpui_kit::component::notification::Notification;
 
+use crate::widgets::error_notification;
+
 /// The end of a snapshot step, for a toast. The model has no window, so the view
 /// subscribes.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -15,10 +17,10 @@ impl SnapshotEvent {
     pub fn notification(&self) -> Notification {
         match self {
             Self::Done(message) => Notification::success(message.clone()),
-            Self::Failed { action, message } => Notification::error(message.clone())
-                .title(format!("Snapshot: {action} failed"))
-                .id1::<SnapshotEvent>(*action)
-                .autohide(false),
+            Self::Failed { action, message } => {
+                error_notification(format!("Snapshot: {action} failed"), message.clone())
+                    .id1::<SnapshotEvent>(*action)
+            }
         }
     }
 }

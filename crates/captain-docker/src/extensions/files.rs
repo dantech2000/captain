@@ -33,8 +33,13 @@ pub async fn create(docker: &Docker, image: &str, id: &str) -> Result<String, En
         .map_err(mapping::engine_error)
 }
 
+/// Removes the container and the anonymous volumes that the image's `VOLUME`
+/// lines made at create.
 pub async fn remove(docker: &Docker, container: &str) {
-    let options = RemoveContainerOptionsBuilder::default().force(true).build();
+    let options = RemoveContainerOptionsBuilder::default()
+        .force(true)
+        .v(true)
+        .build();
     docker.remove_container(container, Some(options)).await.ok();
 }
 

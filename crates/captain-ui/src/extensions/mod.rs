@@ -7,6 +7,7 @@ mod extension_row;
 mod extensions_model;
 mod extensions_view;
 mod install_dialog;
+mod main_window;
 mod remove_dialog;
 mod update_dialog;
 #[cfg(target_os = "macos")]
@@ -15,6 +16,7 @@ mod window;
 pub use extension_event::ExtensionEvent;
 pub use extensions_model::ExtensionsModel;
 pub use extensions_view::ExtensionsView;
+use main_window::MainWindow;
 
 #[cfg(not(target_os = "macos"))]
 mod unsupported;

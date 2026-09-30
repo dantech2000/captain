@@ -60,6 +60,10 @@ impl ExtensionsModel {
         &self.list
     }
 
+    pub fn workspace(&self) -> Entity<Workspace> {
+        self.workspace.clone()
+    }
+
     pub fn manager(&self, cx: &App) -> Option<Arc<dyn ExtensionManager>> {
         self.workspace.read(cx).extension_manager()
     }
@@ -155,6 +159,23 @@ impl ExtensionsModel {
             .ok();
         }));
         cx.notify();
+    }
+
+    /// Removes the image of a candidate the user did not install, if Captain pulled
+    /// it. A failure only logs.
+    pub fn discard(&mut self, candidate: ExtensionCandidate, cx: &mut Context<Self>) {
+        if !candidate.pulled {
+            return;
+        }
+        if let Some(manager) = self.manager(cx) {
+            let discard = manager.discard(candidate);
+            cx.background_spawn(async move {
+                if let Err(error) = discard.await {
+                    tracing::info!(%error, "cannot remove the pulled extension image");
+                }
+            })
+            .detach();
+        }
     }
 
     /// Pulls the extension's repository with `tag` and compares it with the installed

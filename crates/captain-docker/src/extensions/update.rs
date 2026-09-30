@@ -6,23 +6,37 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use bollard::query_parameters::RemoveImageOptions;
 use captain_core::EngineError;
 use captain_core::extension::{
-    ExtensionCandidate, ExtensionPaths, ExtensionUpdate, InstalledExtension, UpdateCheck,
-    update_reference,
+    ExtensionCandidate, ExtensionPaths, ExtensionUpdate, FALLBACK_TAG, InstalledExtension,
+    UpdateCheck, image_repository, update_reference,
 };
 use captain_core::model::ImageReference;
 
 use super::manager::Context;
 use super::swap::Swap;
-use super::{backend, files, install};
+use super::{backend, copy, files, install, tags};
 
-/// Pulls the repository with `tag` and compares the image with the installed one.
+/// The tag the Update dialog offers: the newest version tag of the extension's
+/// repository, or `latest`.
+pub async fn newest_tag(context: &Context, extension: &InstalledExtension) -> String {
+    match image_repository(&extension.image) {
+        Some(repository) => tags::resolve(&context.docker, &repository).await,
+        None => FALLBACK_TAG.to_string(),
+    }
+}
+
+/// Pulls the repository with `tag`, or with the newest version tag when `tag` is
+/// empty, and compares the image with the installed one.
 pub async fn check(
     context: &Context,
     extension: InstalledExtension,
     tag: &str,
 ) -> Result<UpdateCheck, EngineError> {
+    let tag = match tag.trim() {
+        "" => newest_tag(context, &extension).await,
+        tag => tag.to_string(),
+    };
     let invalid = || EngineError::Api(format!("\"{tag}\" is not a valid tag"));
-    let reference = update_reference(&extension.image, tag).ok_or_else(invalid)?;
+    let reference = update_reference(&extension.image, &tag).ok_or_else(invalid)?;
     let docker = &context.docker;
     // Read the installed ID before the pull, which may move its tag.
     let installed_id = match extension.image_id.as_str() {
@@ -34,13 +48,15 @@ pub async fn check(
         id => Some(id.to_string()),
     };
     let parsed = ImageReference::parse(&reference).ok_or_else(invalid)?;
+    let existed = docker.inspect_image(&reference).await.is_ok();
     if let Err(error) = install::pull(docker, &parsed).await {
         if docker.inspect_image(&reference).await.is_err() {
             return Err(error);
         }
         tracing::info!(%error, %reference, "cannot pull the update; using the engine's copy");
     }
-    let candidate = install::prepare(context, &reference).await?;
+    let mut candidate = install::prepare(context, &reference).await?;
+    candidate.pulled = !existed;
     if installed_id.as_deref() == Some(candidate.image_id.as_str()) {
         return Ok(UpdateCheck::UpToDate { image: reference });
     }
@@ -62,6 +78,7 @@ pub async fn apply(
     let installed = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .map_or(0, |d| d.as_secs());
+    let pulled = candidate.pulled;
     let mut new = InstalledExtension::new(candidate, installed);
     // The ID stays, so an older ID keeps its folder, backend, and page data.
     new.id = extension.id.clone();
@@ -79,6 +96,9 @@ pub async fn apply(
     let result = stage_and_switch(context, &extension, &new, &staging, backup).await;
     std::fs::remove_dir_all(staging.dir(&new.id)).ok();
     std::fs::remove_dir(staging.root()).ok();
+    if result.is_err() && pulled && new.image != extension.image {
+        install::remove_image(&context.docker, &new.image).await;
+    }
     result?;
     remove_old_image(context, &extension, &new).await;
     Ok(new)
@@ -93,7 +113,7 @@ async fn stage_and_switch(
 ) -> Result<(), EngineError> {
     let docker = &context.docker;
     let container = files::create(docker, new.pinned_image(), &new.id).await?;
-    let copied = install::copy_files(docker, &container, staging, new).await;
+    let copied = copy::copy_files(docker, &container, staging, new).await;
     files::remove(docker, &container).await;
     copied?;
     let live = context.paths.dir(&new.id);

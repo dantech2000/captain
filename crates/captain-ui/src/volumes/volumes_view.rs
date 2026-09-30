@@ -55,6 +55,13 @@ impl VolumesView {
     pub fn new(workspace: Entity<Workspace>, cx: &mut Context<Self>) -> Self {
         let observe = cx.observe(&workspace, |this, workspace, cx| {
             this.follow_engine(workspace.read(cx).engine(), cx);
+            // An extension's `navigate.viewVolume` asks for a volume.
+            let revealed = workspace.update(cx, |workspace, _| workspace.take_revealed_volume());
+            if let Some(name) = revealed
+                && this.selected.as_deref() != Some(name.as_str())
+            {
+                this.select(name, cx);
+            }
             cx.notify();
         });
         let events = cx.subscribe(&workspace, |this, _, event: &EngineEvent, cx| {

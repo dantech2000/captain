@@ -11,6 +11,7 @@ use captain_core::store::{
 use captain_core::{Engine, EngineError, ImageBuilder, ProjectRunner};
 use gpui_kit::*;
 
+use super::reveal::Reveal;
 use super::{InspectorTab, LogFilter, Page, WorkspaceEvent};
 
 /// The state of the engine connection.
@@ -74,6 +75,8 @@ pub struct Workspace {
     pub(super) inspector_tab: Option<InspectorTab>,
     /// The Logs tab filters a ⌘K command asked for, until the inspector takes them.
     pub(super) log_filter: Option<LogFilter>,
+    /// The image or volume an extension asked to show, until its page takes it.
+    pub(super) reveal: Option<Reveal>,
 }
 
 impl EventEmitter<WorkspaceEvent> for Workspace {}
@@ -111,6 +114,7 @@ impl Workspace {
             crash_expiry: None,
             inspector_tab: None,
             log_filter: None,
+            reveal: None,
         }
     }
 

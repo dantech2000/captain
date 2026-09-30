@@ -8,6 +8,7 @@ fn the_pinned_image_is_the_id_and_the_reference_for_older_installs() {
         image_id: image_id.into(),
         labels: Default::default(),
         metadata: Default::default(),
+        pulled: false,
     };
     let pinned = InstalledExtension::new(candidate("sha256:abc"), 0);
     assert_eq!(pinned.pinned_image(), "sha256:abc");
@@ -31,6 +32,7 @@ fn an_extension_runs_on_its_engine_through_a_symlinked_socket_path() {
             image_id: String::new(),
             labels: Default::default(),
             metadata: Default::default(),
+            pulled: false,
         },
         0,
     );
@@ -39,4 +41,41 @@ fn an_extension_runs_on_its_engine_through_a_symlinked_socket_path() {
     let elsewhere = extension.runs_on("unix:///nowhere/docker.sock");
     std::fs::remove_dir_all(&root).ok();
     assert!(through_link && !elsewhere);
+}
+
+#[test]
+fn a_page_on_localhost_loads_as_a_url_and_another_host_not_at_all() {
+    let with_src = |src: &str| {
+        let metadata = crate::extension::ExtensionMetadata::parse(&format!(
+            r#"{{"ui":{{"dashboard-tab":{{"title":"P","root":"/public","src":"{src}"}}}}}}"#
+        ))
+        .unwrap();
+        InstalledExtension::new(
+            ExtensionCandidate {
+                id: "p".into(),
+                image: "acme/p".into(),
+                image_id: String::new(),
+                labels: Default::default(),
+                metadata,
+                pulled: false,
+            },
+            0,
+        )
+    };
+    let backend = with_src("http://localhost:49000");
+    assert_eq!(
+        backend.page_url().as_deref(),
+        Some("http://localhost:49000")
+    );
+    assert_eq!(
+        backend.page_origin().as_deref(),
+        Some("http://localhost:49000")
+    );
+    let files = with_src("index.html");
+    assert_eq!(
+        files.page_url().as_deref(),
+        Some("captain-ext://p/index.html")
+    );
+    assert_eq!(files.page_origin().as_deref(), Some("captain-ext://p"));
+    assert_eq!(with_src("https://example.com/app").page_url(), None);
 }

@@ -21,7 +21,14 @@ pub fn install_kit_themes(family: ThemeFamily, cx: &mut App) {
     let theme = Theme::global_mut(cx);
     theme.light_theme = Rc::new(config(family, false));
     theme.dark_theme = Rc::new(config(family, true));
+    // gpui-kit stacks toasts like Sonner: older ones peek out below the newest at
+    // their own height, so a long error shows its tail under a short toast. One toast
+    // at a time; an older one shows again if it has time left.
+    theme.notification.max_items = MAX_TOASTS;
 }
+
+/// The toasts a window shows at once.
+const MAX_TOASTS: usize = 1;
 
 fn config(family: ThemeFamily, dark: bool) -> ThemeConfig {
     let t = Tokens::of(family, dark);

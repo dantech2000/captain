@@ -14,6 +14,9 @@ pub struct ExtensionCandidate {
     pub image_id: String,
     pub labels: ExtensionLabels,
     pub metadata: ExtensionMetadata,
+    /// True when Captain pulled the image for this candidate. A failed or canceled
+    /// install removes it again; an image the engine had stays.
+    pub pulled: bool,
 }
 
 impl ExtensionCandidate {
@@ -89,15 +92,31 @@ impl InstalledExtension {
         }
     }
 
-    /// The URL of the extension's page, served from its UI folder.
+    /// The URL of the extension's page. A `src` on `http://localhost` or
+    /// `http://127.0.0.1` (any port, or `https`) is a page the backend serves, as
+    /// Portainer's is; the window loads it as is. Any other `src` is a file in the UI
+    /// folder, on `captain-ext://<id>/`. `None` for a `src` on another host.
     pub fn page_url(&self) -> Option<String> {
         let tab = self.metadata.dashboard_tab()?;
+        if tab.src.contains("://") {
+            return local_origin(&tab.src).map(|_| tab.src.clone());
+        }
         Some(format!(
             "{}://{}/{}",
             super::SCHEME,
             self.id,
             tab.src.trim_start_matches('/')
         ))
+    }
+
+    /// The origin the page may navigate in: `captain-ext://<id>`, or the
+    /// `scheme://host:port` of a page the backend serves.
+    pub fn page_origin(&self) -> Option<String> {
+        let url = self.page_url()?;
+        match local_origin(&url) {
+            Some(origin) => Some(origin),
+            None => Some(format!("{}://{}", super::SCHEME, self.id)),
+        }
     }
 
     pub fn to_json(&self) -> String {
@@ -119,6 +138,19 @@ pub fn engine_key(host: &str) -> String {
             || host.to_string(),
             |path| format!("unix://{}", path.display()),
         )
+}
+
+/// `scheme://host:port` of an `http` or `https` URL on `localhost` or `127.0.0.1`.
+fn local_origin(url: &str) -> Option<String> {
+    let (scheme, rest) = url.split_once("://")?;
+    if !matches!(scheme, "http" | "https") {
+        return None;
+    }
+    let authority = rest.split(['/', '?', '#']).next()?;
+    let host = authority
+        .rsplit_once(':')
+        .map_or(authority, |(host, _)| host);
+    matches!(host, "localhost" | "127.0.0.1").then(|| format!("{scheme}://{authority}"))
 }
 
 /// The last part of an image path: `/darwin/tool` is `tool`.

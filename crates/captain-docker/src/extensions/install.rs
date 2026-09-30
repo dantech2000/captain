@@ -1,6 +1,5 @@
 //! Prepare, install, remove, and list. See docs/features/0025-extensions.md.
 
-use std::path::Path;
 use std::pin::pin;
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -8,29 +7,51 @@ use bollard::Docker;
 use bollard::query_parameters::{CreateImageOptionsBuilder, RemoveImageOptions};
 use captain_core::EngineError;
 use captain_core::extension::{
-    Backend, ExtensionCandidate, ExtensionLabels, ExtensionMetadata, ExtensionPaths,
-    InstalledExtension, MANIFEST_FILE, binary_name, extension_id, host_platform, image_repository,
+    ExtensionCandidate, ExtensionLabels, ExtensionMetadata, ExtensionPaths, InstalledExtension,
+    MANIFEST_FILE, extension_id, image_repository, untagged_repository,
 };
 use captain_core::model::ImageReference;
 use futures::StreamExt;
 
 use super::manager::Context;
-use super::{backend, files};
+use super::{backend, copy, files, tags};
 use crate::mapping;
 
-/// Pulls the image if needed, then reads its labels and `metadata.json`.
+/// Pulls the image if needed, then reads its labels and `metadata.json`. A
+/// reference without a tag gets the newest version tag. An image this call pulled
+/// is removed again when it is not an extension.
 pub async fn prepare(
     context: &Context,
     reference: &str,
 ) -> Result<ExtensionCandidate, EngineError> {
     let invalid = || EngineError::Api(format!("\"{reference}\" is not an image reference"));
-    let parsed = ImageReference::parse(reference).ok_or_else(invalid)?;
+    let docker = &context.docker;
+    let reference = match untagged_repository(reference) {
+        Some(repository) => format!("{repository}:{}", tags::resolve(docker, &repository).await),
+        None => reference.trim().to_string(),
+    };
+    let parsed = ImageReference::parse(&reference).ok_or_else(invalid)?;
     let image = parsed.to_string();
     let id = extension_id(&image).ok_or_else(invalid)?;
-    let docker = &context.docker;
-    if docker.inspect_image(&image).await.is_err() {
+    let pulled = docker.inspect_image(&image).await.is_err();
+    if pulled {
         pull(docker, &parsed).await?;
     }
+    let candidate = read_candidate(docker, image.clone(), id).await;
+    if candidate.is_err() && pulled {
+        remove_image(docker, &image).await;
+    }
+    candidate.map(|candidate| ExtensionCandidate {
+        pulled,
+        ..candidate
+    })
+}
+
+async fn read_candidate(
+    docker: &Docker,
+    image: String,
+    id: String,
+) -> Result<ExtensionCandidate, EngineError> {
     let inspect = docker
         .inspect_image(&image)
         .await
@@ -54,7 +75,26 @@ pub async fn prepare(
         image_id,
         labels,
         metadata,
+        pulled: false,
     })
+}
+
+/// Removes an image that an install pulled and no longer needs. A failure only logs.
+pub(super) async fn remove_image(docker: &Docker, image: &str) {
+    let removed = docker
+        .remove_image(image, None::<RemoveImageOptions>, None)
+        .await;
+    match removed {
+        Ok(_) => tracing::info!(%image, "removed the pulled extension image"),
+        Err(error) => tracing::info!(%error, %image, "cannot remove the pulled extension image"),
+    }
+}
+
+/// Removes the image of a candidate the user did not install, if Captain pulled it.
+pub async fn discard(context: &Context, candidate: &ExtensionCandidate) {
+    if candidate.pulled {
+        remove_image(&context.docker, &candidate.image).await;
+    }
 }
 
 pub(super) async fn pull(docker: &Docker, reference: &ImageReference) -> Result<(), EngineError> {
@@ -80,10 +120,17 @@ pub async fn install(
     let installed = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .map_or(0, |d| d.as_secs());
+    let pulled = candidate.pulled;
     let mut extension = InstalledExtension::new(candidate, installed);
     extension.engine = context.engine.clone();
-    check_absent(&context.paths, &extension.id)?;
-    check_repository(&context.paths, &extension.image)?;
+    let checked = check_absent(&context.paths, &extension.id)
+        .and_then(|()| check_repository(&context.paths, &extension.image));
+    if let Err(error) = checked {
+        if pulled {
+            remove_image(&context.docker, &extension.image).await;
+        }
+        return Err(error);
+    }
     let dir = context.paths.dir(&extension.id);
     // A folder without `extension.json` is left from an install that stopped.
     if dir.exists() {
@@ -97,6 +144,9 @@ pub async fn install(
             backend::down(context, &extension.id, fresh).await.ok();
         }
         std::fs::remove_dir_all(&dir).ok();
+        if pulled {
+            remove_image(&context.docker, &extension.image).await;
+        }
     }
     result.map(|()| extension)
 }
@@ -161,44 +211,13 @@ async fn install_steps(
 ) -> Result<(), EngineError> {
     let (docker, paths, id) = (&context.docker, &context.paths, &extension.id);
     let container = files::create(docker, extension.pinned_image(), id).await?;
-    let copied = copy_files(docker, &container, paths, extension).await;
+    let copied = copy::copy_files(docker, &container, paths, extension).await;
     files::remove(docker, &container).await;
     copied?;
     if let Some(backend) = extension.metadata.backend(extension.pinned_image()) {
         backend::up(context, extension, backend).await?;
     }
     std::fs::write(paths.manifest(id), extension.to_json()).map_err(files::io_error)
-}
-
-pub(super) async fn copy_files(
-    docker: &Docker,
-    container: &str,
-    paths: &ExtensionPaths,
-    extension: &InstalledExtension,
-) -> Result<(), EngineError> {
-    let id = &extension.id;
-    std::fs::create_dir_all(paths.dir(id)).map_err(files::io_error)?;
-    if let Some(tab) = extension.metadata.dashboard_tab() {
-        let tar = files::archive(docker, container, &tab.root).await?;
-        files::unpack(&tar, &paths.ui_dir(id), true)?;
-    }
-    for path in extension.metadata.host_binaries(host_platform()) {
-        let tar = files::archive(docker, container, &path).await?;
-        let bin = paths.bin_dir(id);
-        files::unpack(&tar, &bin, false)?;
-        files::make_executable(&bin.join(binary_name(&path)))?;
-    }
-    if let Some(Backend::Compose(file)) = extension.metadata.backend(&extension.image) {
-        let folder = Path::new(&file)
-            .parent()
-            .map(|p| p.to_string_lossy().into_owned());
-        let folder = folder
-            .filter(|f| !f.is_empty() && f != "/")
-            .unwrap_or_else(|| "/".into());
-        let tar = files::archive(docker, container, &folder).await?;
-        files::unpack(&tar, &paths.compose_dir(id), true)?;
-    }
-    Ok(())
 }
 
 /// Stops the backend and removes its volumes, deletes the folder, and removes the

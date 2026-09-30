@@ -9,6 +9,7 @@ mod containers;
 mod focus;
 mod page;
 mod projects;
+mod reveal;
 mod stats_feed;
 mod workspace_event;
 mod workspace_state;

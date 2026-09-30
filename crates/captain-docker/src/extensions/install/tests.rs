@@ -14,6 +14,7 @@ fn write_in(paths: &ExtensionPaths, folder: &str, id: &str, engine: &str) {
             image_id: String::new(),
             labels: Default::default(),
             metadata: Default::default(),
+            pulled: false,
         },
         0,
     );

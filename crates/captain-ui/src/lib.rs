@@ -47,4 +47,5 @@ pub use settings::{
 };
 pub use shell::{AppShell, engine_name};
 pub use storage::init as storage_init;
+pub use widgets::error_notification;
 pub use workspace::{Connection, Connector, Page, Workspace};

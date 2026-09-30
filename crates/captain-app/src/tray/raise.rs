@@ -29,7 +29,10 @@ pub fn raise_memory(id: String, name: String, bytes: u64, cx: &mut App) {
                     tracing::warn!(%error, "cannot raise the memory limit");
                     note_raise(&id, true, cx);
                     window::show(cx);
-                    Notification::error(format!("Captain could not raise the limit: {error}"))
+                    captain_ui::error_notification(
+                        "Raise memory failed",
+                        format!("Captain could not raise the limit: {error}"),
+                    )
                 }
             };
             window::update_main(cx, |window, cx| window.push_notification(note, cx));

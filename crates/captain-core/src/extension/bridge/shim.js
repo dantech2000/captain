@@ -175,9 +175,40 @@
           return call("desktopUI.dialog.showOpenDialog", options || {});
         },
       },
-      // Not supported yet. The object exists, as in Rancher Desktop, so feature
-      // checks in extensions work.
-      navigate: {},
+      // Opens a page of Captain's main window. The promise fails when the
+      // container, image, or volume does not exist.
+      navigate: {
+        viewContainers: function () {
+          return call("desktopUI.navigate.viewContainers");
+        },
+        viewContainer: function (id) {
+          return call("desktopUI.navigate.viewContainer", { id: String(id) });
+        },
+        viewContainerLogs: function (id) {
+          return call("desktopUI.navigate.viewContainerLogs", { id: String(id) });
+        },
+        viewContainerInspect: function (id) {
+          return call("desktopUI.navigate.viewContainerInspect", { id: String(id) });
+        },
+        viewContainerTerminal: function (id) {
+          return call("desktopUI.navigate.viewContainerTerminal", { id: String(id) });
+        },
+        viewContainerStats: function (id) {
+          return call("desktopUI.navigate.viewContainerStats", { id: String(id) });
+        },
+        viewImages: function () {
+          return call("desktopUI.navigate.viewImages");
+        },
+        viewImage: function (id, tag) {
+          return call("desktopUI.navigate.viewImage", { id: String(id), tag: String(tag || "") });
+        },
+        viewVolumes: function () {
+          return call("desktopUI.navigate.viewVolumes");
+        },
+        viewVolume: function (volume) {
+          return call("desktopUI.navigate.viewVolume", { volume: String(volume) });
+        },
+      },
     },
     host: {
       openExternal: function (url) {
@@ -216,10 +247,30 @@
     red: ramp(["#ffe3e1", "#ffc2bd", "#ff9d96", "#ff8279", "#ff6961", "#d95952", "#a84540", "#78312d"]),
     violet: ramp(["#e9e8ff", "#cfcdff", "#b1afff", "#9794ff", "#7d7aff", "#6a67d9", "#5250a8", "#3b3978"]),
   };
-  const themes = {
-    light: { palette: { mode: "light", docker: docker } },
-    dark: { palette: { mode: "dark", docker: docker } },
+  // Docker Desktop's theme pads the page body 16px 32px through MuiCssBaseline and
+  // sets its type scale; extensions rely on both, so they do not touch the window
+  // edge. Values from the fallback theme in @docker/docker-mui-theme 0.0.9
+  // (dist/packagedThemes.js).
+  const typography = {
+    fontFamily: '"Open SansVariable", "Open Sans", "Helvetica Neue", sans-serif',
+    fontSize: 12,
+    fontWeightRegular: 400,
+    fontWeightMedium: 500,
+    fontWeightBold: 600,
+    subtitle1: { fontSize: 16 },
+    subtitle2: { fontSize: 22, fontWeight: 600 },
+    body1: { fontSize: 14 },
+    h1: { fontSize: "36px", fontWeight: 600, lineHeight: "40px" },
+    h2: { fontSize: "24px", fontWeight: 400, lineHeight: "32px" },
+    h3: { fontSize: "18px", fontWeight: 600, lineHeight: "24px" },
   };
+  const components = {
+    MuiCssBaseline: { styleOverrides: { body: { padding: "16px 32px" } } },
+  };
+  const theme = function (mode) {
+    return { palette: { mode: mode, docker: docker }, typography: typography, components: components };
+  };
+  const themes = { light: theme("light"), dark: theme("dark") };
   window.__ddMuiV5Themes = themes;
   window.__ddMuiV6Themes = themes;
 })();

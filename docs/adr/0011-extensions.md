@@ -116,4 +116,5 @@ Recorded when M21 was built ([feature 0025](../features/0025-extensions.md)):
 - The proxy is `alpine/socat:1.8.1.3`, a service named `captain-proxy` in the backend's project.
 - The test set has a UI-only extension (Docker's Disk Usage) and a backend extension built by the live test. A public extension with host binaries is still to check.
 - The window opened without a crash on the pinned `lb-wry` on this Mac, so wry#1705 did not show up.
+- `desktopUI.navigate` came after testing real extensions: its calls open the matching page of the main window, and the engine checks that a named object exists first. A dashboard tab whose `src` is a `localhost` URL loads that page from the backend. See [feature 0025](../features/0025-extensions.md).
 - `docker.cli.exec` and `vm.cli.exec` stay on the current engine: the page's `env` cannot override `DOCKER_HOST` or set a `DOCKER_*` variable outside a short allowlist of ones that pick no daemon (such as `DOCKER_API_VERSION`), and `cmd` cannot be a global option such as `--host` or `--context`.

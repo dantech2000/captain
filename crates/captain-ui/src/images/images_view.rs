@@ -26,7 +26,13 @@ pub struct ImagesView {
 impl ImagesView {
     pub fn new(workspace: Entity<Workspace>, cx: &mut Context<Self>) -> Self {
         let state = cx.new(|_| ImagesState::new());
-        let observe_workspace = cx.observe(&workspace, |this, _, cx| this.attach_engine(cx));
+        let observe_workspace = cx.observe(&workspace, |this, workspace, cx| {
+            this.attach_engine(cx);
+            // An extension's `navigate.viewImage` asks for an image.
+            if let Some(id) = workspace.update(cx, |workspace, _| workspace.take_revealed_image()) {
+                this.state.update(cx, |state, cx| state.select(id, cx));
+            }
+        });
         let observe_state = cx.observe(&state, |this, state, cx| {
             let count = state.read(cx).store.len();
             this.workspace.update(cx, |workspace, cx| {

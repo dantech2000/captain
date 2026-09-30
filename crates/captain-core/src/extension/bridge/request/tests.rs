@@ -55,11 +55,11 @@ fn a_service_call_stays_on_the_backend() {
 
 #[test]
 fn an_unknown_method_names_itself() {
-    let error = parse_call(r#"{"id":3,"method":"desktopUI.navigate.viewImages"}"#).unwrap_err();
+    let error = parse_call(r#"{"id":3,"method":"desktopUI.navigate.viewBuilds"}"#).unwrap_err();
     assert_eq!(error.id, Some(3));
     assert_eq!(
         error.message,
-        "desktopUI.navigate.viewImages is not supported by Captain"
+        "desktopUI.navigate.viewBuilds is not supported by Captain"
     );
     assert_eq!(parse_call("[").unwrap_err().id, None);
 }

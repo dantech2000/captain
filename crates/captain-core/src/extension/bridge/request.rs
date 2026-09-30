@@ -5,6 +5,7 @@ use std::collections::BTreeMap;
 
 use serde_json::Value;
 
+use super::navigate::NavigateIntent;
 use super::options::{ListOptions, OpenDialogOptions};
 
 /// One call from the page. `id` matches the reply to the pending Promise.
@@ -31,6 +32,9 @@ pub enum BridgeRequest {
     },
     OpenDialog(OpenDialogOptions),
     OpenExternal(String),
+    /// `desktopUI.navigate.*`: a page of Captain's main window. The window asks the
+    /// engine to find a named object first, which answers with its full ID.
+    Navigate(NavigateIntent),
     /// `close()` on a streaming exec: stops the call with this ID.
     Close(u64),
 }
@@ -88,9 +92,11 @@ impl BridgeRequest {
             | Self::Exec { .. }
             | Self::ListContainers(_)
             | Self::ListImages(_) => Route::Engine,
-            Self::Toast { .. } | Self::OpenDialog(_) | Self::OpenExternal(_) | Self::Close(_) => {
-                Route::Window
-            }
+            Self::Toast { .. }
+            | Self::OpenDialog(_)
+            | Self::OpenExternal(_)
+            | Self::Navigate(_)
+            | Self::Close(_) => Route::Window,
         }
     }
 }
@@ -118,6 +124,8 @@ pub fn parse_call(message: &str) -> Result<BridgeCall, BridgeError> {
     Ok(BridgeCall { id, request })
 }
 
+const NAVIGATE: &str = "desktopUI.navigate.";
+
 fn request(method: &str, params: &Value) -> Result<BridgeRequest, String> {
     let exec = |scope| exec(params).map(|exec| BridgeRequest::Exec { scope, exec });
     match method {
@@ -130,6 +138,9 @@ fn request(method: &str, params: &Value) -> Result<BridgeRequest, String> {
         "desktopUI.toast" => toast(params),
         "desktopUI.dialog.showOpenDialog" => {
             Ok(BridgeRequest::OpenDialog(OpenDialogOptions::parse(params)))
+        }
+        m if m.starts_with(NAVIGATE) => {
+            NavigateIntent::parse(&m[NAVIGATE.len()..], params).map(BridgeRequest::Navigate)
         }
         "host.openExternal" => text(params, "url").map(BridgeRequest::OpenExternal),
         "exec.close" => params

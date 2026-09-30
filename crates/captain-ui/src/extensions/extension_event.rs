@@ -1,6 +1,8 @@
 use captain_core::extension::{ExtensionCandidate, ExtensionUpdate};
 use gpui_kit::component::notification::Notification;
 
+use crate::widgets::error_notification;
+
 /// What the model tells the page. It has no window, so the page subscribes: for
 /// toasts, and to ask before an install.
 #[derive(Debug, Clone)]
@@ -26,10 +28,8 @@ impl ExtensionEvent {
                 Some(Notification::success(message.clone()))
             }
             Self::Failed { action, message } => Some(
-                Notification::error(message.clone())
-                    .title(format!("Extension: {action} failed"))
-                    .id1::<ExtensionEvent>(*action)
-                    .autohide(false),
+                error_notification(format!("Extension: {action} failed"), message.clone())
+                    .id1::<ExtensionEvent>(*action),
             ),
         }
     }
