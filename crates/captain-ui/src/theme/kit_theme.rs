@@ -4,8 +4,10 @@
 use std::rc::Rc;
 
 use captain_core::settings::ThemeFamily;
+use gpui_kit::component::highlighter::HighlightThemeStyle;
 use gpui_kit::component::{Theme, ThemeConfig, ThemeConfigColors, ThemeMode};
 use gpui_kit::*;
+use serde_json::{Value, json};
 
 use super::Tokens;
 
@@ -83,6 +85,52 @@ fn config(family: ThemeFamily, dark: bool) -> ThemeConfig {
             ThemeMode::Light
         },
         colors,
+        highlight: Some(highlight(&t)),
         ..ThemeConfig::default()
     }
 }
+
+/// The code editor theme. Without it the editor keeps gpui-kit's default light
+/// highlight theme in every mode, white background included.
+fn highlight(t: &Tokens) -> HighlightThemeStyle {
+    let s = t.syntax();
+    let hex = |color: u32| format!("#{color:06x}");
+    let color = |color: u32| json!({ "color": hex(color) });
+    let punctuation = color(s.punctuation);
+    let mut syntax = serde_json::Map::new();
+    for (names, style) in [
+        (&["property"][..], color(s.key)),
+        (&["string", "text.literal"], color(s.string)),
+        (
+            &["string.escape", "number", "boolean", "constant"],
+            color(s.number),
+        ),
+        (&["keyword", "type", "label", "attribute"], color(s.keyword)),
+        (
+            &["comment"],
+            json!({ "color": hex(s.comment), "font_style": "italic" }),
+        ),
+        (&["punctuation", "operator"], punctuation),
+    ] {
+        for name in names {
+            syntax.insert((*name).into(), style.clone());
+        }
+    }
+    let style = json!({
+        "editor.background": hex(s.background),
+        "editor.gutter.background": hex(s.background),
+        "editor.foreground": hex(s.text),
+        "editor.active_line.background": format!("#{:06x}66", t.border_strong),
+        "editor.line_number": hex(s.line_number),
+        "editor.active_line_number": hex(s.active_line_number),
+        "editor.invisible": format!("#{:06x}99", t.text3),
+        "error": hex(t.failing),
+        "warning": hex(t.warning),
+        "info": hex(t.info),
+        "syntax": Value::Object(syntax),
+    });
+    serde_json::from_value(style).expect("the editor theme matches gpui-kit's schema")
+}
+
+#[cfg(test)]
+mod tests;

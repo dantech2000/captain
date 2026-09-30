@@ -2,6 +2,7 @@ mod contrast;
 mod kit_theme;
 mod palette;
 mod state_colors;
+mod syntax;
 mod tokens;
 
 pub use contrast::contrast;
