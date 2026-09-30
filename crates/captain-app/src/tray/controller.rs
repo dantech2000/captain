@@ -1,20 +1,24 @@
-//! The menu bar icon: it follows the workspace and rebuilds its menu when the
-//! engine state or the container list changes.
+//! The menu bar icon: it follows the workspace and rebuilds its native menu when
+//! the engine state, the container list, or a problem changes. A left click opens
+//! the menu, like a right click.
 
 use std::collections::HashMap;
 use std::time::Duration;
 
 use captain_core::kubernetes::{KubeContexts, load_contexts, user_kubeconfig_paths};
+use captain_core::model::ContainerState;
+use captain_core::problems::ExitFacts;
 use captain_ui::Workspace;
 use gpui_kit::*;
-use muda::MenuId;
+use muda::{IconMenuItem, MenuId};
 use tray_icon::{Icon, TrayIcon, TrayIconBuilder};
 
+use super::exit_facts::ExitFactsCache;
+use super::gather::snapshot;
 use super::menu::NativeMenu;
 use super::menu_model::{self, TrayCommand};
-use super::placement::{Rect, popover_rect};
 use super::snapshot::{EngineStatus, TraySnapshot};
-use super::{events, icon, screens};
+use super::{events, icon};
 use crate::window;
 
 /// Changes often come in bursts, for example `docker compose up`. Wait this long
@@ -41,11 +45,14 @@ struct Tray {
     /// The snapshot that the current menu shows.
     shown: Option<TraySnapshot>,
     commands: HashMap<MenuId, TrayCommand>,
+    /// The engine's status line in the current menu.
+    status: Option<IconMenuItem>,
     rebuild: Option<Task<()>>,
     workspace: Entity<Workspace>,
     contexts: KubeContexts,
+    exits: ExitFactsCache,
     _observe: Vec<Subscription>,
-    _events: [Task<()>; 2],
+    _events: Task<()>,
     _contexts: Option<Task<()>>,
     /// Turns the wheel while the engine starts.
     spin: Option<Task<()>>,
@@ -62,14 +69,13 @@ impl Global for TrayHandle {}
 pub fn start(cx: &mut App) {
     let workspace = window::workspace(cx);
     let contexts = load_contexts(&user_kubeconfig_paths());
-    let snapshot = snapshot(&workspace, &contexts, cx);
+    let snapshot = snapshot(&workspace, &contexts, &HashMap::new(), cx);
     let host = captain_ui::host_model(cx);
+    // tray-icon opens the menu on a left click by default, as macOS menu extras do.
     let icon = TrayIconBuilder::new()
         .with_tooltip("Captain")
         .with_icon(status_icon(snapshot.icon(), 0))
         .with_icon_as_template(true)
-        // A left click opens the popover; a right click still opens the menu.
-        .with_menu_on_left_click(false)
         .build();
     let icon = match icon {
         Ok(icon) => icon,
@@ -78,31 +84,41 @@ pub fn start(cx: &mut App) {
             return;
         }
     };
-    let events = events::listen(command, icon_clicked, cx);
+    let events = events::listen(command, cx);
     let tray = cx.new(|cx| {
-        let mut observe = vec![cx.observe(&workspace, |tray: &mut Tray, workspace, cx| {
-            tray.workspace_changed(workspace, cx);
+        let mut observe = vec![cx.observe(&workspace, |tray: &mut Tray, _, cx| {
+            tray.follow_restarts(cx);
+            tray.workspace_changed(cx);
         })];
-        // Captain Engine changes the status line and the Start or Stop item.
-        let watched = workspace.clone();
-        observe.extend(host.map(|host| {
-            cx.observe(&host, move |tray: &mut Tray, _, cx| {
-                tray.workspace_changed(watched.clone(), cx);
-            })
-        }));
+        // Captain Engine changes the status line and the Start or Stop item; the
+        // checks and Kubernetes change the problem and the Kubernetes items.
+        observe.extend(
+            host.map(|m| cx.observe(&m, |tray: &mut Tray, _, cx| tray.workspace_changed(cx))),
+        );
+        observe.extend(
+            captain_ui::diagnostics_model(cx)
+                .map(|m| cx.observe(&m, |tray: &mut Tray, _, cx| tray.workspace_changed(cx))),
+        );
+        observe.extend(
+            captain_ui::kubernetes_model(cx)
+                .map(|m| cx.observe(&m, |tray: &mut Tray, _, cx| tray.workspace_changed(cx))),
+        );
         let mut tray = Tray {
             icon,
             shown: None,
             commands: HashMap::new(),
+            status: None,
             rebuild: None,
             workspace,
             contexts,
+            exits: ExitFactsCache::default(),
             _observe: observe,
             _events: events,
             _contexts: None,
             spin: None,
         };
         tray.show(snapshot, cx);
+        tray.follow_restarts(cx);
         tray.poll_contexts(cx);
         tray
     });
@@ -117,26 +133,8 @@ pub fn is_running(cx: &App) -> bool {
 /// Removes the icon. The settings turned it off.
 pub fn stop(cx: &mut App) {
     if is_running(cx) {
-        captain_ui::close_popover(cx);
         cx.remove_global::<TrayHandle>();
     }
-}
-
-/// Opens or closes the popover under the icon. `icon` is in physical pixels.
-fn icon_clicked(icon: Rect, cx: &mut App) {
-    let screens = screens::screens(cx);
-    let place = move |wanted: Size<Pixels>| {
-        let relative = cfg!(target_os = "macos");
-        let width = wanted.width.as_f32();
-        let height = wanted.height.as_f32();
-        let (display, rect) = popover_rect(icon, &screens, width, height, relative)?;
-        let bounds = Bounds::new(
-            point(px(rect.x), px(rect.y)),
-            size(px(rect.width), px(rect.height)),
-        );
-        Some((display, bounds))
-    };
-    captain_ui::toggle_popover(window::workspace(cx), place, window::show, cx);
 }
 
 /// Reads the kubeconfig again now, after the menu switched the context.
@@ -157,8 +155,8 @@ fn command(id: &MenuId, cx: &App) -> Option<TrayCommand> {
 impl Tray {
     /// Stats samples notify many times a second. Compare the small snapshot first,
     /// and rebuild only when the menu would change.
-    fn workspace_changed(&mut self, workspace: Entity<Workspace>, cx: &mut Context<Self>) {
-        let current = snapshot(&workspace, &self.contexts, cx);
+    fn workspace_changed(&mut self, cx: &mut Context<Self>) {
+        let current = snapshot(&self.workspace, &self.contexts, self.exits.facts(), cx);
         if self.rebuild.is_some() || self.shown.as_ref() == Some(&current) {
             return;
         }
@@ -166,10 +164,52 @@ impl Tray {
             cx.background_executor().timer(REBUILD_DEBOUNCE).await;
             this.update(cx, |this, cx| {
                 this.rebuild = None;
-                this.show(snapshot(&workspace, &this.contexts, cx), cx);
+                let current = snapshot(&this.workspace, &this.contexts, this.exits.facts(), cx);
+                this.show(current, cx);
             })
             .ok();
         }));
+    }
+
+    /// Inspects each container that crashed again since the last look, to learn if
+    /// it ran out of memory and what its limit is.
+    fn follow_restarts(&mut self, cx: &mut Context<Self>) {
+        let workspace = self.workspace.read(cx);
+        let crashing = workspace
+            .store()
+            .containers()
+            .iter()
+            .filter_map(|c| {
+                let crash = workspace.recent_crash(&c.id);
+                (c.state == ContainerState::Restarting || crash.is_some())
+                    .then(|| (c.id.clone(), crash.map(|crash| crash.at)))
+            })
+            .collect();
+        let engine = workspace.engine();
+        let fresh = self.exits.follow(crashing);
+        let Some(engine) = engine else {
+            return;
+        };
+        for id in fresh {
+            let inspect = engine.inspect_container(&id);
+            cx.spawn(async move |this, cx| {
+                let Ok(detail) = inspect.await else {
+                    return;
+                };
+                let facts = ExitFacts {
+                    oom_killed: detail.oom_killed,
+                    memory_limit: i64::try_from(detail.memory_limit).unwrap_or(i64::MAX),
+                    restart_count: detail.restart_count,
+                };
+                this.update(cx, |tray, cx| {
+                    if tray.exits.insert(id, facts) {
+                        tray.workspace_changed(cx);
+                    }
+                })
+                .ok();
+            })
+            .detach();
+        }
     }
 
     /// Reads the contexts every few seconds, off the main thread.
@@ -194,22 +234,33 @@ impl Tray {
     fn set_contexts(&mut self, contexts: KubeContexts, cx: &mut Context<Self>) {
         if contexts != self.contexts {
             self.contexts = contexts;
-            self.workspace_changed(self.workspace.clone(), cx);
+            self.workspace_changed(cx);
         }
     }
 
+    /// Shows `snapshot`. When only the status line changed, as it does with each
+    /// stats sample, the line changes in place; else the menu is built again.
     fn show(&mut self, snapshot: TraySnapshot, cx: &mut Context<Self>) {
-        if self.shown.as_ref() == Some(&snapshot) {
+        let shown = self.shown.as_ref();
+        if shown == Some(&snapshot) {
+            return;
+        }
+        if let (Some(shown), Some(status)) = (shown, &self.status)
+            && shown.same_menu(&snapshot)
+        {
+            status.set_text(&snapshot.status_line);
+            self.shown = Some(snapshot);
             return;
         }
         let status = snapshot.icon();
-        if self.shown.as_ref().map(TraySnapshot::icon) != Some(status) {
+        if shown.map(TraySnapshot::icon) != Some(status) {
             self.set_icon(status, 0);
             self.spin = (status == EngineStatus::Starting).then(|| Self::turn(cx));
         }
         let native = NativeMenu::new(&menu_model::build(&snapshot));
         self.icon.set_menu(Some(Box::new(native.menu)));
         self.commands = native.commands;
+        self.status = native.status;
         self.shown = Some(snapshot);
     }
 }
@@ -239,13 +290,6 @@ impl Tray {
                 }
             }
         })
-    }
-}
-
-fn snapshot(workspace: &Entity<Workspace>, contexts: &KubeContexts, cx: &App) -> TraySnapshot {
-    TraySnapshot {
-        contexts: contexts.clone(),
-        ..TraySnapshot::of(workspace.read(cx), captain_ui::host_summary(cx).as_ref())
     }
 }
 

@@ -54,7 +54,7 @@ pub fn rgba(status: EngineStatus, frame: u32, color: [u8; 3]) -> Vec<u8> {
 }
 
 /// The share of a grid of points inside pixel `(x, y)` for which `shape` is true.
-fn coverage(x: u32, y: u32, shape: impl Fn(f32, f32) -> bool) -> f32 {
+pub fn coverage(x: u32, y: u32, shape: impl Fn(f32, f32) -> bool) -> f32 {
     let step = 1. / SAMPLES as f32;
     let mut total = 0;
     for sy in 0..SAMPLES {

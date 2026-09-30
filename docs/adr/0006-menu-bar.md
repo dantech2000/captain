@@ -26,11 +26,12 @@ M10 puts a Captain icon in the macOS menu bar and the Windows notification area 
 - Linux has no tray. A later change can add one with a GTK loop on a helper thread, or with a StatusNotifierItem over D-Bus.
 - The icon, the menu, and the window lifecycle need a manual check in the running app; unit tests cover the snapshot, the menu model, and the icon drawing.
 
-## Update: the popover (M26)
+## Update: the popover (M26), then back to the native menu
 
-- A left click on the icon now opens a GPUI popover instead of the menu; a right click still opens the `muda` menu. The icon is built with `with_menu_on_left_click(false)`, and the `TrayIconEvent` handler forwards left-button releases, with the icon's rectangle, through a second channel to a GPUI task. Other icon events are still dropped in the handler.
-- The popover is a `WindowKind::PopUp` window: on macOS a non-activating `NSPanel` at the pop-up level. It is not a native `NSPopover`, because GPUI owns the window and draws the content, and an `NSPopover` would need `unsafe` AppKit code that the workspace forbids.
-- It closes when it loses focus, so a click on the icon while it is open closes it first; the click that follows within 500 ms does not open it again.
-- The icon is still the ship's wheel, to match the app icon. Since M11 it shows the engine state: dimmed when stopped, turning while starting, full when running, and with a notch dot when something needs attention. See [feature 0012](../features/0012-icon-theme.md).
-- The right-click menu names the worst container problem under its status line, in the same words as the popover. Both take the sentence from `captain_core::problems`.
-- See [feature 0032](../features/0032-menu-bar-popover.md).
+- M26 made a left click open a GPUI popover (`WindowKind::PopUp`, a non-activating `NSPanel` on macOS) and kept the `muda` menu on a right click.
+- The `traymenu` change removed the popover. The user wanted the standard OS menu, matching the system's style like Rancher Desktop's menu. tray-icon's default opens the menu on a left click too, so both clicks open the same `muda` menu. The `TrayIconEvent` handler now drops every icon event, so they do not pile up in tray-icon's channel.
+- Every popover action is a menu item now: the engine line with CPUs and memory, the worst problem with its fixes (Raise Memory, Show Logs in a Window, Stop or Restart, the Diagnostics fix), Open Ports, a Kubernetes check item, and Stop All Containers. See [feature 0009](../features/0009-menu-bar.md).
+- Rebuilds stay cheap: the snapshot holds only what the menu shows. The engine line's memory changes with each stats sample, so when only that line differs, its text changes in place (`IconMenuItem::set_text`) and the menu is not built again. Other changes still rebuild the menu 200 ms later.
+- Status dots: `IconMenuItem` and `Submenu::set_icon` carry small colored dots, drawn in code and cached per color. They are color images, not templates. `CheckMenuItem` takes no image in muda 0.20, so Kubernetes has a separate status line.
+- The icon is still the ship's wheel, with a notch dot when a container needs attention. See [feature 0012](../features/0012-icon-theme.md).
+- The floating log window and the Dock badge stay. See [feature 0032](../features/0032-menu-bar-popover.md).

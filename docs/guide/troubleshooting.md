@@ -13,7 +13,7 @@ Each check has a state:
 
 A check with a fix has a button. Captain runs the checks at launch, when the engine starts, stops, or connects, and when you click **Run again**.
 
-The menu bar popover shows the worst failed check with the same fix button. The Dock icon counts the failed checks.
+The menu bar menu shows the worst failed check with the same fix. The Dock icon counts the failed checks.
 
 ## The checks
 
@@ -48,7 +48,7 @@ Compose projects, tasks, and builds need the `docker` CLI. If it is missing, the
 
 ### Docker Compose
 
-The project buttons, the popover switches, and tasks need the Compose plugin. If `docker compose version` fails, the check warns. `Captain.app` includes Compose.
+The project buttons and tasks need the Compose plugin. If `docker compose version` fails, the check warns. `Captain.app` includes Compose.
 
 ### Free disk space
 

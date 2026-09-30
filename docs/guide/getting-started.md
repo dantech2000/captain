@@ -101,24 +101,19 @@ Press ⌘K. Type a page, a container name, or a command such as `restart api` or
 
 Captain puts an icon in the menu bar. When you close the main window, Captain and the engine keep running. To quit, press ⌘Q, or choose **Quit Captain** from the icon's menu.
 
-### The popover
-
-Click the icon. The popover opens under it. It has five parts.
-
-- **The engine.** Its state, CPUs, and memory, and a switch that starts or stops Captain Engine.
-- **A warning card**, only when something is wrong. It shows the worst problem and its fix. For a container that keeps running out of memory, it offers **Raise to 512 MB** (twice the old limit, at least 512 MB), **Show logs**, and **Stop** *name*. For a failed Diagnostics check, it offers the same fix as the Diagnostics page.
-- **Projects.** One switch per Compose project. On runs `docker compose up`. Off stops the containers and keeps them. The **Kubernetes** row turns the cluster on or off.
-- **Open ports.** A click opens a web port in your browser, or copies the address of a database port.
-- **The footer.** **Open Captain**, **Float logs**, and **Stop all**.
-
-The line at the bottom of the popover shows the sentence for the control under the mouse.
-
-**Float logs** and **Show logs** open a small log window that stays on top of other apps. The strip at its top shows the container's state every few seconds. Green means it runs, amber means it restarts, and red means it stopped or is unhealthy.
-
-The Dock icon shows a count of failed checks and of containers that restart or are unhealthy.
-
 ### The menu
 
-Right-click the icon to open the menu. It has **Open Captain**, **Settings…**, **Start Captain Engine** or **Stop Captain Engine**, the project and container submenus, **Kubernetes Contexts**, and **Quit Captain**.
+Click the icon, with either button. The menu opens. It looks like the other menus in the menu bar. Colored dots show state: green runs, amber starts, stops, or is paused, gray is stopped, and red has a problem.
+
+- **The engine.** "Captain Engine: Running", its CPUs, and the memory the containers use. Under it, the number of running containers.
+- **The problem**, only when something is wrong. A line names the worst problem, and the items under it fix it. For a container that keeps running out of memory, the menu offers **Raise Memory to** *size* (twice the old limit), **Show Logs in a Window**, and **Stop** *name*. For a failed Diagnostics check, it offers the same fix as the Diagnostics page.
+- **Start Captain Engine** or **Stop Captain Engine**, **Open Captain**, and **Settings…**.
+- **Containers**, **Projects**, and **Open Ports**. Each running container has Stop, Restart, Show Logs in a Window, and its ports. Each Compose project has Start, Stop, and Restart. In Open Ports, a web port opens in your browser, and a database port copies its address.
+- **Kubernetes.** Its state, a check mark that turns the cluster on or off, and **Kubernetes Contexts**.
+- **Stop All Containers** and **Quit Captain**.
+
+**Show Logs in a Window** opens a small log window that stays on top of other apps. The strip at its top shows the container's state every few seconds. Green means it runs, amber means it restarts, and red means it stopped or is unhealthy.
+
+The Dock icon shows a count of failed checks and of containers that restart or are unhealthy.
 
 To hide the icon, turn off **Show Captain in the menu bar** in [Settings](settings.md). Without the icon, closing the window quits Captain.

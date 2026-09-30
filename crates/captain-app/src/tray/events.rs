@@ -5,50 +5,27 @@ use futures::StreamExt;
 use futures::channel::mpsc;
 use gpui_kit::*;
 use muda::{MenuEvent, MenuId};
-use tray_icon::{MouseButton, MouseButtonState, TrayIconEvent};
+use tray_icon::TrayIconEvent;
 
 use super::menu_model::TrayCommand;
-use super::placement::Rect;
+use super::raise::raise_memory;
 use crate::{quit, window};
 
-/// Forwards menu clicks and left clicks on the icon to GPUI tasks on the main
-/// thread. `command` looks up what a clicked item does in the current menu;
-/// `clicked` gets the icon's rectangle in physical pixels.
+/// Forwards menu clicks to a GPUI task on the main thread. `command` looks up what
+/// a clicked item does in the current menu.
 ///
-/// `muda` and `tray-icon` call the handlers on the main thread while the platform
-/// run loop handles the click; the channels wake the GPUI tasks, so nothing polls.
-/// See ADR 0006.
-pub fn listen(
-    command: fn(&MenuId, &App) -> Option<TrayCommand>,
-    clicked: fn(Rect, &mut App),
-    cx: &mut App,
-) -> [Task<()>; 2] {
+/// `muda` calls the handler on the main thread while the platform run loop handles
+/// the click; the channel wakes the GPUI task, so nothing polls. See ADR 0006.
+pub fn listen(command: fn(&MenuId, &App) -> Option<TrayCommand>, cx: &mut App) -> Task<()> {
     let (sender, mut receiver) = mpsc::unbounded();
     MenuEvent::set_event_handler(Some(move |event: MenuEvent| {
         sender.unbounded_send(event.id).ok();
     }));
-    // Only the release of a left click counts; hovers and moves are dropped here, so
-    // they do not pile up in tray-icon's channel.
-    let (click_sender, mut clicks) = mpsc::unbounded();
-    TrayIconEvent::set_event_handler(Some(move |event| {
-        if let TrayIconEvent::Click {
-            rect,
-            button: MouseButton::Left,
-            button_state: MouseButtonState::Up,
-            ..
-        } = event
-        {
-            let rect = Rect {
-                x: rect.position.x as f32,
-                y: rect.position.y as f32,
-                width: rect.size.width as f32,
-                height: rect.size.height as f32,
-            };
-            click_sender.unbounded_send(rect).ok();
-        }
-    }));
+    // The menu opens by itself on a click. Drop the icon's clicks, hovers, and
+    // moves, so they do not pile up in tray-icon's channel.
+    TrayIconEvent::set_event_handler(Some(|_| {}));
 
-    let menu = cx.spawn(async move |cx| {
+    cx.spawn(async move |cx| {
         while let Some(id) = receiver.next().await {
             cx.update(|cx| {
                 if let Some(command) = command(&id, cx) {
@@ -56,13 +33,7 @@ pub fn listen(
                 }
             });
         }
-    });
-    let icon = cx.spawn(async move |cx| {
-        while let Some(rect) = clicks.next().await {
-            cx.update(|cx| clicked(rect, cx));
-        }
-    });
-    [menu, icon]
+    })
 }
 
 fn run(command: TrayCommand, cx: &mut App) {
@@ -85,12 +56,35 @@ fn run(command: TrayCommand, cx: &mut App) {
                 workspace.run_action(id, action, cx);
             });
         }
-        TrayCommand::Project { ids, action } => {
+        TrayCommand::Containers { ids, action } => {
             window::workspace(cx).update(cx, |workspace, cx| {
                 workspace.run_actions(ids, action, cx);
             });
         }
-        TrayCommand::OpenPort(port) => cx.open_url(&format!("http://localhost:{port}")),
+        TrayCommand::FloatLog { id, name } => {
+            captain_ui::open_float_log(window::workspace(cx), id, name, cx);
+        }
+        TrayCommand::RaiseMemory { id, name, bytes } => raise_memory(id, name, bytes, cx),
+        // A fix can report in a notification, so it runs in the main window.
+        TrayCommand::RunFix(fix) => {
+            window::show(cx);
+            window::update_main(cx, |window, cx| {
+                captain_ui::run_suggested_fix(&fix, window, cx)
+            });
+        }
+        TrayCommand::OpenUrl(url) => cx.open_url(&url),
+        TrayCommand::CopyAddress(address) => {
+            cx.write_to_clipboard(ClipboardItem::new_string(address));
+        }
+        // As the Settings switch, then Apply, so the cluster starts or stops now.
+        TrayCommand::SetKubernetes(on) => {
+            if let Some(model) = captain_ui::kubernetes_model(cx) {
+                model.update(cx, |model, cx| {
+                    model.turn_on(on, cx);
+                    model.apply(cx);
+                });
+            }
+        }
         TrayCommand::UseContext(name) => {
             let paths = user_kubeconfig_paths();
             if let Err(error) = use_context(&paths, &name) {

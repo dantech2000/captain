@@ -13,4 +13,4 @@ pub use diagnostics_model::{
     DiagnosticsModel, DiagnosticsSetup, diagnostics_model, failures, init,
 };
 pub use diagnostics_view::DiagnosticsView;
-pub(crate) use fix::run as run_fix;
+pub use fix::run_suggested as run_suggested_fix;

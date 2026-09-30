@@ -39,7 +39,7 @@ The port inside the container decides. These container ports copy the address:
 | 11211 | Memcached |
 | 27017 | MongoDB |
 
-Every other port opens in the browser. The same rule applies to the ports in the menu bar popover and to `open` in the command palette.
+Every other port opens in the browser. The same rule applies to **Open Ports** in the menu bar menu and to `open` in the command palette.
 
 ## Service cards
 

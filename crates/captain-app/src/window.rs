@@ -73,6 +73,14 @@ pub fn show_settings(cx: &mut App) {
     });
 }
 
+/// Runs `f` on the main window, when it is open.
+#[cfg(any(target_os = "macos", target_os = "windows"))]
+pub fn update_main(cx: &mut App, f: impl FnOnce(&mut Window, &mut App)) {
+    if let Some(handle) = cx.global::<MainWindow>().handle {
+        handle.update(cx, |_, window, cx| f(window, cx)).ok();
+    }
+}
+
 fn open(cx: &mut App) {
     let bounds = Bounds::centered(None, size(px(1440.), px(900.)), cx);
     let options = WindowOptions {

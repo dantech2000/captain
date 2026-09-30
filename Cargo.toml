@@ -34,11 +34,10 @@ gpui-wry = "0.7"
 k8s-openapi = { version = "0.28", features = ["latest"] }
 kube = { version = "4.2", default-features = false, features = ["client", "rustls-tls", "ring", "ws"] }
 muda = { version = "0.20", default-features = false }
-# The Dock badge and the screens for the menu bar popover, macOS only. tray-icon
-# already pulls these versions in.
+# The Dock badge, macOS only. tray-icon already pulls these versions in.
 objc2 = "0.6"
-objc2-app-kit = { version = "0.3.2", default-features = false, features = ["std", "objc2-core-graphics", "NSApplication", "NSDockTile", "NSEvent", "NSResponder", "NSScreen"] }
-objc2-foundation = { version = "0.3.2", default-features = false, features = ["std", "NSArray", "NSEnumerator", "NSGeometry", "NSString"] }
+objc2-app-kit = { version = "0.3.2", default-features = false, features = ["std", "NSApplication", "NSDockTile", "NSResponder"] }
+objc2-foundation = { version = "0.3.2", default-features = false, features = ["std", "NSString"] }
 raw-window-handle = { version = "0.6", features = ["std"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"

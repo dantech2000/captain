@@ -1,10 +1,15 @@
 use std::collections::HashMap;
 
 use captain_core::HostStatus;
+use captain_core::diagnostics::Check;
+use captain_core::format::bytes_label;
 use captain_core::kubernetes::KubeContexts;
-use captain_core::model::{Container, ContainerState};
-use captain_core::problems::{Problem, first_problem};
+use captain_core::model::Container;
+use captain_core::problems::{ExitFacts, Problem, first_problem};
+use captain_core::store::Crash;
 use captain_ui::{Connection, HostSummary, Workspace};
+
+use super::entries::{ContainerEntry, HostEntry, KubeEntry};
 
 /// The engine state that the icon and the first status line show.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -36,53 +41,6 @@ impl EngineStatus {
             _ => Self::Stopped,
         }
     }
-
-    pub fn label(self) -> &'static str {
-        match self {
-            Self::Starting => "Captain Engine is starting",
-            Self::Running => "Captain Engine is running",
-            Self::Stopped => "Captain Engine is stopped",
-            Self::NeedsAttention => "Captain Engine needs attention",
-        }
-    }
-}
-
-/// One container, with only what the menu shows.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ContainerEntry {
-    pub id: String,
-    pub name: String,
-    pub state: ContainerState,
-    pub project: Option<String>,
-    pub ports: Vec<u16>,
-}
-
-impl ContainerEntry {
-    pub fn is_active(&self) -> bool {
-        self.state.is_active()
-    }
-}
-
-/// Captain Engine's state, when the settings choose it.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct HostEntry {
-    pub status: HostStatus,
-    pub can_control: bool,
-}
-
-impl HostEntry {
-    /// The first line of the menu.
-    pub fn label(&self) -> &'static str {
-        match self.status {
-            HostStatus::Running => "Captain Engine is running",
-            HostStatus::Starting => "Captain Engine is starting",
-            HostStatus::Stopping => "Captain Engine is stopping",
-            HostStatus::Stopped => "Captain Engine is stopped",
-            HostStatus::NotCreated => "Captain Engine is not set up",
-            HostStatus::NotInstalled(_) => "Captain Engine needs Lima",
-            HostStatus::Failed(_) => "Captain Engine did not start",
-        }
-    }
 }
 
 /// The part of the workspace that the menu depends on. The tray rebuilds the menu
@@ -90,80 +48,92 @@ impl HostEntry {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TraySnapshot {
     pub engine: EngineStatus,
+    /// The first line: the engine, its state, and while it runs its CPUs and the
+    /// memory in use. Only this line follows the stats; it changes in place.
+    pub status_line: String,
     /// In the store's order: active containers first, then by name.
     pub containers: Vec<ContainerEntry>,
     /// Captain Engine, or `None` when Captain uses another engine.
     pub host: Option<HostEntry>,
+    /// Kubernetes, while Captain Engine is the engine and Captain controls it.
+    pub kubernetes: Option<KubeEntry>,
     /// The contexts in the user's kubeconfig, for the Kubernetes Contexts submenu.
     pub contexts: KubeContexts,
-    /// The worst container problem, in the popover's words.
-    pub problem: Option<String>,
+    /// The worst problem, with the fixes the menu offers for it.
+    pub problem: Option<Problem>,
 }
 
 impl TraySnapshot {
-    /// Containers count only while the engine runs; a failed engine keeps its old list.
+    /// A snapshot without crashes, checks, or Captain Engine. Containers count only
+    /// while the engine runs.
+    #[cfg(test)]
     pub fn new(engine: EngineStatus, containers: &[Container]) -> Self {
-        // The popover also weighs diagnostics checks and why a container exited;
-        // the menu has neither, so it names the container problem alone.
-        let problem = (engine == EngineStatus::Running)
-            .then(|| first_problem(None, &[], containers, &HashMap::new(), &|_| None))
-            .flatten()
-            .as_ref()
-            .map(Problem::line);
-        let containers = match engine {
-            EngineStatus::Running => containers
-                .iter()
-                .map(|container| ContainerEntry {
-                    id: container.id.clone(),
-                    name: container.name.clone(),
-                    state: container.state,
-                    project: container.compose_project.clone(),
-                    ports: container.published_ports(),
-                })
-                .collect(),
-            _ => Vec::new(),
-        };
-        Self {
-            engine,
+        let scan = Scan {
             containers,
-            host: None,
-            contexts: KubeContexts::default(),
-            problem,
-        }
+            crash: &|_| None,
+            failure: None,
+            checks: &[],
+            facts: &HashMap::new(),
+        };
+        scan.snapshot(engine, format!("Captain Engine: {engine:?}"), None)
     }
 
-    pub fn of(workspace: &Workspace, host: Option<&HostSummary>) -> Self {
+    /// `checks` are the diagnostics checks; `facts` is what `inspect` said about each
+    /// crashing container.
+    pub fn of(
+        workspace: &Workspace,
+        host: Option<&HostSummary>,
+        checks: &[Check],
+        facts: &HashMap<String, ExitFacts>,
+    ) -> Self {
         let connection = workspace.connection();
         let engine = host.map_or_else(
             || EngineStatus::of(connection),
             |host| EngineStatus::of_host(&host.status, connection),
         );
+        let used = workspace.stats().total_memory();
+        let line = status_line(connection, used, host.map(|host| &host.status));
         // Hidden Kubernetes containers do not count, as on the Containers page.
         let shown = shown(workspace);
-        let mut snapshot = Self {
-            host: host.map(|host| HostEntry {
-                status: host.status.clone(),
-                can_control: host.can_control,
-            }),
-            ..Self::new(engine, &shown)
-        };
+        let failure = host.and_then(|host| match &host.status {
+            HostStatus::Failed(why) => Some(why.as_str()),
+            _ => None,
+        });
         // A crash loop runs most of the time between restarts; the recent crashes
-        // from the event stream keep the icon's dot steady through it.
-        if engine == EngineStatus::Running {
-            snapshot.problem = first_problem(None, &[], &shown, &HashMap::new(), &|id| {
-                workspace.recent_crash(id)
-            })
-            .as_ref()
-            .map(Problem::line);
-        }
-        snapshot
+        // from the event stream keep the problem and the icon's dot steady.
+        let scan = Scan {
+            containers: &shown,
+            crash: &|id| workspace.recent_crash(id),
+            failure,
+            checks,
+            facts,
+        };
+        let host = host.map(|host| HostEntry {
+            status: host.status.clone(),
+            can_control: host.can_control,
+        });
+        scan.snapshot(engine, line, host)
+    }
+
+    /// True when the menus of both snapshots differ at most in the status line.
+    pub fn same_menu(&self, other: &Self) -> bool {
+        self.engine == other.engine
+            && self.containers == other.containers
+            && self.host == other.host
+            && self.kubernetes == other.kubernetes
+            && self.contexts == other.contexts
+            && self.problem == other.problem
     }
 
     /// The state the menu bar icon shows: a running engine needs attention while a
     /// container is restarting or unhealthy.
     pub fn icon(&self) -> EngineStatus {
+        let sick = self
+            .problem
+            .as_ref()
+            .is_some_and(|problem| problem.container().is_some());
         match self.engine {
-            EngineStatus::Running if self.problem.is_some() => EngineStatus::NeedsAttention,
+            EngineStatus::Running if sick => EngineStatus::NeedsAttention,
             engine => engine,
         }
     }
@@ -172,6 +142,80 @@ impl TraySnapshot {
     pub fn active_count(&self) -> usize {
         self.containers.iter().filter(|c| c.is_active()).count()
     }
+}
+
+/// What the snapshot reads the problem and the container list from.
+struct Scan<'a> {
+    containers: &'a [Container],
+    crash: &'a dyn Fn(&str) -> Option<Crash>,
+    /// Why Captain Engine did not start.
+    failure: Option<&'a str>,
+    checks: &'a [Check],
+    facts: &'a HashMap<String, ExitFacts>,
+}
+
+impl Scan<'_> {
+    fn snapshot(
+        &self,
+        engine: EngineStatus,
+        status_line: String,
+        host: Option<HostEntry>,
+    ) -> TraySnapshot {
+        let running = engine == EngineStatus::Running;
+        // Containers count only while the engine runs; a failed engine keeps its old
+        // list. A stopped engine is no problem, though some checks fail then.
+        let containers: &[Container] = if running { self.containers } else { &[] };
+        let checks = if running || self.failure.is_some() {
+            self.checks
+        } else {
+            &[]
+        };
+        let problem = first_problem(self.failure, checks, containers, self.facts, self.crash);
+        TraySnapshot {
+            engine,
+            status_line,
+            containers: containers
+                .iter()
+                .map(|c| ContainerEntry::of(c, (self.crash)(&c.id).is_some()))
+                .collect(),
+            host,
+            kubernetes: None,
+            contexts: KubeContexts::default(),
+            problem,
+        }
+    }
+}
+
+/// "Captain Engine: Running · 5 CPUs · 60 MB of 5.8 GB". `used` is the memory the
+/// containers use; `host` is Captain Engine's status when the settings choose it.
+fn status_line(connection: &Connection, used: u64, host: Option<&HostStatus>) -> String {
+    let usage = match connection {
+        Connection::Connected(info) => Some(format!(
+            "Running \u{b7} {} CPUs \u{b7} {} of {}",
+            info.cpus,
+            bytes_label(used),
+            bytes_label(info.memory_bytes)
+        )),
+        _ => None,
+    };
+    let (name, state) = match (host, connection) {
+        (Some(status), _) => {
+            let state = match status {
+                HostStatus::Running => usage.unwrap_or_else(|| "Connecting".into()),
+                HostStatus::NotInstalled(_) => "Needs Lima".into(),
+                HostStatus::Failed(_) => "Did not start".into(),
+                status => status.label().into(),
+            };
+            ("Captain Engine", state)
+        }
+        (None, Connection::Connected(info)) => (
+            captain_ui::engine_name(&info.endpoint),
+            usage.unwrap_or_default(),
+        ),
+        (None, Connection::Connecting) => ("Engine", "Connecting".into()),
+        (None, Connection::Failed(_)) => ("Engine", "Not reachable".into()),
+    };
+    format!("{name}: {state}")
 }
 
 /// The containers the main window shows.

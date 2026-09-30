@@ -1,66 +1,23 @@
+use captain_core::HostStatus;
 use captain_core::model::{ContainerAction, ContainerState};
 
 use super::{TrayCommand, TrayItem, build};
-use captain_core::HostStatus;
-
-use crate::tray::snapshot::{ContainerEntry, EngineStatus, HostEntry, TraySnapshot};
-
-fn entry(name: &str, state: ContainerState, project: Option<&str>) -> ContainerEntry {
-    ContainerEntry {
-        id: format!("{name}-id"),
-        name: name.into(),
-        state,
-        project: project.map(Into::into),
-        ports: Vec::new(),
-    }
-}
-
-fn snapshot(containers: Vec<ContainerEntry>) -> TraySnapshot {
-    TraySnapshot {
-        engine: EngineStatus::Running,
-        containers,
-        host: None,
-        contexts: Default::default(),
-        problem: None,
-    }
-}
-
-fn labels(items: &[TrayItem]) -> Vec<String> {
-    items
-        .iter()
-        .map(|item| match item {
-            TrayItem::Label(label)
-            | TrayItem::Command { label, .. }
-            | TrayItem::Check { label, .. }
-            | TrayItem::Submenu { label, .. } => label.clone(),
-            TrayItem::Separator => "-".into(),
-        })
-        .collect()
-}
-
-fn submenu<'a>(items: &'a [TrayItem], name: &str) -> &'a [TrayItem] {
-    items
-        .iter()
-        .find_map(|item| match item {
-            TrayItem::Submenu { label, items } if label == name => Some(items.as_slice()),
-            _ => None,
-        })
-        .unwrap_or_else(|| panic!("no submenu {name}"))
-}
+use crate::tray::dot::Light;
+use crate::tray::entries::HostEntry;
+use crate::tray::snapshot::{EngineStatus, TraySnapshot};
+use crate::tray::test_support::{entry, find, labels, light, snapshot, submenu};
 
 #[test]
 fn a_stopped_engine_shows_status_open_settings_and_quit() {
     let menu = build(&TraySnapshot {
         engine: EngineStatus::Stopped,
-        containers: Vec::new(),
-        host: None,
-        contexts: Default::default(),
-        problem: None,
+        status_line: "Captain Engine: Stopped".into(),
+        ..snapshot(Vec::new())
     });
     assert_eq!(
         labels(&menu),
         [
-            "Captain Engine is stopped",
+            "Captain Engine: Stopped",
             "-",
             "Open Captain",
             "Settings\u{2026}",
@@ -68,6 +25,7 @@ fn a_stopped_engine_shows_status_open_settings_and_quit() {
             "Quit Captain",
         ]
     );
+    assert_eq!(light(&menu[0]), Some(Light::Gray));
 }
 
 #[test]
@@ -80,7 +38,7 @@ fn a_running_engine_counts_containers_and_adds_the_submenus() {
     assert_eq!(
         labels(&menu),
         [
-            "Captain Engine is running",
+            "Captain Engine: Running",
             "2 of 3 containers running",
             "-",
             "Open Captain",
@@ -88,155 +46,111 @@ fn a_running_engine_counts_containers_and_adds_the_submenus() {
             "-",
             "Containers",
             "Projects",
+            "Open Ports",
+            "-",
+            "Stop All Containers",
             "-",
             "Quit Captain",
         ]
     );
     assert_eq!(labels(submenu(&menu, "Containers")), ["web", "cache"]);
-    assert_eq!(labels(submenu(&menu, "Projects")), ["No Compose projects"]);
+    assert_eq!(labels(submenu(&menu, "Projects")), ["No Compose Projects"]);
+    assert_eq!(labels(submenu(&menu, "Open Ports")), ["No Open Ports"]);
 }
 
 #[test]
-fn one_container_is_singular() {
+fn stop_all_is_disabled_when_nothing_runs() {
     let menu = build(&snapshot(vec![entry("web", ContainerState::Exited, None)]));
     assert_eq!(labels(&menu)[1], "0 of 1 container running");
-    assert_eq!(
-        labels(submenu(&menu, "Containers")),
-        ["No running containers"]
-    );
-}
-
-#[test]
-fn a_container_has_stop_restart_and_its_ports() {
-    let mut web = entry("web", ContainerState::Running, None);
-    web.ports = vec![8080, 8443];
-    let menu = build(&snapshot(vec![web]));
-    let web = submenu(submenu(&menu, "Containers"), "web");
-    assert_eq!(
-        labels(web),
-        [
-            "Stop",
-            "Restart",
-            "-",
-            "Open localhost:8080 in browser",
-            "Open localhost:8443 in browser",
-        ]
-    );
     assert!(matches!(
-        &web[0],
-        TrayItem::Command {
-            command: TrayCommand::Container { id, action: ContainerAction::Stop },
-            ..
-        } if id == "web-id"
+        find(&menu, "Stop All Containers"),
+        TrayItem::Command { enabled: false, .. }
     ));
-    assert!(matches!(
-        &web[4],
-        TrayItem::Command {
-            command: TrayCommand::OpenPort(8443),
-            ..
+    let menu = build(&snapshot(vec![entry("web", ContainerState::Running, None)]));
+    assert_eq!(
+        find(&menu, "Stop All Containers"),
+        &TrayItem::Command {
+            label: "Stop All Containers".into(),
+            command: TrayCommand::Containers {
+                ids: vec!["web-id".into()],
+                action: ContainerAction::Stop,
+            },
+            enabled: true,
         }
-    ));
+    );
 }
 
 #[test]
-fn projects_act_on_the_containers_that_can_take_the_action() {
+fn each_row_has_its_status_light() {
+    let mut crashing = entry("api", ContainerState::Running, Some("shop"));
+    crashing.failing = true;
     let menu = build(&snapshot(vec![
-        entry("shop-web", ContainerState::Running, Some("shop")),
-        entry("shop-db", ContainerState::Exited, Some("shop")),
-        entry("blog-web", ContainerState::Running, Some("blog")),
-        entry("loose", ContainerState::Running, None),
+        entry("web", ContainerState::Running, Some("blog")),
+        entry("cache", ContainerState::Paused, Some("cache")),
+        crashing,
+        entry("db", ContainerState::Exited, Some("shop")),
+        entry("old", ContainerState::Exited, Some("old")),
     ]));
-    let projects = submenu(&menu, "Projects");
-    assert_eq!(labels(projects), ["blog (1/1)", "shop (1/2)"]);
-
-    let shop = submenu(projects, "shop (1/2)");
-    let commands: Vec<(Vec<String>, ContainerAction, bool)> = shop
-        .iter()
-        .map(|item| match item {
-            TrayItem::Command {
-                command: TrayCommand::Project { ids, action },
-                enabled,
-                ..
-            } => (ids.clone(), *action, *enabled),
-            other => panic!("unexpected item {other:?}"),
-        })
-        .collect();
+    assert_eq!(light(&menu[0]), Some(Light::Green));
+    let containers = submenu(&menu, "Containers");
+    let lights: Vec<_> = containers.iter().map(light).collect();
     assert_eq!(
-        commands,
+        lights,
+        [Some(Light::Green), Some(Light::Amber), Some(Light::Red)]
+    );
+    let projects = submenu(&menu, "Projects");
+    let lights: Vec<_> = projects.iter().map(light).collect();
+    // In name order: blog runs, cache is paused, old is stopped, shop fails.
+    assert_eq!(
+        lights,
         [
-            (vec!["shop-db-id".into()], ContainerAction::Start, true),
-            (vec!["shop-web-id".into()], ContainerAction::Stop, true),
-            (
-                vec!["shop-web-id".into(), "shop-db-id".into()],
-                ContainerAction::Restart,
-                true
-            ),
+            Some(Light::Green),
+            Some(Light::Green),
+            Some(Light::Gray),
+            Some(Light::Red)
         ]
     );
-
-    let blog = submenu(projects, "blog (1/1)");
-    assert!(matches!(&blog[0], TrayItem::Command { enabled: false, .. }));
 }
 
 fn with_host(engine: EngineStatus, status: HostStatus) -> TraySnapshot {
     TraySnapshot {
         engine,
-        containers: Vec::new(),
         host: Some(HostEntry {
             status,
             can_control: true,
         }),
-        contexts: Default::default(),
-        problem: None,
+        ..snapshot(Vec::new())
     }
 }
 
 #[test]
 fn a_stopped_captain_engine_offers_start() {
     let menu = build(&with_host(EngineStatus::Stopped, HostStatus::Stopped));
-    assert_eq!(
-        labels(&menu)[..2],
-        ["Captain Engine is stopped", "Start Captain Engine"]
-    );
-    assert!(menu.contains(&TrayItem::Command {
-        label: "Start Captain Engine".into(),
-        command: TrayCommand::StartEngine,
-        enabled: true,
-    }));
+    assert_eq!(labels(&menu)[2], "Start Captain Engine");
+    assert!(menu.contains(&TrayItem::command(
+        "Start Captain Engine",
+        TrayCommand::StartEngine
+    )));
 }
 
 #[test]
 fn a_running_captain_engine_offers_stop() {
     let menu = build(&with_host(EngineStatus::Running, HostStatus::Running));
-    assert_eq!(
-        labels(&menu)[..3],
-        [
-            "Captain Engine is running",
-            "0 of 0 containers running",
-            "Stop Captain Engine"
-        ]
-    );
+    assert_eq!(labels(&menu)[3], "Stop Captain Engine");
 }
 
 #[test]
 fn a_new_captain_engine_opens_setup() {
     let menu = build(&with_host(EngineStatus::Stopped, HostStatus::NotCreated));
-    assert_eq!(labels(&menu)[0], "Captain Engine is not set up");
-    assert!(menu.contains(&TrayItem::Command {
-        label: "Set Up Captain Engine\u{2026}".into(),
-        command: TrayCommand::OpenCaptain,
-        enabled: true,
-    }));
+    assert!(menu.contains(&TrayItem::command(
+        "Set Up Captain Engine\u{2026}",
+        TrayCommand::OpenCaptain
+    )));
 }
 
 #[test]
 fn another_engine_has_no_engine_item() {
     let menu = build(&snapshot(Vec::new()));
-    assert!(
-        !labels(&menu)
-            .iter()
-            .any(|label| label.contains("Captain Engine\u{2026}"))
-    );
     assert!(!menu.iter().any(|item| matches!(
         item,
         TrayItem::Command {

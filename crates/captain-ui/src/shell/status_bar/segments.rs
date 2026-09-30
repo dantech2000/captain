@@ -166,7 +166,7 @@ fn kubernetes_segment(status: &KubernetesStatus, palette: &Palette) -> Segment {
 }
 
 /// A name for an engine that is not Captain Engine, from its socket path.
-pub(crate) fn engine_name(endpoint: &str) -> &'static str {
+pub fn engine_name(endpoint: &str) -> &'static str {
     const KNOWN: [(&str, &str); 5] = [
         (".docker/run/", "Docker Desktop"),
         (".orbstack/", "OrbStack"),

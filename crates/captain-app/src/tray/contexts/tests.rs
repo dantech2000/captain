@@ -9,7 +9,7 @@ fn checks_the_current_context() {
         names: vec!["prod".into(), "captain".into()],
         current: Some("captain".into()),
     };
-    let Some(TrayItem::Submenu { label, items }) = contexts_item(&contexts) else {
+    let Some(TrayItem::Submenu { label, items, .. }) = contexts_item(&contexts) else {
         panic!("no submenu");
     };
     assert_eq!(label, "Kubernetes Contexts");

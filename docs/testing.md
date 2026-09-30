@@ -159,16 +159,16 @@ x-captain:
 2. Click **Stage** on the worker, then **Apply**.
    - Expect: a toast, and `docker inspect` shows the new limit.
 
-## 11. Menu bar popover and floating log (M26)
+## 11. Menu bar menu and floating log (M26, native menu)
 
-1. Left-click the wheel in the menu bar while the worker crash-loops.
-   - Expect: a warning card, "…worker-1 keeps restarting: out of memory at …", with **Raise**, **Show logs**, and **Stop**. It stays while the worker runs between crashes.
-2. Click **Float logs**, or the window button in the details panel header.
+1. Left-click the wheel in the menu bar while the worker crash-loops. Then right-click it.
+   - Expect: the same native menu both times, in the system's style. Under the engine line, a red line "…worker-1 keeps restarting: out of memory at …", with **Raise Memory to** *size*, **Show Logs in a Window**, and **Stop** *name*. It stays while the worker runs between crashes.
+2. Choose **Show Logs in a Window**, or click the window button in the details panel header.
    - Expect: a small window with that container's log that stays on top.
-3. Check the Dock icon (if the Dock shows).
+3. Open **Open Ports ▸**. Choose the web port, then a database port.
+   - Expect: the browser opens the web port; the database address is on the clipboard.
+4. Check the Dock icon (if the Dock shows).
    - Expect: a red badge with the number of problems.
-4. Right-click the wheel.
-   - Expect: the plain menu.
 
 ## 12. ⌘K commands (M27)
 

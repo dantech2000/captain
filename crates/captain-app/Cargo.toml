@@ -28,7 +28,7 @@ tracing-subscriber.workspace = true
 muda.workspace = true
 tray-icon.workspace = true
 
-# The Dock badge and the screen list for the popover; see feature 0032.
+# The Dock badge; see feature 0032.
 [target.'cfg(target_os = "macos")'.dependencies]
 objc2.workspace = true
 objc2-app-kit.workspace = true

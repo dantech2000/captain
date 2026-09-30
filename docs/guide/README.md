@@ -10,7 +10,7 @@ Captain is written for macOS first. Linux and Windows builds exist, but they lac
 
 - Captain Engine runs only on macOS. On Linux, Captain uses the system `dockerd`. On Windows, Captain has no engine of its own yet.
 - Snapshots, Kubernetes, and the command-line tool links need Captain Engine, so they work only on macOS.
-- Linux has no menu bar icon, so it has no popover. Windows has the icon in the notification area.
+- Linux has no menu bar icon. Windows has the icon and its menu in the notification area.
 - Extension windows open only on macOS.
 - The Linux and Windows packages are not tested yet.
 

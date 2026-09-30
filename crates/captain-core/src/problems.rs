@@ -1,6 +1,5 @@
-//! The problems that the menu bar popover warns about and the Dock badge counts, and
-//! the one wording that the popover and the tray menu use for them. See
-//! docs/features/0032-menu-bar-popover.md.
+//! The problems that the menu bar menu warns about and the Dock badge counts, and
+//! the one wording for them. See docs/features/0032-menu-bar-popover.md.
 
 use std::collections::HashMap;
 
@@ -19,7 +18,7 @@ pub struct ExitFacts {
     pub restart_count: i64,
 }
 
-/// The one problem the popover's warning card shows.
+/// The one problem the menu bar menu shows, with its fixes.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Problem {
     /// Captain Engine did not start. `fix` comes from the failed diagnostics check.
@@ -57,8 +56,8 @@ impl Problem {
         }
     }
 
-    /// The problem as a sentence: the container's name, if any, which the popover
-    /// shows in bold, and the rest of the sentence.
+    /// The problem as a sentence: the container's name, if any, and the rest of
+    /// the sentence.
     pub fn sentence(&self) -> (Option<&str>, String) {
         match self {
             Self::EngineFailed { why, .. } => {
@@ -126,13 +125,13 @@ pub fn problem_count(
             .count()
 }
 
-/// The limit the popover offers when a container runs out of memory: twice the old
+/// The limit the menu offers when a container runs out of memory: twice the old
 /// one, at least 512 MB, like the project page and the map.
 pub fn raised_memory(limit: i64) -> i64 {
     limit.saturating_mul(2)
 }
 
-/// The problem that wins the warning card. A failed engine comes first, because
+/// The problem the menu shows. A failed engine comes first, because
 /// nothing else works without it. Then containers, worst first: out of memory,
 /// restarting, unhealthy. Failed diagnostics checks come last. `facts` holds what
 /// `inspect` said about restarting containers; `crash` gives a container's recent

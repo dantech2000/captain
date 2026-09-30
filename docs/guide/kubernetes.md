@@ -10,7 +10,7 @@ Kubernetes needs Captain Engine, so it works only on macOS. It is off by default
 2. Turn on the **Kubernetes** switch.
 3. Wait until the status bar shows "Kubernetes on". The first start downloads k3s, which takes a minute or two.
 
-You can also use the **Kubernetes** row in the menu bar popover, or run `captain kubernetes enable` with Captain closed.
+You can also choose **Kubernetes** in the menu bar menu, or run `captain kubernetes enable` with Captain closed.
 
 Kubernetes needs about 2 GB of memory of its own. Give Captain Engine at least 6 GB in Settings.
 

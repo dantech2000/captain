@@ -20,10 +20,7 @@ pub fn contexts_item(contexts: &KubeContexts) -> Option<TrayItem> {
             checked: contexts.current.as_ref() == Some(name),
         })
         .collect();
-    Some(TrayItem::Submenu {
-        label: "Kubernetes Contexts".into(),
-        items,
-    })
+    Some(TrayItem::submenu("Kubernetes Contexts", items))
 }
 
 #[cfg(test)]
