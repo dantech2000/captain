@@ -149,6 +149,12 @@ fn a_change_from_the_app_keeps_the_starter_comments() {
     };
     Settings::save_change(&path, &before, &after).unwrap();
     let text = fs::read_to_string(&path).unwrap();
-    assert!(text.contains("// \"stop_engine_on_quit\": false,"), "{text}");
-    assert_eq!(Settings::load(&path).unwrap().theme, ThemeFamily::Periwinkle);
+    assert!(
+        text.contains("// \"stop_engine_on_quit\": false,"),
+        "{text}"
+    );
+    assert_eq!(
+        Settings::load(&path).unwrap().theme,
+        ThemeFamily::Periwinkle
+    );
 }
