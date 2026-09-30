@@ -1,10 +1,14 @@
 //! The floating log: the container's name and project, a health strip, and the
-//! newest lines of its output as they arrive.
+//! newest lines of its output as they arrive. It follows the container through
+//! stops and starts.
 
 use std::collections::VecDeque;
 use std::time::Duration;
 
-use captain_core::model::{ContainerState, Health, LogLevel, LogLine};
+use captain_core::model::{
+    ContainerState, EngineEvent, EventKind, Health, LogLevel, LogLine, LogOptions, LogStream,
+};
+use captain_core::store::LogCursor;
 use futures::StreamExt;
 use gpui_kit::*;
 
@@ -37,7 +41,11 @@ pub struct FloatLogView {
     lines: VecDeque<LogLine>,
     beats: VecDeque<Beat>,
     stream_error: Option<String>,
-    _tasks: Vec<Task<()>>,
+    /// Where the log stream stopped, so a start resumes there.
+    cursor: LogCursor,
+    stream: Option<Task<()>>,
+    _beat: Task<()>,
+    _subscription: Subscription,
 }
 
 impl FloatLogView {
@@ -53,37 +61,18 @@ impl FloatLogView {
             Some(project) => format!("{name} · {project}"),
             None => name.clone(),
         });
-        let mut tasks = Vec::new();
-        if let Some(engine) = workspace.read(cx).engine() {
-            let mut stream = engine.logs(&id, TAIL);
-            tasks.push(cx.spawn(async move |this, cx| {
-                while let Some(line) = stream.next().await {
-                    let more = this.update(cx, |this, cx| {
-                        match line {
-                            Ok(line) => this.push(line),
-                            Err(error) => {
-                                this.stream_error =
-                                    Some(format!("The log stream stopped: {error}"));
-                            }
-                        }
-                        cx.notify();
-                        this.stream_error.is_none()
-                    });
-                    if !more.unwrap_or(false) {
-                        break;
-                    }
-                }
-            }));
-        }
-        tasks.push(cx.spawn(async move |this, cx| {
+        let beat = cx.spawn(async move |this, cx| {
             loop {
                 if this.update(cx, |this, cx| this.sample(cx)).is_err() {
                     return;
                 }
                 cx.background_executor().timer(BEAT_EVERY).await;
             }
-        }));
-        Self {
+        });
+        let subscription = cx.subscribe(&workspace, |this, _, event: &EngineEvent, cx| {
+            this.follow(event, cx)
+        });
+        let mut view = Self {
             workspace,
             id,
             name,
@@ -91,11 +80,74 @@ impl FloatLogView {
             lines: VecDeque::new(),
             beats: VecDeque::new(),
             stream_error: None,
-            _tasks: tasks,
+            cursor: LogCursor::default(),
+            stream: None,
+            _beat: beat,
+            _subscription: subscription,
+        };
+        view.connect(cx);
+        view
+    }
+
+    /// Opens the log stream, from the newest line seen if any. A new stream replaces
+    /// the old one, and the cursor drops the lines both send.
+    fn connect(&mut self, cx: &mut Context<Self>) {
+        let Some(engine) = self.workspace.read(cx).engine() else {
+            return;
+        };
+        let since = self.cursor.since();
+        let options = LogOptions {
+            tail: since.is_none().then_some(TAIL),
+            since,
+        };
+        let mut stream = engine.logs_with(&self.id, options);
+        self.stream_error = None;
+        self.stream = Some(cx.spawn(async move |this, cx| {
+            while let Some(line) = stream.next().await {
+                let more = this.update(cx, |this, cx| {
+                    match line {
+                        Ok(line) => this.push(line),
+                        Err(error) => {
+                            this.stream_error = Some(format!("The log stream stopped: {error}"));
+                        }
+                    }
+                    cx.notify();
+                    this.stream_error.is_none()
+                });
+                if !more.unwrap_or(false) {
+                    break;
+                }
+            }
+        }));
+    }
+
+    /// Reconnects when the container starts again, and notes when it stops.
+    fn follow(&mut self, event: &EngineEvent, cx: &mut Context<Self>) {
+        if event.kind != EventKind::Container || event.id != self.id {
+            return;
+        }
+        match event.action.as_str() {
+            "start" => self.connect(cx),
+            "die" => {
+                let code = event
+                    .exit_code
+                    .map(|code| format!(" with {code}"))
+                    .unwrap_or_default();
+                let note = format!("-- {} stopped{code} --", self.name);
+                self.keep(LogLine::new(LogStream::Stdout, note));
+                cx.notify();
+            }
+            _ => {}
         }
     }
 
     fn push(&mut self, line: LogLine) {
+        if self.cursor.advance(&line) {
+            self.keep(line);
+        }
+    }
+
+    fn keep(&mut self, line: LogLine) {
         if self.lines.len() == KEEP {
             self.lines.pop_front();
         }

@@ -14,7 +14,7 @@ A user types a short command with live names in the ⌘K palette, such as `resta
 - **Verbs.**
   - `start`, `stop`, `restart`, `pause`, `resume` with a container, a Compose service, or a project. On a project, `start` is `docker compose up`, `stop` is `docker compose stop`, and `restart` is `docker compose restart`; `pause` and `resume` go to each container.
   - `up` and `down` with a project. Down opens the existing confirmation dialog.
-  - `logs <container|service> [--since 10m] [--errors]` opens the Project page with the inspector at Logs. `--since` loads only lines from that time on (`LogOptions.since`), and a chip "Since 10 minutes" clears it. `--errors` sets the level filter to Error. `logs <project>` opens the Project page and its log; the project log has no filters.
+  - `logs <container|service> [--since 10m] [--errors]` opens the Project page with the inspector at Logs. `--since` loads only lines from that time on (`LogOptions.since`), and a chip "Since 10 minutes" clears it. The filter stays while the same container restarts, and goes when another container is selected. `--errors` sets the level filter to Error. `logs <project>` opens the Project page and its log; the project log has no filters.
   - `shell <container|service>` opens the inspector at Terminal.
   - `open <container|service|port>` opens `http://localhost:PORT`, or copies the address of a database port, as the Open row does.
   - `forward svc/<name> [local port]` forwards a Kubernetes service through the Port Forwarding page's model, and shows that page. It works only while k3s runs.

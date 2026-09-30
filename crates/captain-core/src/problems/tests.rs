@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use super::{ExitFacts, Problem, first_problem};
+use super::{ExitFacts, Problem, first_problem, raised_memory};
 use crate::diagnostics::{Check, CheckId, CheckState, Fix};
 use crate::model::{Container, ContainerState, Health};
 
@@ -82,4 +82,11 @@ fn an_out_of_memory_line_names_the_limit_and_the_restarts() {
         problem.line(),
         "db keeps restarting: out of memory at 512 MB, restarted 3 times."
     );
+}
+
+#[test]
+fn raised_memory_doubles_the_limit_with_a_512_mb_floor() {
+    const MIB: i64 = 1024 * 1024;
+    assert_eq!(raised_memory(64 * MIB), 512 * MIB as u64);
+    assert_eq!(raised_memory(1024 * MIB), 2048 * MIB as u64);
 }

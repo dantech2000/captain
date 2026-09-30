@@ -47,4 +47,9 @@ pub trait ImageApi {
     /// `docker builder prune --filter until=336h`. Internal and frontend records stay.
     /// Returns the bytes reclaimed.
     fn prune_build_cache(&self, older_than: Duration) -> EngineFuture<u64>;
+
+    /// Removes the one build cache record `id` if no build used it for `older_than`,
+    /// like [`prune_build_cache`](Self::prune_build_cache) with an `id` filter. No
+    /// other record goes. Returns the bytes reclaimed.
+    fn prune_build_record(&self, id: &str, older_than: Duration) -> EngineFuture<u64>;
 }

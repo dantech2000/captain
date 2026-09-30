@@ -7,13 +7,16 @@ use crate::model::{ContainerState, DiskUsage, Image, parse_rfc3339};
 /// What removes one item.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ReclaimTarget {
-    /// One build prune with the age filter removes every old record at once.
-    BuildCache,
-    /// Each tag goes in turn, and the last one removes the image. An untagged image
-    /// goes by ID. The engine refuses a tag that a container still needs.
+    /// A build prune filtered to this record's ID, with the age filter, so a record
+    /// that turned old after the preview stays.
+    BuildCache {
+        id: String,
+    },
+    /// The image goes by its immutable ID, never by a tag that may point at another
+    /// image by now. The engine refuses it while a container uses it or while tags
+    /// in more than one repository point at it.
     Image {
         id: String,
-        tags: Vec<String>,
     },
     /// Each stopped container goes by ID, so only the previewed ones go.
     Container {
@@ -83,7 +86,9 @@ impl ReclaimPlan {
             },
             size: record.size,
             time: record.last_active(),
-            target: ReclaimTarget::BuildCache,
+            target: ReclaimTarget::BuildCache {
+                id: record.id.clone(),
+            },
         }));
         let old_stopped = usage.containers.iter().filter(|c| {
             !c.state.is_active()
@@ -154,7 +159,6 @@ fn image_item(group: ReclaimGroup, image: &Image) -> ReclaimItem {
         time: image.created,
         target: ReclaimTarget::Image {
             id: image.id.clone(),
-            tags: image.repo_tags.clone(),
         },
     }
 }

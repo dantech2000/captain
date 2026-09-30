@@ -49,6 +49,21 @@ pub fn parse(s: &str) -> Option<i64> {
     Some(days * DAY + hour * 3600 + minute * 60 + second - offset)
 }
 
+/// The fraction of the second in the time at the start of `raw`, in nanoseconds.
+/// Digits past the ninth are dropped; no fraction reads as 0.
+pub(super) fn nanos(raw: &str) -> u32 {
+    let Some(fraction) = raw.get(19..).and_then(|rest| rest.strip_prefix('.')) else {
+        return 0;
+    };
+    let digits: String = fraction
+        .bytes()
+        .take_while(u8::is_ascii_digit)
+        .take(9)
+        .map(char::from)
+        .collect();
+    format!("{digits:0<9}").parse().unwrap_or(0)
+}
+
 /// Formats Unix seconds as `HH:MM:SS`, shifted by `offset` seconds east of UTC.
 pub(super) fn clock(time: i64, offset: i32) -> String {
     let t = (time + i64::from(offset)).rem_euclid(DAY);

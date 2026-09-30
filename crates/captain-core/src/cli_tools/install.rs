@@ -6,6 +6,7 @@ use std::path::Path;
 use super::chezmoi::chezmoi_manages;
 use super::links::{LinkReport, link_state, relink, remove_links, tool_links};
 use super::plugin_config::{add_plugin_dir, has_plugin_dir, remove_plugin_dir};
+use super::rc_block::{END, START};
 use super::rc_files::{
     RcAccess, RcFile, RcState, add_block, rc_access, rc_files, rc_state, remove_block,
 };
@@ -54,7 +55,7 @@ pub fn status(bundle: Option<&Bundle>, paths: &ToolPaths, shell: Option<&Path>) 
         .into_iter()
         .map(|file| RcStatus {
             state: rc_state(&file.path),
-            access: rc_access(&file.path, |path| chezmoi_manages(&paths.home, path)),
+            access: access(&file, paths),
             file,
         })
         .collect();
@@ -81,13 +82,11 @@ pub fn install(
     errors.extend(add_plugin_dir(&paths.docker_config, &paths.plugins).err());
     for file in rc_files(&paths.home, shell) {
         let result = match (mode, rc_state(&file.path)) {
-            (PathMode::Manual, RcState::Added) => remove_block(&file).map(|_| ()),
-            (PathMode::Automatic, RcState::Missing) => {
-                match rc_access(&file.path, |path| chezmoi_manages(&paths.home, path)) {
-                    RcAccess::Writable => add_block(&file),
-                    RcAccess::Skip(_) => Ok(()),
-                }
-            }
+            (PathMode::Manual, RcState::Added) => remove_rc_block(&file, paths),
+            (PathMode::Automatic, RcState::Missing) => match access(&file, paths) {
+                RcAccess::Writable => add_block(&file),
+                RcAccess::Skip(_) => Ok(()),
+            },
             _ => Ok(()),
         };
         errors.extend(result.err());
@@ -100,7 +99,29 @@ pub fn uninstall(paths: &ToolPaths, shell: Option<&Path>) -> Vec<String> {
     let mut errors = remove_links(paths);
     errors.extend(remove_plugin_dir(&paths.docker_config, &paths.plugins).err());
     for file in rc_files(&paths.home, shell) {
-        errors.extend(remove_block(&file).err());
+        if rc_state(&file.path) == RcState::Added {
+            errors.extend(remove_rc_block(&file, paths).err());
+        }
     }
     errors
 }
+
+/// Removes Captain's block from a file that Captain may write, under the same
+/// rules as adding it. For a file it skips, the error tells the user what to
+/// remove.
+pub(super) fn remove_rc_block(file: &RcFile, paths: &ToolPaths) -> Result<(), String> {
+    match access(file, paths) {
+        RcAccess::Writable => remove_block(file).map(drop),
+        RcAccess::Skip(why) => Err(format!(
+            "Captain did not change {}. {why} Remove the lines from `{START}` to `{END}` in it yourself.",
+            paths.tilde(&file.path)
+        )),
+    }
+}
+
+fn access(file: &RcFile, paths: &ToolPaths) -> RcAccess {
+    rc_access(&file.path, |path| chezmoi_manages(&paths.home, path))
+}
+
+#[cfg(all(test, unix))]
+mod tests;

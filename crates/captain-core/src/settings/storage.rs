@@ -1,10 +1,10 @@
 use std::fs;
-use std::io::{self, Write};
+use std::io;
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicU64, Ordering};
 
 use super::edit::FileEdit;
 use super::{FileProblem, Settings, jsonc, overrides, validate};
+use crate::file_replace::{Mode, backup_once, replace, sibling};
 use crate::link_target::link_target;
 
 /// Why the settings file could not be read or written.
@@ -142,46 +142,14 @@ fn read_text(path: &Path) -> Result<Option<String>, SettingsError> {
 /// Copies the file to `settings.json.captain-backup` next to `link`, unless a
 /// backup is already there.
 fn backup(link: &Path, target: &Path) -> Result<(), SettingsError> {
-    let mut name = link.file_name().unwrap_or_default().to_os_string();
-    name.push(".captain-backup");
-    let backup = link.with_file_name(name);
-    if backup.exists() {
-        return Ok(());
-    }
-    fs::copy(target, &backup).map_err(|source| io_error(&backup, source))?;
-    Ok(())
+    let backup = sibling(link, "captain-backup");
+    backup_once(target, &backup).map_err(|source| io_error(&backup, source))
 }
 
 /// Writes a temporary file next to `path` and renames it, so a crash never leaves
 /// half a file.
 fn write(path: &Path, text: &str) -> Result<(), SettingsError> {
-    if let Some(dir) = path.parent() {
-        fs::create_dir_all(dir).map_err(|source| io_error(dir, source))?;
-    }
-    let temp = temp_path(path);
-    let written = write_synced(&temp, text.as_bytes()).and_then(|()| fs::rename(&temp, path));
-    if let Err(source) = written {
-        let _ = fs::remove_file(&temp);
-        return Err(io_error(path, source));
-    }
-    Ok(())
-}
-
-fn write_synced(path: &Path, bytes: &[u8]) -> io::Result<()> {
-    let mut file = fs::File::create(path)?;
-    file.write_all(bytes)?;
-    file.sync_all()
-}
-
-/// `settings.json` becomes `.settings.json.<pid>-<n>.tmp` in the same directory, so
-/// the rename stays on one file system and two writers never share a temporary file.
-fn temp_path(path: &Path) -> PathBuf {
-    static NEXT: AtomicU64 = AtomicU64::new(0);
-    let name = path
-        .file_name()
-        .map_or_else(|| "settings".into(), |name| name.to_string_lossy());
-    let n = NEXT.fetch_add(1, Ordering::Relaxed);
-    path.with_file_name(format!(".{name}.{}-{n}.tmp", std::process::id()))
+    replace(path, text.as_bytes(), Mode::Keep).map_err(|source| io_error(path, source))
 }
 
 fn io_error(path: &Path, source: io::Error) -> SettingsError {

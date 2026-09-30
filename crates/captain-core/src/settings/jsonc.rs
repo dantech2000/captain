@@ -35,6 +35,20 @@ pub(super) fn parse(text: &str) -> Result<Value, FileProblem> {
     Ok(value.unwrap_or_else(|| Value::Object(Default::default())))
 }
 
+/// The value in `text`, which must be one object, as a settings file is. Bad JSON
+/// or another value is an error.
+pub(super) fn parse_object(text: &str) -> Result<Value, FileProblem> {
+    let value = parse(text)?;
+    if !value.is_object() {
+        return Err(FileProblem {
+            line: 1,
+            key: None,
+            message: "The file must hold one object, in { }".into(),
+        });
+    }
+    Ok(value)
+}
+
 /// The line, from 1, of the property at `path`, such as `["kubernetes", "port"]`,
 /// or of its deepest parent in the file.
 pub(super) fn line_of(text: &str, path: &[String]) -> Option<usize> {

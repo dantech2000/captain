@@ -4,6 +4,7 @@
 use std::path::{Path, PathBuf};
 
 use super::rc_block::{END, START, with_block, without_block};
+use crate::file_replace::{Mode, backup_once, replace, sibling};
 use crate::link_target::link_target;
 
 /// Home-manager and Nix link files into the read-only store.
@@ -167,22 +168,17 @@ pub fn rc_state(path: &Path) -> RcState {
 
 /// Adds or refreshes Captain's block. Check [`rc_access`] first.
 pub fn add_block(rc: &RcFile) -> Result<(), String> {
-    let fail = |error: std::io::Error| format!("Cannot write {}: {error}", rc.path.display());
     let text = match std::fs::read_to_string(&rc.path) {
         Ok(text) => text,
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => String::new(),
-        Err(error) => return Err(fail(error)),
+        Err(error) => return Err(write_error(rc, error)),
     };
-    if let Some(dir) = rc.path.parent() {
-        std::fs::create_dir_all(dir).map_err(fail)?;
-    }
-    std::fs::write(&rc.path, with_block(&text, &rc.shell.block())).map_err(fail)
+    write(rc, &with_block(&text, &rc.shell.block()))
 }
 
 /// Removes Captain's block. Captain's own fish file goes when nothing else is in
-/// it. Returns true if the file changed.
+/// it. Check [`rc_access`] first. Returns true if the file changed.
 pub fn remove_block(rc: &RcFile) -> Result<bool, String> {
-    let fail = |error: std::io::Error| format!("Cannot write {}: {error}", rc.path.display());
     let Ok(text) = std::fs::read_to_string(&rc.path) else {
         return Ok(false);
     };
@@ -190,10 +186,25 @@ pub fn remove_block(rc: &RcFile) -> Result<bool, String> {
         return Ok(false);
     };
     match rc.shell == Shell::Fish && rest.trim().is_empty() {
-        true => std::fs::remove_file(&rc.path).map_err(fail)?,
-        false => std::fs::write(&rc.path, rest).map_err(fail)?,
+        true => std::fs::remove_file(&rc.path).map_err(|error| write_error(rc, error))?,
+        false => write(rc, &rest)?,
     }
     Ok(true)
+}
+
+/// Replaces the file through a synced temporary file, with the same permissions.
+/// Before Captain's first change, the old file goes to `<name>.captain-backup`.
+/// Captain's own fish file has no backup.
+fn write(rc: &RcFile, text: &str) -> Result<(), String> {
+    let fail = |error: std::io::Error| write_error(rc, error);
+    if rc.shell != Shell::Fish {
+        backup_once(&rc.path, &sibling(&rc.path, "captain-backup")).map_err(fail)?;
+    }
+    replace(&rc.path, text.as_bytes(), Mode::Keep).map_err(fail)
+}
+
+fn write_error(rc: &RcFile, error: std::io::Error) -> String {
+    format!("Cannot write {}: {error}", rc.path.display())
 }
 
 #[cfg(all(test, unix))]

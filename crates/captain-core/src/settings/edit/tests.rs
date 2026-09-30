@@ -60,3 +60,27 @@ fn a_new_file_names_the_schema() {
     assert!(text.contains("\"theme\": \"harbor\""), "{text}");
     assert_eq!(Settings::from_json(&text).unwrap(), after);
 }
+
+/// Changing one resource changes only that field: the comment and an unknown key
+/// inside `engine_resources` stay.
+#[test]
+fn a_resource_change_keeps_what_else_is_in_the_object() {
+    let text = r#"{
+  "version": 2,
+  "engine_resources": {
+    // Enough for the database.
+    "cpus": 4,
+    "memory_bytes": 8589934592,
+    "disk_bytes": 68719476736,
+    "note": "mine",
+  },
+}
+"#;
+    let before = Settings::from_json(text).unwrap();
+    let mut after = before.clone();
+    after.engine_resources.as_mut().unwrap().cpus = 6;
+    assert_eq!(
+        edit(text, &before, &after),
+        text.replace("\"cpus\": 4", "\"cpus\": 6")
+    );
+}

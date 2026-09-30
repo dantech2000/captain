@@ -60,7 +60,7 @@ The main window opens on what the user works on: a project. The sidebar lists Co
 
 ## Notes
 
-- The project log opens one log stream per running container, with the last 100 lines. When a container starts again, Captain opens a new stream with `since` set to the time of the `start` event, so the list keeps its old lines and does not repeat them. The list keeps 2000 entries.
+- The project log opens one log stream per running container, with the last 100 lines. When a container starts again, Captain opens a new stream from the second of the newest line it showed, or else the time of the `start` event. `since` includes lines at that time ([moby logfile.go](https://github.com/moby/moby/blob/v28.5.0/daemon/logger/loggerutils/logfile.go#L831-L839)). The daemon reads `since` as `seconds.nanoseconds` ([moby daemon/logs.go](https://github.com/moby/moby/blob/v28.5.0/daemon/logs.go), [timestamp.go](https://github.com/moby/moby/blob/v28.5.0/api/types/time/timestamp.go)), but bollard 0.21 sends whole seconds. So `captain_core::store::LogCursor` keeps the newest line's time in nanoseconds and drops replayed lines with the same time and text. The list keeps its old lines, repeats none, and skips none. The list keeps 2000 entries.
 - Lines are ordered by their Docker timestamp in seconds. Lines of the same second keep the order they arrived in.
 - An `oom` event before a `die` marks the exit as out of memory. Exit 137 alone could be any `SIGKILL`.
 - Down removes the containers, so the project would drop out of the sidebar. The page keeps the last known project, so its header still offers Up.

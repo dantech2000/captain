@@ -67,6 +67,9 @@ pub struct Workspace {
     pub(super) details_hidden: bool,
     /// Containers that exited on their own lately, from the event stream.
     pub(super) crashes: CrashTracker,
+    /// Redraws when the next recent crash stops counting. See
+    /// [`Workspace::schedule_crash_expiry`].
+    pub(super) crash_expiry: Option<Task<()>>,
     /// The inspector tab a card button asked for, until the inspector takes it.
     pub(super) inspector_tab: Option<InspectorTab>,
     /// The Logs tab filters a ⌘K command asked for, until the inspector takes them.
@@ -105,6 +108,7 @@ impl Workspace {
             card_open: false,
             details_hidden: false,
             crashes: CrashTracker::default(),
+            crash_expiry: None,
             inspector_tab: None,
             log_filter: None,
         }

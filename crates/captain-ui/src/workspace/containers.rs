@@ -1,4 +1,4 @@
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use captain_core::EngineError;
 use captain_core::model::Container;
@@ -64,6 +64,24 @@ impl Workspace {
         }
     }
 
+    /// Notifies once when the next recent crash expires, then waits for the one
+    /// after it. A crash counts for a minute only, and with no container running
+    /// nothing else redraws the tray, Dock badge, and sidebar.
+    fn schedule_crash_expiry(&mut self, cx: &mut Context<Self>) {
+        let Some(wait) = self.crashes.next_expiry(Instant::now()) else {
+            self.crash_expiry = None;
+            return;
+        };
+        self.crash_expiry = Some(cx.spawn(async move |this, cx| {
+            cx.background_executor().timer(wait).await;
+            this.update(cx, |this, cx| {
+                cx.notify();
+                this.schedule_crash_expiry(cx);
+            })
+            .ok();
+        }));
+    }
+
     pub(super) fn watch_events(&mut self, cx: &mut Context<Self>) {
         let Some(engine) = self.engine.clone() else {
             return;
@@ -74,6 +92,9 @@ impl Workspace {
                 let updated = match event {
                     Ok(event) => this.update(cx, |this, cx| {
                         this.crashes.record(&event);
+                        if event.action == "die" {
+                            this.schedule_crash_expiry(cx);
+                        }
                         if event.changes_container_list() {
                             this.reload(RELOAD_DEBOUNCE, cx);
                         }

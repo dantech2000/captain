@@ -73,6 +73,54 @@ pub fn reference_entries() -> Vec<ReferenceEntry> {
     entries
 }
 
+/// The fields of each setting that holds a structured value but is not a group,
+/// such as `engine_resources.cpus`, with their limits. They are not in the
+/// reference, which describes such a setting as a whole; the file check reads
+/// each field against its own limits.
+pub(super) fn field_entries() -> Vec<ReferenceEntry> {
+    let schema = settings_schema();
+    let defaults = defaults();
+    let mut entries = Vec::new();
+    let Some(properties) = schema.get("properties").and_then(Value::as_object) else {
+        return entries;
+    };
+    for (name, property) in properties {
+        let is_group = defaults
+            .get(name)
+            .and_then(Value::as_object)
+            .is_some_and(|map| !map.is_empty());
+        let group = GROUPS
+            .into_iter()
+            .find(|group| property.get("x-captain-group").and_then(Value::as_str) == Some(group));
+        let (Some(group), false) = (group, is_group) else {
+            continue;
+        };
+        let Some(fields) = object_schema(&schema, property)
+            .get("properties")
+            .and_then(Value::as_object)
+        else {
+            continue;
+        };
+        for (field, node) in fields {
+            entries.push(entry(&schema, format!("{name}.{field}"), group, node));
+        }
+    }
+    entries
+}
+
+/// The object schema of `node`, also inside an `anyOf` with `null`, as an
+/// `Option` of a struct has.
+fn object_schema<'a>(schema: &'a Value, node: &'a Value) -> &'a Value {
+    let node = resolve(schema, node);
+    let any = node.get("anyOf").and_then(Value::as_array);
+    any.and_then(|any| {
+        any.iter()
+            .map(|item| resolve(schema, item))
+            .find(|item| item.get("properties").is_some())
+    })
+    .unwrap_or(node)
+}
+
 fn entry(schema: &Value, key: String, group: &'static str, node: &Value) -> ReferenceEntry {
     let resolved = resolve(schema, node);
     let text = |value: &Value| serde_json::to_string(value).unwrap_or_default();

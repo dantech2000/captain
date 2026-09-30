@@ -23,7 +23,7 @@ pub(super) const LOG_TAIL: usize = 500;
 /// The Logs tab of one container: its recent lines and how the tab shows them.
 pub struct LogsPane {
     /// The engine and container the lines come from, for Reconnect.
-    source: Option<(Arc<dyn Engine>, String)>,
+    pub(super) source: Option<(Arc<dyn Engine>, String)>,
     buffer: LogBuffer,
     pub(super) level: LevelFilter,
     /// Only lines from this long before the load on, and that time in Unix seconds.
@@ -68,10 +68,10 @@ impl Default for LogsPane {
 
 impl LogsPane {
     /// Empties the view and shows the recent and new lines of container `id`. The
-    /// level filter and search text stay; the time filter goes.
+    /// level filter and search text stay; see [`LogsPane::keep_since_for`].
     pub fn load(&mut self, engine: Arc<dyn Engine>, id: String, cx: &mut Context<Self>) {
+        self.keep_since_for(&id);
         self.source = Some((engine, id));
-        self.since = None;
         self.reconnect(cx);
     }
 

@@ -125,10 +125,10 @@ pub fn problem_count(
             .count()
 }
 
-/// The limit the menu offers when a container runs out of memory: twice the old
-/// one, at least 512 MB, like the project page and the map.
-pub fn raised_memory(limit: i64) -> i64 {
-    limit.saturating_mul(2)
+/// The limit the menu offers when a container runs out of memory, in bytes. It uses
+/// the rule of the project page and the map: twice the old one, at least 512 MB.
+pub fn raised_memory(limit: i64) -> u64 {
+    crate::project_map::raised_memory(limit.max(0) as u64)
 }
 
 /// The problem the menu shows. A failed engine comes first, because

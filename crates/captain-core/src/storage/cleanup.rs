@@ -3,13 +3,13 @@ use std::sync::Arc;
 use super::{BUILD_CACHE_AGE, ReclaimItem, ReclaimTarget};
 use crate::Engine;
 use crate::format::bytes_label;
-use crate::model::ContainerAction;
+use crate::model::{ContainerAction, EngineInfo};
 
 /// What a cleanup freed, and what the engine refused.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct CleanupReport {
     pub freed_bytes: u64,
-    /// One line per item or prune that failed, with the engine's reason.
+    /// One line per item that failed, with the engine's reason.
     pub failures: Vec<String>,
 }
 
@@ -28,45 +28,81 @@ impl CleanupReport {
     }
 }
 
-/// Removes `items`: one build prune with the plan's age filter, then each
-/// stopped container by ID, each image tag by tag, and each volume by name. It never forces,
-/// so the engine refuses anything a container started to use since the preview.
-pub async fn run_cleanup(engine: Arc<dyn Engine>, items: Vec<ReclaimItem>) -> CleanupReport {
-    let mut report = CleanupReport::default();
-    let has = |target: ReclaimTarget| items.iter().any(|item| item.target == target);
-    if has(ReclaimTarget::BuildCache) {
-        match engine.prune_build_cache(BUILD_CACHE_AGE).await {
-            Ok(bytes) => report.freed_bytes += bytes,
-            Err(error) => report.failures.push(format!("build cache: {error}")),
+/// Removes `items`, which the preview read from the daemon `preview`. If `engine` is
+/// not that daemon now, it removes nothing and returns why. Each item goes by its
+/// ID or name: build cache by a prune filtered to the record, each stopped container
+/// and each image by ID, each volume by name. It never forces, so the engine refuses
+/// anything a container started to use since the preview.
+pub async fn run_cleanup(
+    engine: Arc<dyn Engine>,
+    preview: &EngineInfo,
+    items: Vec<ReclaimItem>,
+) -> Result<CleanupReport, String> {
+    match engine.info().await {
+        Ok(info) if info.same_daemon(preview) => {}
+        Ok(info) => {
+            return Err(format!(
+                "Captain is connected to a different engine ({}) than the preview \
+                 listed, so nothing was removed.",
+                info.endpoint
+            ));
+        }
+        Err(error) => {
+            return Err(format!(
+                "Captain could not check which engine it is connected to, so nothing \
+                 was removed: {error}"
+            ));
         }
     }
+    let mut report = CleanupReport::default();
     for item in &items {
         let result = match &item.target {
-            ReclaimTarget::Image { id, tags } => remove_image(&engine, id, tags).await,
-            ReclaimTarget::Container { id } => engine.run_action(id, ContainerAction::Remove).await,
-            ReclaimTarget::Volume { name } => engine.remove_volume(name).await,
-            ReclaimTarget::BuildCache => continue,
+            ReclaimTarget::BuildCache { id } => {
+                // A record a build used since the preview stays and frees nothing.
+                match engine.prune_build_record(id, BUILD_CACHE_AGE).await {
+                    Ok(bytes) => {
+                        report.freed_bytes += bytes;
+                        continue;
+                    }
+                    Err(error) => Err(error.to_string()),
+                }
+            }
+            ReclaimTarget::Image { id } => remove_image(&engine, id).await,
+            ReclaimTarget::Container { id } => engine
+                .run_action(id, ContainerAction::Remove)
+                .await
+                .map_err(|error| error.to_string()),
+            ReclaimTarget::Volume { name } => engine
+                .remove_volume(name)
+                .await
+                .map_err(|error| error.to_string()),
         };
         match result {
             Ok(()) => report.freed_bytes += item.size,
             Err(error) => report.failures.push(format!("{}: {error}", item.name)),
         }
     }
-    report
+    Ok(report)
 }
 
-/// Removing an image by ID fails while it has more than one tag, so each tag goes
-/// in turn. Removing the last tag removes the image.
-async fn remove_image(
-    engine: &Arc<dyn Engine>,
-    id: &str,
-    tags: &[String],
-) -> Result<(), crate::EngineError> {
-    if tags.is_empty() {
-        return engine.remove_image(id).await;
+/// Removes the image `id` if a fresh list still shows it with no container. By ID
+/// and without force, the engine also refuses an image that a container uses, or
+/// that tags in more than one repository point at; it never only untags it.
+async fn remove_image(engine: &Arc<dyn Engine>, id: &str) -> Result<(), String> {
+    let images = engine
+        .list_images()
+        .await
+        .map_err(|error| format!("could not check it is unused: {error}"))?;
+    match images.iter().find(|image| image.id == id) {
+        None => return Err("it is no longer there".to_string()),
+        Some(image) if image.in_use() => return Err("a container uses it now".to_string()),
+        Some(_) => {}
     }
-    for tag in tags {
-        engine.remove_image(tag).await?;
-    }
-    Ok(())
+    engine
+        .remove_image(id)
+        .await
+        .map_err(|error| error.to_string())
 }
+
+#[cfg(test)]
+mod tests;

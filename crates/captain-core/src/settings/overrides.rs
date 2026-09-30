@@ -21,7 +21,8 @@ pub(super) fn to_value(settings: &Settings) -> Value {
 /// Every key that holds one value. A group is an object with keys in the defaults,
 /// such as `kubernetes`; its keys are listed instead. An object with no keys by
 /// default, such as `engine_daemon.custom`, or `null`, such as `engine_resources`,
-/// is one value.
+/// is one value. The file edit still changes such an object key by key, and the
+/// check reads its fields against their own limits.
 pub(super) fn leaves(defaults: &Value) -> Vec<KeyPath> {
     let mut paths = Vec::new();
     collect(defaults, &mut Vec::new(), &mut paths);

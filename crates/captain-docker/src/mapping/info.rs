@@ -3,6 +3,7 @@ use captain_core::model::EngineInfo;
 
 pub fn engine_info(version: SystemVersion, info: SystemInfo, endpoint: String) -> EngineInfo {
     EngineInfo {
+        id: info.id.unwrap_or_default(),
         version: version.version.unwrap_or_default(),
         api_version: version.api_version.unwrap_or_default(),
         os: version.os.unwrap_or_default(),

@@ -57,7 +57,9 @@ To clean up:
 2. Click the button. A dialog lists every item that the cleanup removes.
 3. Click **Remove N items and free X**, or **Cancel**.
 
-Captain removes images tag by tag, volumes by name, and containers by ID. If a container starts to use an item after you open the dialog, the engine refuses to remove that item. A message reports the bytes freed and any item that the engine refused.
+Captain removes images by ID, build cache by record, volumes by name, and containers by ID. It removes only the items in the dialog. If a container starts to use an item after you open the dialog, Captain does not remove that item. An image with tags in more than one repository stays, and the message names it. A message reports the bytes freed and any item that was not removed.
+
+If Captain connects to a different engine before the cleanup starts, it removes nothing.
 
 ## Take a snapshot first
 

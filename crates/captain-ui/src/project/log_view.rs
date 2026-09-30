@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::rc::Rc;
 
 use captain_core::model::{ContainerState, EngineEvent, EventKind, LogOptions};
-use captain_core::store::{GroupKey, ProjectLog, ProjectLogEntry};
+use captain_core::store::{GroupKey, LogCursor, ProjectLog, ProjectLogEntry};
 use futures::StreamExt;
 use gpui_kit::*;
 
@@ -26,8 +26,8 @@ pub struct ProjectLogView {
     next_stream: u64,
     /// The time of each container's last `start` event.
     started: HashMap<String, i64>,
-    /// The time of each container's newest line.
-    newest: HashMap<String, i64>,
+    /// Where each container's last stream stopped.
+    cursors: HashMap<String, LogCursor>,
     /// True once the first streams of this entry opened. Later containers are new,
     /// so their whole output belongs in the log.
     opened: bool,
@@ -55,7 +55,7 @@ impl ProjectLogView {
             streams: HashMap::new(),
             next_stream: 0,
             started: HashMap::new(),
-            newest: HashMap::new(),
+            cursors: HashMap::new(),
             opened: false,
             rows: Rc::default(),
             dirty: false,
@@ -76,7 +76,7 @@ impl ProjectLogView {
             self.log.clear();
             self.streams.clear();
             self.started.clear();
-            self.newest.clear();
+            self.cursors.clear();
             self.opened = false;
             self.changed(cx);
         }
@@ -91,12 +91,13 @@ impl ProjectLogView {
             {
                 continue;
             }
-            // A restart continues after its start; a new container sends everything.
+            // A restart continues from the newest line seen, or else its start; a
+            // new container sends everything. The cursor drops the replayed lines.
             let since = self
-                .started
+                .cursors
                 .get(&container.id)
-                .copied()
-                .or_else(|| self.newest.get(&container.id).map(|time| time + 1))
+                .and_then(LogCursor::since)
+                .or_else(|| self.started.get(&container.id).copied())
                 .or(opened.then_some(container.created));
             let options = LogOptions {
                 tail: since.is_none().then_some(FIRST_TAIL),
@@ -109,11 +110,10 @@ impl ProjectLogView {
             let task = cx.spawn(async move |this, cx| {
                 while let Some(Ok(line)) = lines.next().await {
                     let pushed = this.update(cx, |this, cx| {
-                        if let Some(time) = line.timestamp {
-                            this.newest.insert(id.clone(), time);
+                        if this.cursors.entry(id.clone()).or_default().advance(&line) {
+                            this.log.push_line(&service, line);
+                            this.changed(cx);
                         }
-                        this.log.push_line(&service, line);
-                        this.changed(cx);
                     });
                     if pushed.is_err() {
                         return;

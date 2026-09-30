@@ -101,7 +101,7 @@ impl ProjectView {
             self.details.clear();
             self.inspecting.clear();
             self.exits.clear();
-            self.tasks = TaskState::default();
+            self.tasks.forget_list();
             self.map.draft = None;
             if self.tab == ProjectTab::Map {
                 self.load_volumes(cx);

@@ -28,6 +28,9 @@ The user's own terminal uses the tools inside `Captain.app`: `docker`, Compose, 
   - Every other key stays, in its order. The file keeps the CLI's tab indentation.
   - A symlinked `config.json` stays a link: the write goes to its target, like the settings and kubeconfig writers.
   - Before the first change, Captain copies the file to `config.json.captain-backup`. It never overwrites that backup.
+  - Captain writes a new file with a unique name (`.config.json.<pid>-<n>.tmp`), syncs it, and renames it over the old one. Only the owner can read it, because it can hold registry logins.
+  - Captain's own writers, the app and the CLI, take `~/.captain/docker-config.lock` first, so they never write at the same time.
+  - Right before the rename, Captain reads the file again. If another program changed it meanwhile (for example `docker login` or `docker context use`), Captain drops its new file and merges again from the new text, up to three times. Then it reports an error. A write that lands between that last read and the rename can still be lost; the docker CLI takes no lock that Captain could share.
   - A file that is not valid JSON is left alone, with an error.
 - **Opt-in.** Captain changes no shell file and no docker file until the user clicks Install in Settings or runs `captain tools install`. Rancher links its tools at the first start; Captain asks first, because these are the user's own files.
 - **PATH: Automatic or Manual.** A setting, Manual by default. Manual shows the line to add. Automatic adds this block to the end of each shell file:
@@ -44,7 +47,8 @@ The user's own terminal uses the tools inside `Captain.app`: `docker`, Compose, 
   - bash: `~/.bash_profile`, else `~/.bashrc`, if one exists or the login shell is bash (then Captain creates `~/.bash_profile`).
   - fish: `conf.d/captain.fish`, if `~/.config/fish` exists or the login shell is fish.
 
-  Captain writes a file only if it is a regular, writable file, or a missing file in a writable folder. It skips a symlink (for example a home-manager link into `/nix/store`), a file that `chezmoi source-path` says chezmoi manages, and a file it cannot write. For a skipped file, Settings shows the line to add, with a Copy button. Manual shows the lines for every file. Switching to Manual removes the blocks. A file that already names `.captain/bin` counts as done.
+  Captain writes a file only if it is a regular, writable file, or a missing file in a writable folder. It skips a symlink (for example a home-manager link into `/nix/store`), a file that `chezmoi source-path` says chezmoi manages, and a file it cannot write. For a skipped file, Settings shows the line to add, with a Copy button. Manual shows the lines for every file. Switching to Manual, and `captain tools uninstall`, remove the blocks under the same rules: for a file that Captain skips, the result says why and asks the user to remove the lines from `# >>> captain >>>` to `# <<< captain <<<`. A file that already names `.captain/bin` counts as done.
+  Captain writes a shell file through a synced temporary file next to it and a rename, with the file's permissions, so a full disk or a crash never leaves it empty or half written. Before its first change to a file, Captain copies it to `<name>.captain-backup` (for example `~/.zshrc.captain-backup`), and never overwrites that backup. Captain's own fish file has no backup.
   Rancher's own block uses `### MANAGED BY RANCHER DESKTOP START (DO NOT EDIT)` markers ([manageLinesInFile.ts](https://github.com/rancher-sandbox/rancher-desktop/blob/main/pkg/rancher-desktop/integrations/manageLinesInFile.ts)); Captain's block is separate and comes later in the file, so `~/.captain/bin` wins while both exist.
 - **Settings > Command-line tools.** One card (since [0037](0037-settings-page.md): the Terminal line and its setup sheet; PATH Automatic or Manual is in the settings file):
   - A row per tool (`docker`, `docker-compose`, `docker-credential-osxkeychain`, `captain`, and, for information, `kubectl` and `helm`) with what a new terminal runs: "Rancher Desktop (~/.rd/bin)", "Captain", "Docker Desktop", "Homebrew", "Nix", or the path. Captain runs `$SHELL -lic 'command -v …'` once, on a background thread, with a 10 s limit.
@@ -72,7 +76,7 @@ The user's own terminal uses the tools inside `Captain.app`: `docker`, Compose, 
 
 ## Verification
 
-1. Run `cargo test -p captain-core cli_tools`. The tests use temp folders: the link plan (create, relink after a move, keep a regular file), the shell block add and remove, the skip rules (a link into a fake `/nix/store`, a read-only file), and the `config.json` merge that keeps the other keys and their order.
+1. Run `cargo test -p captain-core cli_tools`. The tests use temp folders: the link plan (create, relink after a move, keep a regular file), the shell block add and remove with its backup and permissions, the skip rules for adding and removing (a link into a fake `/nix/store`, a read-only file), the `config.json` merge that keeps the other keys and their order, and a `config.json` change by another program during Captain's write, which Captain keeps.
 2. Run `scripts/bundle-macos.sh` and check that `Captain.app/Contents/Resources/bin/docker-credential-osxkeychain` exists.
 3. Open the bundled app. Check that `~/.captain/bin` and `~/.captain/cli-plugins` hold the links, and that `~/.docker/config.json` lists `~/.captain/cli-plugins` first in `cliPluginsExtraDirs`.
 4. Open Settings > Terminal > Set up…. The rows show where each tool comes from. With a chezmoi or home-manager `~/.zshrc`, the PATH row shows the line and a Copy button.

@@ -78,6 +78,26 @@ fn a_file_with_bad_json_is_never_overwritten() {
     assert!(fs::read_to_string(&path).unwrap().contains("harbor"));
 }
 
+/// The reader refuses a file that is not one object, and so does the writer: a
+/// change from the app never replaces it.
+#[test]
+fn a_file_that_is_not_an_object_is_never_overwritten() {
+    let dir = TempDir::new();
+    let path = dir.0.join("settings.json");
+    let text = "[{ \"theme\": \"harbor\" }]\n";
+    fs::write(&path, text).unwrap();
+    let dark = Settings {
+        appearance: Appearance::Dark,
+        ..Settings::default()
+    };
+    let saved = Settings::save_change(&path, &Settings::default(), &dark);
+    assert!(
+        matches!(saved, Err(SettingsError::Parse { .. })),
+        "{saved:?}"
+    );
+    assert_eq!(fs::read_to_string(&path).unwrap(), text);
+}
+
 /// A file from format 1 held every key. The migration keeps only the changed ones
 /// and saves the old file once.
 #[test]

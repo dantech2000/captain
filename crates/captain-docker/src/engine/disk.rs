@@ -73,7 +73,28 @@ pub(super) async fn prune_build_cache(
     older_than: Duration,
 ) -> Result<u64, EngineError> {
     let until = until(older_than);
-    let filters = HashMap::from([("until", vec![until.as_str()])]);
+    prune(docker, HashMap::from([("until", vec![until.as_str()])])).await
+}
+
+/// The same prune with an `id` filter, so only the record `id` can go. The engine
+/// takes one value per filter and matches `id` as a regular expression (`id~=`), so
+/// the value is anchored. See
+/// https://github.com/moby/moby/blob/v28.5.0/builder/builder-next/builder.go#L680-L697
+pub(super) async fn prune_build_record(
+    docker: &Docker,
+    id: &str,
+    older_than: Duration,
+) -> Result<u64, EngineError> {
+    if id.is_empty() || !id.chars().all(|c| c.is_ascii_alphanumeric()) {
+        return Err(EngineError::Api(format!("not a build cache ID: {id:?}")));
+    }
+    let until = until(older_than);
+    let id = format!("^{id}$");
+    let filters = HashMap::from([("until", vec![until.as_str()]), ("id", vec![id.as_str()])]);
+    prune(docker, filters).await
+}
+
+async fn prune(docker: &Docker, filters: HashMap<&str, Vec<&str>>) -> Result<u64, EngineError> {
     let options = PruneBuildOptionsBuilder::default()
         .filters(&filters)
         .build();

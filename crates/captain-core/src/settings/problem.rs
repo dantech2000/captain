@@ -39,7 +39,21 @@ impl fmt::Display for FileProblem {
 /// The link to `key` in docs/reference/settings.md, such as
 /// `…/settings.md#kubernetesport`.
 pub fn doc_link(key: &str) -> String {
-    format!("{REFERENCE_URL}#{}", anchor(key))
+    format!("{REFERENCE_URL}#{}", anchor(documented_key(key)))
+}
+
+/// `key`, or its nearest parent with its own heading in the reference: fields of
+/// `engine_resources` share that one heading.
+fn documented_key(key: &str) -> &str {
+    let entries = super::reference_entries();
+    let mut key = key;
+    while !entries.iter().any(|entry| entry.key == key) {
+        match key.rsplit_once('.') {
+            Some((parent, _)) => key = parent,
+            None => break,
+        }
+    }
+    key
 }
 
 /// GitHub's anchor for the heading `` `key` ``: lowercase, with only letters,

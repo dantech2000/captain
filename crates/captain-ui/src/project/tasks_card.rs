@@ -1,4 +1,5 @@
 use captain_core::model::ProjectTask;
+use captain_core::store::ProjectRun;
 use gpui_kit::assets::IconName;
 use gpui_kit::component::spinner::Spinner;
 use gpui_kit::component::{Icon, Sizable};
@@ -14,9 +15,11 @@ use crate::theme::Palette;
 const OUTPUT_LINES: usize = 6;
 
 /// The Tasks card: a button per task in `x-captain.tasks`, the end of the last run,
-/// or a hint on how to add tasks. `file` is the Compose file's name.
+/// or a hint on how to add tasks. `project` is the Compose project's name, and `file`
+/// its Compose file's name.
 pub fn render(
     state: &TaskState,
+    project: &str,
     file: &str,
     view: &WeakEntity<ProjectView>,
     palette: &Palette,
@@ -32,6 +35,7 @@ pub fn render(
         .border_dashed()
         .border_color(palette.border_strong)
         .child(div().font_weight(FontWeight::BOLD).child("Tasks"));
+    let run = state.runs.get(project);
     match &state.list {
         TaskList::None => card.child(note("Tasks need Docker Compose.", palette)),
         TaskList::Loading => card.child(note(format!("Reading {file}..."), palette)),
@@ -51,7 +55,7 @@ pub fn render(
                     tasks
                         .tasks
                         .iter()
-                        .map(|task| task_button(task, state, view, palette)),
+                        .map(|task| task_button(task, run, view, palette)),
                 ),
             )
             .children(tasks.problems.iter().map(|problem| {
@@ -60,7 +64,7 @@ pub fn render(
                     .text_color(palette.warn_text)
                     .child(problem.clone())
             }))
-            .children(last_run(state, palette)),
+            .children(run.and_then(|run| last_run(run, palette))),
     }
 }
 
@@ -88,12 +92,15 @@ fn example(palette: &Palette) -> Div {
 
 fn task_button(
     task: &ProjectTask,
-    state: &TaskState,
+    run: Option<&ProjectRun>,
     view: &WeakEntity<ProjectView>,
     palette: &Palette,
 ) -> Stateful<Div> {
-    let running = state.running.as_deref() == Some(task.name.as_str());
-    let idle = state.running.is_none();
+    let running_task = run
+        .and_then(|run| run.running.as_ref())
+        .map(|(_, name)| name);
+    let running = running_task == Some(&task.name);
+    let idle = running_task.is_none();
     let hover = palette.nav_selected;
     let (view, run) = (view.clone(), task.clone());
     div()
@@ -143,8 +150,8 @@ fn task_button(
 }
 
 /// The exit code and the last lines of the last run.
-fn last_run(state: &TaskState, palette: &Palette) -> Option<Div> {
-    let (name, output) = state.last.as_ref()?;
+fn last_run(run: &ProjectRun, palette: &Palette) -> Option<Div> {
+    let (name, output) = run.last.as_ref()?;
     let lines: Vec<&str> = output.output.lines().collect();
     let tail = &lines[lines.len().saturating_sub(OUTPUT_LINES)..];
     let color = if output.exit_code == 0 {

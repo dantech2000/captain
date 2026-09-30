@@ -34,3 +34,28 @@ fn a_stop_or_kill_is_not_a_crash() {
     tracker.record_at(&event("die"), at);
     assert_eq!(tracker.recent("c1", at), None);
 }
+
+#[test]
+fn stopping_a_crashed_container_clears_its_crash() {
+    let at = Instant::now();
+    let mut tracker = CrashTracker::default();
+    tracker.record_at(&event("die"), at);
+    assert!(tracker.recent("c1", at).is_some());
+    tracker.record_at(&event("kill"), at);
+    tracker.record_at(&event("die"), at);
+    assert_eq!(tracker.recent("c1", at), None);
+}
+
+#[test]
+fn next_expiry_is_when_the_oldest_recent_crash_stops_counting() {
+    let start = Instant::now();
+    let mut tracker = CrashTracker::default();
+    assert_eq!(tracker.next_expiry(start), None);
+    tracker.record_at(&event("die"), start);
+    let later = start + Duration::from_secs(20);
+    assert_eq!(
+        tracker.next_expiry(later),
+        Some(RECENT - Duration::from_secs(20))
+    );
+    assert_eq!(tracker.next_expiry(start + RECENT), None);
+}

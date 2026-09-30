@@ -3,7 +3,7 @@
 //! (https://docs.rs/jsonc-parser/0.34.0/jsonc_parser/cst/index.html). See ADR 0013.
 
 use jsonc_parser::cst::{CstInputValue, CstObject, CstRootNode};
-use serde_json::Value;
+use serde_json::{Map, Value};
 
 use super::overrides::{self, KeyPath, get, is_version, leaves};
 use super::{FileProblem, SETTINGS_VERSION, Settings, jsonc};
@@ -39,15 +39,16 @@ pub(super) struct FileEdit {
 }
 
 impl FileEdit {
-    /// Opens `text`, or a new file when `text` is blank. Bad JSON is an error, so a
-    /// file that the user can still fix is never replaced.
+    /// Opens `text`, or a new file when `text` is blank. Bad JSON, or a file that is
+    /// not one object, is an error, so a file that the user can still fix is never
+    /// replaced.
     pub(super) fn open(text: &str) -> Result<Self, FileProblem> {
         let text = if text.trim().is_empty() {
             new_file()
         } else {
             text.to_string()
         };
-        jsonc::parse(&text)?;
+        jsonc::parse_object(&text)?;
         let root = CstRootNode::parse(&text, &jsonc::options()).map_err(|error| FileProblem {
             line: error.line_display(),
             key: None,
@@ -91,7 +92,8 @@ impl FileEdit {
     }
 
     /// Writes the keys in `paths` from `after`: a default removes the key, and any
-    /// other value replaces it in place or adds it at the end of its object.
+    /// other value replaces it in place or adds it at the end of its object. An
+    /// object that is in the file already changes key by key.
     pub(super) fn apply(&mut self, after: &Settings, paths: &[KeyPath]) {
         let after = overrides::to_value(after);
         for path in paths.iter().filter(|path| !is_version(path)) {
@@ -121,10 +123,36 @@ impl FileEdit {
                 object.object_value_or_set(key)
             });
         match object.get(last) {
-            Some(prop) => prop.set_value(input(value)),
+            Some(prop) => match (value, prop.object_value()) {
+                (Value::Object(map), Some(existing)) => self.merge(path, &existing, map),
+                _ => prop.set_value(input(value)),
+            },
             None => {
                 object.append(last, input(value));
             }
+        }
+    }
+
+    /// Writes `map` into the object at `path` key by key, such as each field of
+    /// `engine_resources`, so comments and keys that Captain does not know stay in
+    /// it. A key that Captain read from the file and `map` no longer has goes.
+    fn merge(&self, path: &[String], existing: &CstObject, map: &Map<String, Value>) {
+        let read = Settings::from_json(&self.text()).unwrap_or_default();
+        let read = overrides::to_value(&read);
+        let known = get(&read, path).and_then(Value::as_object);
+        for prop in existing.properties() {
+            let name = prop.name().and_then(|name| name.decoded_value().ok());
+            let gone = name.is_some_and(|name| {
+                !map.contains_key(&name) && known.is_some_and(|known| known.contains_key(&name))
+            });
+            if gone {
+                prop.remove();
+            }
+        }
+        for (key, inner) in map {
+            let mut child = path.to_vec();
+            child.push(key.clone());
+            self.set(&child, inner);
         }
     }
 

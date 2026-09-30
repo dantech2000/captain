@@ -84,7 +84,7 @@ The [settings reference](../reference/settings.md) lists every option.
 
 ### Comments
 
-Write `//` comments to say why you set a value. When the Settings page or `captain set` changes a value, Captain edits that value in place. Your comments stay.
+Write `//` comments to say why you set a value. When the Settings page or `captain set` changes a value, Captain edits that value in place. Your comments stay, also inside `engine_resources` when you change one of its values.
 
 ### Autocomplete in your editor
 
@@ -100,7 +100,7 @@ If your editor marks the comments as errors, set the file's language to JSON wit
 
 Captain watches the file and applies it when you save. You do not need to restart Captain.
 
-Engine options, such as the resources, the Docker daemon, and Kubernetes, apply the next time Captain Engine starts. Captain says so when you save.
+Engine options, such as the resources, the Docker daemon, and Kubernetes, apply the next time Captain Engine starts. Captain says so when you save. If you change the resources while Captain takes or restores a snapshot, Captain applies them when the snapshot is done, before it starts the engine again. A restore keeps the snapshot's resources instead.
 
 ### Mistakes
 
@@ -109,6 +109,10 @@ If the file has a mistake, Captain keeps the last good settings and shows an err
 ```text
 settings.json line 9: kubernetes.port must be 1–65535. Captain keeps the last good settings.
 ```
+
+Each value of `engine_resources` must be at least its minimum: 1 CPU, 2 GiB of memory, and a 16 GiB disk. A value below that is a mistake, and Captain names its line.
+
+A file that is not one object, such as a list, is a mistake too. Captain never writes over it.
 
 Fix the line and save again.
 

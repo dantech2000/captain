@@ -7,31 +7,38 @@ use serde::Deserialize;
 use serde_json::Value;
 
 use super::overrides::{defaults, get, leaves, to_value};
+use super::reference::field_entries;
 use super::{FileProblem, ReferenceEntry, Settings, jsonc, reference_entries};
 
 /// The settings in `text`, and the values that fell back to their defaults. Bad
 /// JSON, or a file that is not one object, is an error.
 pub(super) fn read(text: &str) -> Result<(Settings, Vec<FileProblem>), FileProblem> {
-    let file = jsonc::parse(text)?;
-    if !file.is_object() {
-        return Err(FileProblem {
-            line: 1,
-            key: None,
-            message: "The file must hold one object, in { }".into(),
-        });
-    }
+    let mut file = jsonc::parse_object(text)?;
     let settings = Settings::from_value(file.clone());
-    let problems = problems(text, &file, &settings);
-    Ok((settings, problems))
+    let (problems, bad_fields) = problems(text, &file, &settings);
+    if bad_fields.is_empty() {
+        return Ok((settings, problems));
+    }
+    // A structured value with a field out of its limits gets its default whole.
+    if let Some(map) = file.as_object_mut() {
+        for key in &bad_fields {
+            map.remove(key);
+        }
+    }
+    Ok((Settings::from_value(file), problems))
 }
 
-fn problems(text: &str, file: &Value, settings: &Settings) -> Vec<FileProblem> {
+/// The problems, and the top-level keys whose structured value has a field out of
+/// its limits.
+fn problems(text: &str, file: &Value, settings: &Settings) -> (Vec<FileProblem>, Vec<String>) {
     let read = to_value(settings);
     let entries: HashMap<String, ReferenceEntry> = reference_entries()
         .into_iter()
+        .chain(field_entries())
         .map(|entry| (entry.key.clone(), entry))
         .collect();
     let mut problems = Vec::new();
+    let mut bad_fields: Vec<String> = Vec::new();
     let mut bad_groups: Vec<String> = Vec::new();
     for path in leaves(&defaults()) {
         let group = &path[..1];
@@ -51,9 +58,26 @@ fn problems(text: &str, file: &Value, settings: &Settings) -> Vec<FileProblem> {
         if !kept || entry.is_some_and(|entry| out_of_range(entry, value)) {
             let expected = entry.map_or("a valid value", |entry| entry.type_label.as_str());
             problems.push(problem(text, &path, format!("must be {expected}")));
+            continue;
+        }
+        let Some(fields) = value.as_object() else {
+            continue;
+        };
+        let before = problems.len();
+        for (field, inner) in fields {
+            let key = format!("{key}.{field}");
+            if let Some(entry) = entries.get(&key).filter(|entry| out_of_range(entry, inner)) {
+                let mut path = path.clone();
+                path.push(field.clone());
+                let message = format!("must be {}", entry.type_label);
+                problems.push(problem(text, &path, message));
+            }
+        }
+        if problems.len() > before && path.len() == 1 {
+            bad_fields.push(path[0].clone());
         }
     }
-    problems
+    (problems, bad_fields)
 }
 
 /// True if the file's `value` reads as `read`. Blank or padded text counts as

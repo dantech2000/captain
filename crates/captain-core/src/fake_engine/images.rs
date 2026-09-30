@@ -142,6 +142,17 @@ impl ImageApi for FakeEngine {
     fn prune_build_cache(&self, _older_than: Duration) -> EngineFuture<u64> {
         ready(Ok(0)).boxed()
     }
+
+    /// Reports the size of the record `id` in the disk use, unless a build uses it.
+    fn prune_build_record(&self, id: &str, _older_than: Duration) -> EngineFuture<u64> {
+        let reclaimed = self
+            .disk
+            .build_cache
+            .iter()
+            .find(|record| record.id == id && !record.in_use)
+            .map_or(0, |record| record.size);
+        ready(Ok(reclaimed)).boxed()
+    }
 }
 
 impl FakeImages {

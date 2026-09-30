@@ -7,6 +7,7 @@ use captain_core::{HostError, HostResources, HostStatus};
 use futures::StreamExt;
 use gpui_kit::*;
 
+use super::host_reload::report_resize;
 use super::{HostEvent, HostModel};
 use crate::settings;
 
@@ -202,15 +203,8 @@ impl HostModel {
         settings::update(cx, |settings| settings.engine_resources = Some(resources));
         let apply = self.host.set_resources(resources);
         cx.spawn(async move |this, cx| {
-            if let Err(error) = apply.await {
-                this.update(cx, |_, cx| {
-                    cx.emit(HostEvent::Failed {
-                        action: "Resize",
-                        message: error.0,
-                    })
-                })
-                .ok();
-            }
+            let result = apply.await;
+            this.update(cx, |_, cx| report_resize(result, cx)).ok();
         })
         .detach();
         cx.notify();

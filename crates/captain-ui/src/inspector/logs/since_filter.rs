@@ -28,6 +28,14 @@ impl LogsPane {
         self.since.map(|(since, _)| since)
     }
 
+    /// Keeps the time filter while the same container restarts or reloads, and
+    /// drops it for another container.
+    pub(super) fn keep_since_for(&mut self, id: &str) {
+        if self.source.as_ref().is_none_or(|(_, old)| old != id) {
+            self.since = None;
+        }
+    }
+
     /// Drops the time filter and loads the recent lines again.
     pub(super) fn clear_since(&mut self, cx: &mut Context<Self>) {
         self.since = None;

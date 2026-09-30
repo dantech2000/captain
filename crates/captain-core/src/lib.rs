@@ -9,6 +9,7 @@ mod engine;
 mod error;
 pub mod extension;
 mod fake_engine;
+mod file_replace;
 pub mod format;
 pub mod grammar;
 pub mod kubernetes;

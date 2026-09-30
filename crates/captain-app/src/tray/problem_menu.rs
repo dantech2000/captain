@@ -32,7 +32,7 @@ pub fn problem_items(problem: &Problem) -> Vec<TrayItem> {
         } => {
             // With no limit the engine itself ran out; a higher limit does not help.
             if *limit > 0 {
-                let bytes = raised_memory(*limit).max(0) as u64;
+                let bytes = raised_memory(*limit);
                 items.push(TrayItem::command(
                     format!("Raise Memory to {}", bytes_label(bytes)),
                     TrayCommand::RaiseMemory {

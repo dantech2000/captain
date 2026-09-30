@@ -177,4 +177,12 @@ impl ImageApi for DockerEngine {
             super::disk::prune_build_cache(&docker, older_than).await
         })
     }
+
+    fn prune_build_record(&self, id: &str, older_than: Duration) -> EngineFuture<u64> {
+        let docker = self.docker.clone();
+        let id = id.to_string();
+        runtime::spawn(self.runtime.handle(), async move {
+            super::disk::prune_build_record(&docker, &id, older_than).await
+        })
+    }
 }

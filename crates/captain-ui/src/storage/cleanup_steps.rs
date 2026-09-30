@@ -41,6 +41,13 @@ impl StorageModel {
         if items.is_empty() || self.step.is_some() {
             return;
         }
+        let Some(preview) = self.plan_engine.clone() else {
+            let message = "Captain could not tell which engine the preview came from, \
+                           so nothing was removed."
+                .to_string();
+            self.finish(Err(message), cx);
+            return;
+        };
         let snapshot = (self.snapshot_first && self.can_snapshot(cx))
             .then(|| host_model(cx))
             .flatten()
@@ -89,11 +96,10 @@ impl StorageModel {
             };
             this.update(cx, |model, cx| model.set_step("Removing...", cx))
                 .ok();
-            let report = run_cleanup(engine, items).await;
-            let result = if report.failures.is_empty() {
-                Ok(report.summary())
-            } else {
-                Err(report.summary())
+            let result = match run_cleanup(engine, &preview, items).await {
+                Ok(report) if report.failures.is_empty() => Ok(report.summary()),
+                Ok(report) => Err(report.summary()),
+                Err(message) => Err(message),
             };
             this.update(cx, |model, cx| model.finish(result, cx)).ok();
         })
@@ -116,7 +122,8 @@ impl StorageModel {
 }
 
 /// The workspace's engine once it is connected to a new one, or `None` after
-/// [`RECONNECT_WAIT`].
+/// [`RECONNECT_WAIT`]. The user may have switched engines meanwhile, so
+/// [`run_cleanup`] checks it is still the daemon the preview came from.
 async fn reconnected(
     workspace: &WeakEntity<Workspace>,
     old: &Arc<dyn Engine>,

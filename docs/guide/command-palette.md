@@ -59,7 +59,7 @@ When a name fits more than one thing, the palette never guesses. It lists each m
 
 `logs api` opens the project page with the inspector at **Logs**.
 
-- `--since TIME` loads only the lines from that time on. A chip such as "Since 10 minutes" shows the filter. Click the chip to clear it.
+- `--since TIME` loads only the lines from that time on. A chip such as "Since 10 minutes" shows the filter. Click the chip to clear it. The filter stays when the container restarts, and goes when you select another container.
 - `--errors` shows only error lines.
 
 A time is a whole number and one unit: `30s`, `10m`, `1h`, or `2d`. `--since=10m` works too.

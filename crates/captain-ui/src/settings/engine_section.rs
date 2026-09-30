@@ -7,6 +7,7 @@ use gpui_kit::*;
 
 use super::page_section::{row, section, sub_row};
 use super::{SettingsView, engine_menu, engine_resources, engine_source};
+use crate::engine_host::HostModel;
 use crate::help::HelpExt;
 use crate::theme::Palette;
 use crate::widgets::{ButtonTone, text_button};
@@ -29,14 +30,43 @@ pub fn render(view: &SettingsView, palette: &Palette, cx: &mut Context<SettingsV
                 HostStatus::NotInstalled(why) | HostStatus::Failed(why) => Some(why.clone()),
                 _ => None,
             };
+            let restart = host
+                .daemon_needs_restart(cx)
+                .then(|| restart_row(model, palette));
             section
                 .children(engine_resources::rows(model, host, view.free_disk, palette))
+                .children(restart)
                 .children(problem.map(|why| {
                     super::page_section::under_note(why, palette).text_color(palette.red)
                 }))
         }
         None => section.child(connection_row(view, palette, cx)),
     }
+}
+
+/// "Restart to apply", while the engine runs with other Docker daemon settings
+/// than settings.json has, for example after an edit in the file.
+fn restart_row(model: &Entity<HostModel>, palette: &Palette) -> Stateful<Div> {
+    let model = model.clone();
+    sub_row("", palette)
+        .id("settings-daemon-restart")
+        .child(
+            div()
+                .flex_1()
+                .min_w_0()
+                .text_size(px(12.))
+                .text_color(palette.warn_text)
+                .child("Restart to apply: Captain Engine runs with the previous Docker daemon settings."),
+        )
+        .child(text_button(
+            "daemon-restart",
+            "Restart",
+            ButtonTone::Accent,
+            true,
+            palette,
+            move |_, _, cx| model.update(cx, |model, cx| model.restart(cx)),
+        ))
+        .help("Restart Captain Engine to use the Docker daemon settings in settings.json.")
 }
 
 /// The connection to another engine, and Reconnect.

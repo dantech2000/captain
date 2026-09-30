@@ -106,7 +106,7 @@ Captain puts an icon in the menu bar. When you close the main window, Captain an
 Click the icon, with either button. The menu opens. It looks like the other menus in the menu bar. Colored dots show state: green runs, amber starts, stops, or is paused, gray is stopped, and red has a problem.
 
 - **The engine.** "Captain Engine: Running", its CPUs, and the memory the containers use. Under it, the number of running containers.
-- **The problem**, only when something is wrong. A line names the worst problem, and the items under it fix it. For a container that keeps running out of memory, the menu offers **Raise Memory to** *size* (twice the old limit), **Show Logs in a Window**, and **Stop** *name*. For a failed Diagnostics check, it offers the same fix as the Diagnostics page.
+- **The problem**, only when something is wrong. A line names the worst problem, and the items under it fix it. For a container that keeps running out of memory, the menu offers **Raise Memory to** *size* (twice the old limit, and at least 512 MB), **Show Logs in a Window**, and **Stop** *name*. For a failed Diagnostics check, it offers the same fix as the Diagnostics page.
 - **Start Captain Engine** or **Stop Captain Engine**, **Open Captain**, and **Settings…**.
 - **Containers**, **Projects**, and **Open Ports**. Each running container has Stop, Restart, Show Logs in a Window, and its ports. Each Compose project has Start, Stop, and Restart. In Open Ports, a web port opens in your browser, and a database port copies its address.
 - **Kubernetes.** Its state, a check mark that turns the cluster on or off, and **Kubernetes Contexts**.

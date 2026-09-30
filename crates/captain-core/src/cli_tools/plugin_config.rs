@@ -3,14 +3,14 @@
 //! `~/.docker/cli-plugins` and takes the first match
 //! (<https://github.com/docker/cli/blob/master/cli-plugins/manager/manager.go>).
 
-use std::ffi::OsStr;
-use std::io::Write;
 use std::path::{Path, PathBuf};
 
 use serde::Serialize;
 use serde_json::{Map, Value};
 
+use crate::file_replace::{Mode, backup_once, commit, sibling, temp_path, write_new};
 use crate::link_target::link_target;
+use crate::process_lock::ProcessLock;
 
 const EXTRA_DIRS: &str = "cliPluginsExtraDirs";
 
@@ -60,28 +60,71 @@ pub fn has_plugin_dir(config: &Path, dir: &Path) -> bool {
 
 /// Adds `dir` to the file at `config`. Returns true if the file changed.
 pub fn add_plugin_dir(config: &Path, dir: &Path) -> Result<bool, String> {
-    let text = read(config)?;
-    let changed = with_plugin_dir(text.as_deref(), dir)
-        .map_err(|error| format!("{}: {error}", config.display()))?;
-    changed
-        .as_deref()
-        .map(|text| write(config, text))
-        .transpose()?;
-    Ok(changed.is_some())
+    update(config, dir, |text| with_plugin_dir(text, dir), |_| {})
 }
 
 /// Removes `dir` from the file at `config`. Returns true if the file changed.
 pub fn remove_plugin_dir(config: &Path, dir: &Path) -> Result<bool, String> {
-    let Some(text) = read(config)? else {
-        return Ok(false);
-    };
-    let changed =
-        without_plugin_dir(&text, dir).map_err(|error| format!("{}: {error}", config.display()))?;
-    changed
-        .as_deref()
-        .map(|text| write(config, text))
-        .transpose()?;
-    Ok(changed.is_some())
+    let change = |text: Option<&str>| text.map_or(Ok(None), |text| without_plugin_dir(text, dir));
+    update(config, dir, change, |_| {})
+}
+
+/// How many times Captain reads and merges again when another program, such as
+/// `docker login`, changed the file while Captain wrote it.
+const ATTEMPTS: usize = 3;
+
+/// The lock that Captain's own writers of `config.json` hold, the app and the
+/// CLI alike: `docker-config.lock` next to the plugin folder, in `~/.captain`.
+fn lock_path(plugins: &Path) -> PathBuf {
+    plugins.with_file_name("docker-config.lock")
+}
+
+/// Writes `change` of the file at `link` to `link`'s target, through a new file
+/// and a rename. Right before the rename, Captain reads the file again; if another
+/// program changed it meanwhile, Captain merges again from the new text.
+/// `before_commit` runs at that point, for tests.
+///
+/// The first write copies the old file to `config.json.captain-backup`, next to
+/// the link. Only the owner can read the new file, because it can hold registry
+/// logins.
+fn update(
+    link: &Path,
+    plugins: &Path,
+    change: impl Fn(Option<&str>) -> Result<Option<String>, String>,
+    mut before_commit: impl FnMut(&Path),
+) -> Result<bool, String> {
+    let path = &link_target(link);
+    let fail = |error: std::io::Error| format!("Cannot write {}: {error}", path.display());
+    let lock = lock_path(plugins);
+    let _lock = ProcessLock::acquire(&lock)
+        .map_err(|error| format!("Cannot lock {}: {error}", lock.display()))?;
+    for _ in 0..ATTEMPTS {
+        let original = read(path)?;
+        let text = original
+            .clone()
+            .map(String::from_utf8)
+            .transpose()
+            .map_err(|_| format!("{}: It is not UTF-8 text.", link.display()))?;
+        let Some(new) =
+            change(text.as_deref()).map_err(|error| format!("{}: {error}", link.display()))?
+        else {
+            return Ok(false);
+        };
+        backup_once(path, &sibling(link, "captain-backup")).map_err(fail)?;
+        let temp = temp_path(path);
+        write_new(&temp, path, new.as_bytes(), Mode::Private).map_err(fail)?;
+        before_commit(path);
+        if read(path)? != original {
+            std::fs::remove_file(&temp).ok();
+            continue;
+        }
+        commit(&temp, path).map_err(fail)?;
+        return Ok(true);
+    }
+    Err(format!(
+        "{} kept changing while Captain wrote it. Try again.",
+        path.display()
+    ))
 }
 
 fn parse(text: Option<&str>) -> Result<Map<String, Value>, String> {
@@ -111,51 +154,12 @@ fn to_text(config: &Map<String, Value>) -> String {
     text
 }
 
-fn read(config: &Path) -> Result<Option<String>, String> {
-    match std::fs::read_to_string(config) {
-        Ok(text) => Ok(Some(text)),
+fn read(config: &Path) -> Result<Option<Vec<u8>>, String> {
+    match std::fs::read(config) {
+        Ok(bytes) => Ok(Some(bytes)),
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(None),
         Err(error) => Err(format!("Cannot read {}: {error}", config.display())),
     }
-}
-
-/// Writes `text` to `link`'s target through a new file and a rename. The first
-/// write copies the old file to `config.json.captain-backup`, next to the link.
-/// Only the owner can read the new file, because it can hold registry logins.
-fn write(link: &Path, text: &str) -> Result<(), String> {
-    let path = &link_target(link);
-    let fail = |error: std::io::Error| format!("Cannot write {}: {error}", path.display());
-    if let Some(dir) = path.parent() {
-        std::fs::create_dir_all(dir).map_err(fail)?;
-    }
-    let backup = sibling(link, "captain-backup");
-    if path.exists() && !backup.exists() {
-        std::fs::copy(path, &backup).map_err(fail)?;
-    }
-    let temp = sibling(path, "captain-new");
-    std::fs::remove_file(&temp).ok();
-    let mut options = std::fs::OpenOptions::new();
-    options.write(true).create_new(true);
-    #[cfg(unix)]
-    std::os::unix::fs::OpenOptionsExt::mode(&mut options, 0o600);
-    let written = options
-        .open(&temp)
-        .and_then(|mut file| file.write_all(text.as_bytes()))
-        .and_then(|()| std::fs::rename(&temp, path));
-    if written.is_err() {
-        std::fs::remove_file(&temp).ok();
-    }
-    written.map_err(fail)
-}
-
-/// `config.json` becomes `config.json.<suffix>` in the same folder.
-fn sibling(path: &Path, suffix: &str) -> PathBuf {
-    let mut name = path
-        .file_name()
-        .unwrap_or(OsStr::new("config.json"))
-        .to_os_string();
-    name.push(format!(".{suffix}"));
-    path.with_file_name(name)
 }
 
 #[cfg(test)]

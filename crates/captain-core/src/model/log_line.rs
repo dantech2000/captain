@@ -7,6 +7,8 @@ pub struct LogLine {
     /// When the engine received the line, in Unix seconds. `None` when the engine
     /// sent no time.
     pub timestamp: Option<i64>,
+    /// The fraction of the second of `timestamp`, in nanoseconds.
+    pub nanos: u32,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -33,6 +35,7 @@ impl LogLine {
             text,
             level,
             timestamp: None,
+            nanos: 0,
         }
     }
 
@@ -42,10 +45,16 @@ impl LogLine {
         match timestamp::split(raw) {
             Some((time, text)) => Self {
                 timestamp: Some(time),
+                nanos: timestamp::nanos(raw),
                 ..Self::new(stream, text)
             },
             None => Self::new(stream, raw),
         }
+    }
+
+    /// The time with full precision, as Unix seconds and nanoseconds.
+    pub fn precise_time(&self) -> Option<(i64, u32)> {
+        self.timestamp.map(|time| (time, self.nanos))
     }
 
     /// The time as `HH:MM:SS` in a zone `offset` seconds east of UTC.

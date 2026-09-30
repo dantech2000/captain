@@ -9,6 +9,7 @@ use captain_core::snapshot::{EngineSnapshots, SnapshotMetadata};
 use gpui_kit::*;
 
 use super::HostModel;
+use super::host_reload::report_resize;
 use crate::settings;
 
 impl HostModel {
@@ -36,12 +37,14 @@ impl HostModel {
     }
 
     /// Saves the resources, daemon, and Kubernetes settings of a restored snapshot,
-    /// so the next start does not change the restored engine.
+    /// so the next start does not change the restored engine. They win over
+    /// resources that changed in the settings file during the restore.
     pub(crate) fn adopt_snapshot(
         &mut self,
         metadata: &SnapshotMetadata,
         cx: &mut Context<Self>,
     ) -> HostFuture<()> {
+        self.held_resources = None;
         settings::update(cx, |settings| metadata.adopt_into(settings));
         let saved = settings::current(cx);
         self.host.set_daemon(saved.engine_daemon);
@@ -57,9 +60,27 @@ impl HostModel {
         cx.notify();
     }
 
-    /// Unblocks the engine controls, and starts the engine if `restart`, unless
-    /// Captain quits.
+    /// Hands the host the resources that changed in the settings file meanwhile,
+    /// then unblocks the engine controls, and starts the engine if `restart`,
+    /// unless Captain quits. The start applies the new resources.
     pub(crate) fn end_snapshot(&mut self, restart: bool, cx: &mut Context<Self>) {
+        let Some(resources) = self.held_resources.take() else {
+            self.unblock(restart, cx);
+            return;
+        };
+        let apply = self.host.set_resources(resources);
+        cx.spawn(async move |this, cx| {
+            let result = apply.await;
+            this.update(cx, |model, cx| {
+                report_resize(result, cx);
+                model.unblock(restart, cx);
+            })
+            .ok();
+        })
+        .detach();
+    }
+
+    fn unblock(&mut self, restart: bool, cx: &mut Context<Self>) {
         self.snapshotting = false;
         if restart && !self.quitting {
             self.start(cx);

@@ -35,6 +35,9 @@ pub struct HostModel {
     pub(super) cancelled: bool,
     /// True while a snapshot step runs. Start, stop, reset, and resizing wait.
     pub(super) snapshotting: bool,
+    /// Resources from the settings file that changed while a snapshot step ran.
+    /// The end of the step hands them to the host, before it starts the engine.
+    pub(super) held_resources: Option<HostResources>,
     /// True once Quit waits for the snapshot step, which then does not start the
     /// engine again.
     pub(super) quitting: bool,
@@ -74,6 +77,7 @@ pub fn init(
             stopping: false,
             cancelled: false,
             snapshotting: false,
+            held_resources: None,
             quitting: false,
             _poll: None,
         };

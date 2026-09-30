@@ -18,7 +18,8 @@ pub struct Crash {
 }
 
 /// Remembers containers that exit on their own, from the engine's events. A `docker
-/// stop` or `docker kill` sends `kill` before `die` and is not a crash. Docker clears
+/// stop` or `docker kill` sends `kill` before `die` and is not a crash; it also
+/// clears the container's last crash, so stopping a crash loop ends its problem. Docker clears
 /// a container's `OOMKilled` flag at every start, but its `oom` event stays here.
 /// See <https://docs.docker.com/reference/cli/docker/system/events/>.
 #[derive(Debug, Default)]
@@ -41,7 +42,12 @@ impl CrashTracker {
         let id = event.id.clone();
         match event.action.as_str() {
             "kill" => {
+                self.crashes.remove(&id);
                 self.killed.insert(id, true);
+            }
+            // A stop during a restart delay sends no `kill`: nothing runs.
+            "stop" => {
+                self.crashes.remove(&id);
             }
             "oom" => {
                 self.out_of_memory.insert(id, true);
@@ -68,6 +74,16 @@ impl CrashTracker {
             .get(id)
             .copied()
             .filter(|crash| now.saturating_duration_since(crash.at) < RECENT)
+    }
+
+    /// How long after `now` the next recent crash stops counting, if any. Views
+    /// read crashes only when they draw, so the app redraws at that moment.
+    pub fn next_expiry(&self, now: Instant) -> Option<Duration> {
+        self.crashes
+            .values()
+            .map(|crash| RECENT.saturating_sub(now.saturating_duration_since(crash.at)))
+            .filter(|left| !left.is_zero())
+            .min()
     }
 }
 

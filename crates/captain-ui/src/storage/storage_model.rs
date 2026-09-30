@@ -2,7 +2,7 @@ use std::sync::Arc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use captain_core::Engine;
-use captain_core::model::DiskUsage;
+use captain_core::model::{DiskUsage, EngineInfo};
 use captain_core::snapshot::Snapshot;
 use captain_core::storage::{DiskBreakdown, ReclaimGroup, ReclaimPlan};
 use gpui_kit::*;
@@ -21,6 +21,8 @@ pub struct StorageModel {
     pub(super) engine: Option<Arc<dyn Engine>>,
     pub(super) usage: Option<DiskUsage>,
     pub(super) plan: ReclaimPlan,
+    /// The daemon the plan came from. A cleanup removes nothing on another one.
+    pub(super) plan_engine: Option<EngineInfo>,
     /// Captain Engine's snapshots. They live on this computer's disk.
     pub(super) snapshots: Vec<Snapshot>,
     /// Free bytes on this computer's disk, when Captain Engine reports it.
@@ -81,6 +83,7 @@ impl StorageModel {
             engine: None,
             usage: None,
             plan: ReclaimPlan::default(),
+            plan_engine: None,
             snapshots: Vec::new(),
             host_free: None,
             error: None,
@@ -113,6 +116,7 @@ impl StorageModel {
         self.engine = engine;
         self.usage = None;
         self.plan = ReclaimPlan::default();
+        self.plan_engine = None;
         self.error = None;
         self.load = None;
         self.reload(cx);
@@ -130,7 +134,7 @@ impl StorageModel {
             .and_then(|host| host.read(cx).snapshots())
             .map(|store| store.list());
         self.load = Some(cx.spawn(async move |this, cx| {
-            let usage = engine.disk_usage().await;
+            let (usage, info) = futures::join!(engine.disk_usage(), engine.info());
             let list = match snapshots {
                 Some(list) => list.await.ok(),
                 None => None,
@@ -140,6 +144,7 @@ impl StorageModel {
                 match usage {
                     Ok(usage) => {
                         model.plan = ReclaimPlan::new(&usage, now());
+                        model.plan_engine = info.ok();
                         model.usage = Some(usage);
                         model.error = None;
                     }

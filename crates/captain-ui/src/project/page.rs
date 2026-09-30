@@ -115,7 +115,10 @@ pub fn render(view: &ProjectView, cx: &mut Context<ProjectView>) -> AnyElement {
             .first()
             .and_then(|file| file.rsplit(['/', '\\']).next())
             .unwrap_or("the Compose file");
-        grid.push(tasks_card::render(&view.tasks, file, &weak, &palette).into_any_element());
+        grid.push(
+            tasks_card::render(&view.tasks, &project.name, file, &weak, &palette)
+                .into_any_element(),
+        );
     }
     if containers.is_empty() {
         grid.insert(0, empty(&key, &palette).into_any_element());
