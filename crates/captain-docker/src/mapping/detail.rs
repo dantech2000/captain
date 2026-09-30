@@ -26,13 +26,15 @@ pub fn detail(response: ContainerInspectResponse) -> ContainerDetail {
         .unwrap_or_default();
     networks.sort();
     let host_config = response.host_config.unwrap_or_default();
-    let memory_limit = host_config.memory.unwrap_or_default();
+    let memory_limit = host_config.memory.unwrap_or_default().max(0) as u64;
     let restart_policy = host_config
         .restart_policy
         .and_then(|p| p.name)
         .map(|name| name.to_string())
         .unwrap_or_default();
     let state = response.state.unwrap_or_default();
+    let exit_code = state.exit_code.unwrap_or_default();
+    let oom_killed = state.oom_killed.unwrap_or_default();
     let health_checks = state
         .health
         .and_then(|h| h.log)
@@ -55,7 +57,8 @@ pub fn detail(response: ContainerInspectResponse) -> ContainerDetail {
         restart_policy,
         health_checks,
         started_at: state.started_at.unwrap_or_default(),
-        oom_killed: state.oom_killed.unwrap_or_default(),
+        exit_code,
+        oom_killed,
         memory_limit,
         restart_count: response.restart_count.unwrap_or_default(),
     }

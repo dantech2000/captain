@@ -14,7 +14,7 @@ use bollard::query_parameters::{
 };
 use captain_core::model::{
     Container, ContainerAction, ContainerDetail, DiskUsage, EngineEvent, EngineInfo, ExecSession,
-    ExecSpec, FileEntry, FilePreview, LogLine, ProcessTable, StatsSample,
+    ExecSpec, FileEntry, FilePreview, LogLine, LogOptions, ProcessTable, StatsSample,
 };
 use captain_core::{ContainerApi, EngineFuture, EngineStream};
 use futures::StreamExt;
@@ -86,30 +86,11 @@ impl ContainerApi for DockerEngine {
     }
 
     fn logs(&self, id: &str, tail: usize) -> EngineStream<LogLine> {
-        let docker = self.docker.clone();
-        let id = id.to_string();
-        runtime::forward(self.runtime.handle(), move |tx| async move {
-            let options = LogsOptionsBuilder::default()
-                .follow(true)
-                .stdout(true)
-                .stderr(true)
-                .timestamps(true)
-                .tail(&tail.to_string())
-                .build();
-            let mut output = pin!(docker.logs(&id, Some(options)));
-            while let Some(item) = output.next().await {
-                let lines = match item {
-                    Ok(frame) => mapping::log_lines(frame).into_iter().map(Ok).collect(),
-                    Err(error) => vec![Err(mapping::engine_error(error))],
-                };
-                if lines
-                    .into_iter()
-                    .any(|line| tx.unbounded_send(line).is_err())
-                {
-                    break;
-                }
-            }
-        })
+        let options = LogOptions {
+            tail: Some(tail),
+            since: None,
+        };
+        self.logs_with(id, options)
     }
 
     fn run_action(&self, id: &str, action: ContainerAction) -> EngineFuture<()> {
@@ -173,16 +154,44 @@ impl ContainerApi for DockerEngine {
         })
     }
 
-    fn update_memory(&self, id: &str, memory_bytes: i64) -> EngineFuture<()> {
+    fn logs_with(&self, id: &str, options: LogOptions) -> EngineStream<LogLine> {
         let docker = self.docker.clone();
         let id = id.to_string();
+        runtime::forward(self.runtime.handle(), move |tx| async move {
+            let mut builder = LogsOptionsBuilder::default()
+                .follow(true)
+                .stdout(true)
+                .stderr(true)
+                .timestamps(true)
+                .tail(&options.tail.map_or("all".into(), |tail| tail.to_string()));
+            if let Some(since) = options.since {
+                builder = builder.since(i32::try_from(since).unwrap_or(i32::MAX));
+            }
+            let mut output = pin!(docker.logs(&id, Some(builder.build())));
+            while let Some(item) = output.next().await {
+                let lines = match item {
+                    Ok(frame) => mapping::log_lines(frame).into_iter().map(Ok).collect(),
+                    Err(error) => vec![Err(mapping::engine_error(error))],
+                };
+                if lines
+                    .into_iter()
+                    .any(|line| tx.unbounded_send(line).is_err())
+                {
+                    break;
+                }
+            }
+        })
+    }
+
+    fn update_memory(&self, id: &str, bytes: u64) -> EngineFuture<()> {
+        let docker = self.docker.clone();
+        let id = id.to_string();
+        let memory = i64::try_from(bytes).unwrap_or(i64::MAX);
         runtime::spawn(self.runtime.handle(), async move {
-            // The engine refuses a memory limit above the old swap limit, so both
-            // change together.
             let body = ContainerUpdateBody {
-                memory: Some(memory_bytes),
-                memory_swap: Some(memory_bytes.saturating_mul(2)),
-                ..Default::default()
+                memory: Some(memory),
+                memory_swap: Some(memory.saturating_mul(2)),
+                ..ContainerUpdateBody::default()
             };
             docker
                 .update_container(&id, body)

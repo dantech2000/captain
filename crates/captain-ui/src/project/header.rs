@@ -1,0 +1,241 @@
+use std::path::PathBuf;
+
+use captain_core::model::{ComposeProject, ProjectAction, count_label};
+use captain_core::store::GroupKey;
+use gpui_kit::component::Sizable;
+use gpui_kit::component::spinner::Spinner;
+use gpui_kit::prelude::FluentBuilder;
+use gpui_kit::*;
+
+use super::system_open::open_terminal;
+use super::{ProjectNotice, ProjectView};
+use crate::containers::down_dialog;
+use crate::help::HelpExt;
+use crate::theme::Palette;
+use crate::widgets::{drag_region, primary_button};
+use crate::workspace::Workspace;
+
+/// The folder and Compose files in mono, the name in large type, and for a Compose
+/// project: Open folder, Terminal, Down, and Restart project (Up while nothing runs).
+/// `active` and `count` are the containers that run and all of them.
+pub fn render(
+    key: &GroupKey,
+    project: Option<&ComposeProject>,
+    (active, count): (usize, usize),
+    handle: &Entity<Workspace>,
+    workspace: &Workspace,
+    view: &WeakEntity<ProjectView>,
+    palette: &Palette,
+) -> Stateful<Div> {
+    let (path, name) = match (key, project) {
+        (GroupKey::Project(name), Some(project)) => (location(project), name.clone()),
+        (GroupKey::Project(name), None) => ("Compose project".to_string(), name.clone()),
+        (GroupKey::Namespace(namespace), _) => ("Kubernetes namespace".into(), namespace.clone()),
+        (GroupKey::Standalone, _) => ("Not in a Compose project".into(), "Loose containers".into()),
+    };
+    let buttons = project.map(|project| match workspace.project_pending(&project.name) {
+        Some(action) => div()
+            .flex()
+            .items_center()
+            .gap(px(6.))
+            .text_size(px(12.))
+            .text_color(palette.text2)
+            .child(Spinner::new().xsmall().color(palette.text2))
+            .child(action.progress_label()),
+        None => buttons(project, (active, count), handle, workspace, view, palette),
+    });
+    drag_region("project-header")
+        .flex_shrink_0()
+        .flex()
+        .items_end()
+        .gap(px(12.))
+        .px(px(28.))
+        .pt(px(22.))
+        .pb(px(16.))
+        .child(
+            div()
+                .flex_1()
+                .min_w_0()
+                .flex()
+                .flex_col()
+                .gap(px(4.))
+                .child(
+                    div()
+                        .text_size(px(11.))
+                        .font_family(palette.mono())
+                        .text_color(palette.text3)
+                        .truncate()
+                        .child(path),
+                )
+                .child(
+                    div()
+                        .text_size(px(28.))
+                        .font_weight(FontWeight::EXTRA_BOLD)
+                        .truncate()
+                        .child(name),
+                ),
+        )
+        .children(buttons)
+}
+
+/// `~/code/shop · compose.yaml`.
+fn location(project: &ComposeProject) -> String {
+    let home = std::env::home_dir();
+    let dir = project.short_working_dir(home.as_deref());
+    let files: Vec<&str> = project
+        .config_files
+        .iter()
+        .map(|file| file.rsplit(['/', '\\']).next().unwrap_or(file))
+        .collect();
+    match (dir, files.is_empty()) {
+        (Some(dir), false) => format!("{dir} · {}", files.join(", ")),
+        (Some(dir), true) => dir,
+        (None, _) => "Compose project".into(),
+    }
+}
+
+fn buttons(
+    project: &ComposeProject,
+    (active, count): (usize, usize),
+    handle: &Entity<Workspace>,
+    workspace: &Workspace,
+    view: &WeakEntity<ProjectView>,
+    palette: &Palette,
+) -> Div {
+    let name = &project.name;
+    let shown = project
+        .short_working_dir(std::env::home_dir().as_deref())
+        .unwrap_or_default();
+    let dir = project
+        .working_dir
+        .clone()
+        .map(PathBuf::from)
+        .filter(|dir| dir.is_dir());
+    let compose = workspace.has_project_runner();
+
+    let folder = {
+        let help = match &dir {
+            Some(_) => format!("Open {shown} with the default app for folders."),
+            None => format!("The folder of {name} is not on this computer."),
+        };
+        let dir = dir.clone();
+        secondary(
+            "project-open-folder",
+            "Open folder",
+            dir.is_some(),
+            palette,
+            move |_, cx| {
+                if let Some(dir) = &dir {
+                    cx.open_with_system(dir);
+                }
+            },
+        )
+        .help(help)
+    };
+    let terminal = {
+        let (dir, view) = (dir.clone(), view.clone());
+        secondary(
+            "project-terminal",
+            "Terminal",
+            dir.is_some(),
+            palette,
+            move |_, cx| {
+                let Some(dir) = &dir else { return };
+                if let Err(error) = open_terminal(dir) {
+                    let notice = ProjectNotice::Failed {
+                        title: "Cannot open a terminal".into(),
+                        error: error.to_string(),
+                    };
+                    view.update(cx, |_, cx| cx.emit(notice)).ok();
+                }
+            },
+        )
+        .help(format!(
+            "Open a terminal in {shown}. Its docker CLI uses your current docker context."
+        ))
+    };
+    let down = {
+        let (handle, project) = (handle.clone(), name.clone());
+        secondary(
+            "project-down",
+            "Down",
+            compose && count > 0,
+            palette,
+            move |window, cx| down_dialog::open(project.clone(), handle.clone(), window, cx),
+        )
+        .help(format!(
+            "Stop and remove the {} of {name}. Volumes and images stay.",
+            count_label(count, "container")
+        ))
+    };
+    let (action, label, help) = if active == 0 {
+        (
+            ProjectAction::Up,
+            "Up",
+            format!("Create and start the services of {name} (docker compose up)."),
+        )
+    } else {
+        (
+            ProjectAction::Restart,
+            "Restart project",
+            format!("Restart the {} of {name}.", project.services_label()),
+        )
+    };
+    let primary = {
+        let (handle, project) = (handle.clone(), project.clone());
+        primary_button(
+            "project-primary",
+            label,
+            help,
+            compose,
+            palette,
+            move |_, _, cx| {
+                handle.update(cx, |workspace, cx| {
+                    workspace.run_project_action_on(project.clone(), action, cx)
+                })
+            },
+        )
+        .h(px(32.))
+        .px(px(14.))
+        .text_size(px(12.))
+        .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
+    };
+    div()
+        .flex()
+        .items_center()
+        .gap(px(8.))
+        .child(folder)
+        .child(terminal)
+        .when(count > 0, |this| this.child(down))
+        .child(primary)
+}
+
+fn secondary(
+    id: &'static str,
+    label: &'static str,
+    enabled: bool,
+    palette: &Palette,
+    on_click: impl Fn(&mut Window, &mut App) + 'static,
+) -> Stateful<Div> {
+    let hover = palette.nav_selected;
+    div()
+        .id(id)
+        .h(px(32.))
+        .px(px(12.))
+        .flex()
+        .items_center()
+        .rounded(px(8.))
+        .border_1()
+        .border_color(palette.border_strong)
+        .bg(palette.field)
+        .text_size(px(12.))
+        .font_weight(FontWeight::SEMIBOLD)
+        .when(!enabled, |this| this.opacity(0.45))
+        .when(enabled, |this| {
+            this.cursor_pointer()
+                .hover(move |style| style.bg(hover))
+                .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
+                .on_click(move |_, window, cx| on_click(window, cx))
+        })
+        .child(label)
+}

@@ -1,4 +1,4 @@
-use super::{ComposeLabels, Health, PortMapping};
+use super::{ComposeLabels, Health, PortMapping, kube_display_name};
 
 /// A container as Captain shows it in lists.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -28,6 +28,15 @@ impl Container {
     /// True for a container that Kubernetes runs for a pod.
     pub fn is_kubernetes(&self) -> bool {
         self.kube_namespace.is_some()
+    }
+
+    /// The name to show: `pod/container` for a Kubernetes pod container, else the
+    /// name. See [`kube_display_name`].
+    pub fn display_name(&self) -> String {
+        self.is_kubernetes()
+            .then(|| kube_display_name(&self.name))
+            .flatten()
+            .unwrap_or_else(|| self.name.clone())
     }
 
     /// The first 12 characters of the ID, as the Docker CLI shows it.

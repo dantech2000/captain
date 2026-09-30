@@ -14,6 +14,7 @@ mod migration;
 mod networks;
 mod palette;
 mod port_forwarding;
+mod project;
 mod settings;
 mod shell;
 mod snapshots;

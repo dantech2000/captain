@@ -136,7 +136,8 @@ impl TraySnapshot {
                 status: host.status.clone(),
                 can_control: host.can_control,
             }),
-            ..Self::new(engine, workspace.store().containers())
+            // Hidden Kubernetes containers do not count, as on the Containers page.
+            ..Self::new(engine, &shown(workspace))
         }
     }
 
@@ -157,6 +158,12 @@ impl TraySnapshot {
     pub fn active_count(&self) -> usize {
         self.containers.iter().filter(|c| c.is_active()).count()
     }
+}
+
+/// The containers the main window shows.
+fn shown(workspace: &Workspace) -> Vec<Container> {
+    let store = workspace.store();
+    store.shown(workspace.show_kubernetes()).cloned().collect()
 }
 
 #[cfg(test)]

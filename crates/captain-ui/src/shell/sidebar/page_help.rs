@@ -8,6 +8,7 @@ pub fn page_help(page: Page, count: Option<usize>) -> String {
             format!("Show the {n} containers on the engine, grouped by project.")
         }
         (Page::Containers, None) => "Show the containers on the engine, grouped by project.".into(),
+        (Page::Project, _) => "Show one project: its services, ports, tasks, and log.".into(),
         (Page::Images, _) => "Show the images on the engine. Pull, build, and remove them.".into(),
         (Page::Volumes, _) => {
             "Show the volumes on the engine and the containers that use them.".into()

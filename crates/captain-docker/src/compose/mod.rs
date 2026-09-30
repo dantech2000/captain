@@ -7,6 +7,7 @@ mod docker_cli;
 mod labeled;
 mod locate;
 mod output;
+mod tasks;
 mod tools;
 
 pub use cli::ComposeCli;

@@ -5,6 +5,7 @@ fn event(kind: EventKind, action: &str) -> EngineEvent {
         kind,
         action: action.into(),
         id: "abc".into(),
+        ..EngineEvent::default()
     }
 }
 

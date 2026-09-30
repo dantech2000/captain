@@ -13,7 +13,8 @@ pub use files::FakeFiles;
 use super::FakeEngine;
 use crate::model::{
     Container, ContainerAction, ContainerDetail, ContainerState, DiskUsage, EngineEvent,
-    EngineInfo, ExecSession, ExecSpec, FileEntry, FilePreview, LogLine, ProcessTable, StatsSample,
+    EngineInfo, ExecSession, ExecSpec, FileEntry, FilePreview, LogLine, LogOptions, ProcessTable,
+    StatsSample,
 };
 use crate::{ContainerApi, EngineError, EngineFuture, EngineStream};
 
@@ -84,11 +85,15 @@ impl ContainerApi for FakeEngine {
         ready(result).boxed()
     }
 
-    fn update_memory(&self, id: &str, _memory_bytes: i64) -> EngineFuture<()> {
-        let result = if self.containers.iter().any(|c| c.id == id) {
-            Ok(())
-        } else {
-            Err(EngineError::Api(format!("No such container: {id}")))
+    /// The fake's lines have no times to filter by, so `since` keeps them all.
+    fn logs_with(&self, id: &str, options: LogOptions) -> EngineStream<LogLine> {
+        self.logs(id, options.tail.unwrap_or(usize::MAX))
+    }
+
+    fn update_memory(&self, id: &str, _bytes: u64) -> EngineFuture<()> {
+        let result = match self.containers.iter().find(|c| c.id == id) {
+            Some(_) => Ok(()),
+            None => Err(EngineError::Api(format!("No such container: {id}"))),
         };
         ready(result).boxed()
     }

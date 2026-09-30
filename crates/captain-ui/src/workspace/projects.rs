@@ -40,12 +40,23 @@ impl Workspace {
         action: ProjectAction,
         cx: &mut Context<Self>,
     ) {
+        if let Some(project) = compose_project(self.store.containers(), &name) {
+            self.run_project_action_on(project, action, cx);
+        }
+    }
+
+    /// Like [`Self::run_project_action`], for a project the caller knows, for
+    /// example one whose containers `down` removed.
+    pub fn run_project_action_on(
+        &mut self,
+        project: ComposeProject,
+        action: ProjectAction,
+        cx: &mut Context<Self>,
+    ) {
         let Some(runner) = self.projects.clone() else {
             return;
         };
-        let Some(project) = compose_project(self.store.containers(), &name) else {
-            return;
-        };
+        let name = project.name.clone();
         if self.project_pending.contains_key(&name) {
             return;
         }

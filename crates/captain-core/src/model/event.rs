@@ -1,20 +1,27 @@
 /// One message from the engine event stream.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct EngineEvent {
     pub kind: EventKind,
     /// The action, for example `start`, `die`, or `destroy`.
     pub action: String,
     /// The ID of the object the event is about.
     pub id: String,
+    /// When the engine sent the event, in Unix seconds. `None` when it sent no time.
+    pub time: Option<i64>,
+    /// The container name, from the actor's `name` attribute.
+    pub name: Option<String>,
+    /// The exit code of a `die` event, from the actor's `exitCode` attribute.
+    pub exit_code: Option<i64>,
 }
 
 /// The type of object an [`EngineEvent`] is about.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub enum EventKind {
     Container,
     Image,
     Volume,
     Network,
+    #[default]
     Other,
 }
 

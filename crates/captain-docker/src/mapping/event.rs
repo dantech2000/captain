@@ -9,9 +9,16 @@ pub fn event(message: EventMessage) -> EngineEvent {
         Some(EventMessageTypeEnum::NETWORK) => EventKind::Network,
         _ => EventKind::Other,
     };
+    let actor = message.actor.unwrap_or_default();
+    let mut attributes = actor.attributes.unwrap_or_default();
     EngineEvent {
         kind,
         action: message.action.unwrap_or_default(),
-        id: message.actor.and_then(|actor| actor.id).unwrap_or_default(),
+        id: actor.id.unwrap_or_default(),
+        time: message.time,
+        name: attributes.remove("name"),
+        exit_code: attributes
+            .get("exitCode")
+            .and_then(|code| code.parse().ok()),
     }
 }

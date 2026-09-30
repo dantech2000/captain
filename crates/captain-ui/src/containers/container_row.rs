@@ -141,7 +141,7 @@ fn name_cell(container: &Container, palette: &Palette) -> Div {
                             div()
                                 .font_weight(FontWeight::SEMIBOLD)
                                 .truncate()
-                                .child(container.name.clone()),
+                                .child(container.display_name()),
                         )
                         .children(service.map(|service| {
                             div()

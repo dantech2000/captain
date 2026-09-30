@@ -16,6 +16,7 @@ use crate::migration::OpenMigrationAssistant;
 use crate::networks::NetworksView;
 use crate::palette::{CommandPalette, ToggleCommandPalette};
 use crate::port_forwarding::PortForwardingView;
+use crate::project::{ProjectNotice, ProjectView};
 use crate::settings::{self, SettingsView};
 use crate::snapshots::SnapshotsView;
 use crate::storage::StorageView;
@@ -28,6 +29,7 @@ use crate::workspace::{Connection, Connector, Page, Workspace, WorkspaceEvent};
 pub struct AppShell {
     workspace: Entity<Workspace>,
     containers: Entity<ContainersView>,
+    project: Entity<ProjectView>,
     inspector: Entity<InspectorView>,
     images: Entity<ImagesView>,
     volumes: Entity<VolumesView>,
@@ -77,7 +79,15 @@ impl AppShell {
                 window.push_notification(event.notification(), cx);
             },
         );
-        let mut subscriptions = vec![appearance, observe, notify];
+        let project = cx.new(|cx| ProjectView::new(workspace.clone(), cx));
+        let project_notify = cx.subscribe_in(
+            &project,
+            window,
+            |_, _, notice: &ProjectNotice, window, cx| {
+                window.push_notification(notice.notification(), cx);
+            },
+        );
+        let mut subscriptions = vec![appearance, observe, notify, project_notify];
         subscriptions.extend(Self::follow_host(window, cx));
         // The sidebar badge counts failed checks.
         subscriptions
@@ -87,6 +97,7 @@ impl AppShell {
 
         Self {
             containers: cx.new(|cx| ContainersView::new(workspace.clone(), cx)),
+            project,
             inspector: cx.new(|cx| InspectorView::new(workspace.clone(), cx)),
             images: cx.new(|cx| ImagesView::new(workspace.clone(), cx)),
             volumes: cx.new(|cx| VolumesView::new(workspace.clone(), cx)),
@@ -166,6 +177,9 @@ impl AppShell {
             Page::Containers => row
                 .child(main.child(self.containers.clone()))
                 .when(show_inspector, |this| this.child(self.inspector.clone())),
+            Page::Project => row
+                .child(main.child(self.project.clone()))
+                .when(show_inspector, |this| this.child(self.inspector.clone())),
             Page::Images => row.child(main.child(self.images.clone())),
             Page::Volumes => row.child(main.child(self.volumes.clone())),
             Page::Networks => row.child(main.child(self.networks.clone())),
@@ -187,8 +201,14 @@ impl Render for AppShell {
         let forwarding =
             kubernetes_model(cx).is_some_and(|model| model.read(cx).status().is_running());
         let workspace = self.workspace.read(cx);
-        let show_inspector = workspace.selected().is_some()
-            && !matches!(workspace.connection(), Connection::Failed(_));
+        // The Project page shows the inspector only after a click on a card of its own.
+        let show_inspector = workspace.selected().is_some_and(|selected| {
+            workspace.page() != Page::Project
+                || workspace.card_open()
+                    && workspace
+                        .focused_group()
+                        .is_some_and(|group| group.containers.iter().any(|c| c.id == selected.id))
+        }) && !matches!(workspace.connection(), Connection::Failed(_));
 
         div()
             .size_full()

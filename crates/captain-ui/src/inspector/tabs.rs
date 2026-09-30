@@ -2,6 +2,7 @@ use gpui_kit::*;
 
 use crate::help::HelpExt;
 use crate::theme::Palette;
+use crate::workspace::InspectorTab;
 
 /// The inspector tabs, in display order.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
@@ -40,6 +41,15 @@ impl Tab {
             Tab::Terminal => "Open a shell in the container.",
             Tab::Files => "Browse the files in the container and save them to this computer.",
             Tab::Stats => "Show the CPU, memory, and network use of the container over time.",
+        }
+    }
+}
+
+impl From<InspectorTab> for Tab {
+    fn from(tab: InspectorTab) -> Self {
+        match tab {
+            InspectorTab::Logs => Tab::Logs,
+            InspectorTab::Terminal => Tab::Terminal,
         }
     }
 }

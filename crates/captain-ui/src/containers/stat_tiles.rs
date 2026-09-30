@@ -8,7 +8,7 @@ use crate::workspace::Workspace;
 /// Running count, and total CPU, memory, and network over all containers.
 pub fn render(workspace: &Workspace, palette: &Palette) -> impl IntoElement {
     let (running, total) = workspace.shown_counts();
-    let stats = workspace.stats();
+    let stats = &workspace.shown_stats();
     let (memory, memory_unit) = split_unit(bytes_label(stats.total_memory()));
     let (net, net_unit) = split_unit(rate_label(stats.total_net_rate()));
     let tiles = [

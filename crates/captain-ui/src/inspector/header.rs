@@ -49,7 +49,7 @@ pub fn render(container: &Container, palette: &Palette) -> impl IntoElement {
                                 .text_size(px(18.))
                                 .font_weight(FontWeight::BOLD)
                                 .truncate()
-                                .child(container.name.clone()),
+                                .child(container.display_name()),
                         )
                         .child(pill(
                             container.state.label(),

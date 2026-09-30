@@ -5,11 +5,11 @@ use std::path::Path;
 use std::process::{Command, Output, Stdio};
 use std::time::Duration;
 
-use captain_core::model::{ComposeProject, ProjectAction};
+use captain_core::model::{ComposeProject, ProjectAction, ProjectTask, ProjectTasks, TaskOutput};
 use captain_core::{EngineError, EngineFuture, ProjectRunner};
 use futures::FutureExt;
 
-use super::command::{compose_command, docker_host};
+use super::command::{Subcommand, compose_subcommand, docker_host};
 use super::docker_cli::DockerCli;
 use super::output::{error_message, parse_version};
 use crate::Endpoint;
@@ -82,26 +82,44 @@ impl ProjectRunner for ComposeCli {
     fn run_project(&self, project: &ComposeProject, action: ProjectAction) -> EngineFuture<()> {
         self.run_with(project, action, &[])
     }
+
+    fn tasks(&self, project: &ComposeProject) -> EngineFuture<ProjectTasks> {
+        self.read_tasks(project)
+    }
+
+    fn run_task(&self, project: &ComposeProject, task: &ProjectTask) -> EngineFuture<TaskOutput> {
+        self.exec_task(project, task)
+    }
 }
 
 impl ComposeCli {
-    /// Runs `action` for `project`, with `services` after the action's arguments.
-    fn run_with(
+    /// Runs `subcommand` (a [`ProjectAction`] or any other) for `project`, with
+    /// `services` after its arguments, for example `restart worker`.
+    pub fn run_with(
         &self,
         project: &ComposeProject,
-        action: ProjectAction,
+        subcommand: impl Into<Subcommand>,
         services: &[String],
     ) -> EngineFuture<()> {
-        let built = compose_command(project, action, &std::env::temp_dir(), Path::exists);
-        let command = match built {
-            Ok(mut built) => {
-                built.args.extend(services.iter().cloned());
-                self.command(&built.args, Some(&built.dir))
-            }
+        let command = match self.project_command(project, subcommand.into(), services) {
+            Ok(command) => command,
             Err(message) => return futures::future::ready(Err(EngineError::Api(message))).boxed(),
         };
         // Dropping the future kills the command. Migration uses `up_labeled` instead.
         output_guarded(command).map(checked).boxed()
+    }
+
+    /// The command for `subcommand` on `project`, with `extra` arguments after it.
+    pub(super) fn project_command(
+        &self,
+        project: &ComposeProject,
+        subcommand: Subcommand,
+        extra: &[String],
+    ) -> Result<Command, String> {
+        let mut built =
+            compose_subcommand(project, subcommand, &std::env::temp_dir(), Path::exists)?;
+        built.args.extend(extra.iter().cloned());
+        Ok(self.command(&built.args, Some(&built.dir)))
     }
 }
 

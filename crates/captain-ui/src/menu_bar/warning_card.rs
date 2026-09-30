@@ -156,7 +156,7 @@ fn raise_button(
             let Some(engine) = workspace.read(cx).engine() else {
                 return;
             };
-            let update = engine.update_memory(&id, raised);
+            let update = engine.update_memory(&id, raised.max(0) as u64);
             let name = name.clone();
             window
                 .spawn(cx, async move |cx| {

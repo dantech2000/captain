@@ -1,0 +1,182 @@
+use captain_core::model::ProjectTask;
+use gpui_kit::assets::IconName;
+use gpui_kit::component::spinner::Spinner;
+use gpui_kit::component::{Icon, Sizable};
+use gpui_kit::prelude::FluentBuilder;
+use gpui_kit::*;
+
+use super::ProjectView;
+use super::tasks::{TaskList, TaskState};
+use crate::help::HelpExt;
+use crate::theme::Palette;
+
+/// How many lines of a task's output the card shows.
+const OUTPUT_LINES: usize = 6;
+
+/// The Tasks card: a button per task in `x-captain.tasks`, the end of the last run,
+/// or a hint on how to add tasks. `file` is the Compose file's name.
+pub fn render(
+    state: &TaskState,
+    file: &str,
+    view: &WeakEntity<ProjectView>,
+    palette: &Palette,
+) -> Div {
+    let card = div()
+        .min_w_0()
+        .flex()
+        .flex_col()
+        .gap(px(8.))
+        .p(px(14.))
+        .rounded(px(14.))
+        .border_1()
+        .border_dashed()
+        .border_color(palette.border_strong)
+        .child(div().font_weight(FontWeight::BOLD).child("Tasks"));
+    match &state.list {
+        TaskList::None => card.child(note("Tasks need Docker Compose.", palette)),
+        TaskList::Loading => card.child(note(format!("Reading {file}..."), palette)),
+        TaskList::Failed(error) => {
+            card.child(note(format!("Cannot read the tasks: {error}"), palette))
+        }
+        TaskList::Ready(tasks) if tasks.tasks.is_empty() && tasks.problems.is_empty() => card
+            .child(note(
+                format!("Add named commands under x-captain.tasks in {file}:"),
+                palette,
+            ))
+            .child(example(palette)),
+        TaskList::Ready(tasks) => card
+            .child(note(format!("From x-captain.tasks in {file}"), palette))
+            .child(
+                div().flex().flex_wrap().gap(px(6.)).children(
+                    tasks
+                        .tasks
+                        .iter()
+                        .map(|task| task_button(task, state, view, palette)),
+                ),
+            )
+            .children(tasks.problems.iter().map(|problem| {
+                div()
+                    .text_size(px(11.))
+                    .text_color(palette.warn_text)
+                    .child(problem.clone())
+            }))
+            .children(last_run(state, palette)),
+    }
+}
+
+fn note(text: impl Into<SharedString>, palette: &Palette) -> Div {
+    div()
+        .text_size(px(11.))
+        .text_color(palette.text3)
+        .child(text.into())
+}
+
+fn example(palette: &Palette) -> Div {
+    div()
+        .p(px(8.))
+        .rounded(px(8.))
+        .bg(palette.terminal)
+        .font_family(palette.mono())
+        .text_size(px(10.5))
+        .text_color(palette.text2)
+        .child("x-captain:")
+        .child("  tasks:")
+        .child("    migrate:")
+        .child("      service: api")
+        .child("      command: npm run migrate")
+}
+
+fn task_button(
+    task: &ProjectTask,
+    state: &TaskState,
+    view: &WeakEntity<ProjectView>,
+    palette: &Palette,
+) -> Stateful<Div> {
+    let running = state.running.as_deref() == Some(task.name.as_str());
+    let idle = state.running.is_none();
+    let hover = palette.nav_selected;
+    let (view, run) = (view.clone(), task.clone());
+    div()
+        .id(SharedString::from(format!("task-{}", task.name)))
+        .h(px(28.))
+        .px(px(10.))
+        .flex()
+        .items_center()
+        .gap(px(6.))
+        .rounded(px(8.))
+        .border_1()
+        .border_color(palette.border_strong)
+        .bg(palette.field)
+        .text_size(px(12.))
+        .when(!idle && !running, |this| this.opacity(0.5))
+        .when(idle, |this| {
+            this.cursor_pointer()
+                .hover(move |style| style.bg(hover))
+                .on_click(move |_, _, cx| {
+                    let task = run.clone();
+                    view.update(cx, |view, cx| view.run_task(task, cx)).ok();
+                })
+        })
+        .child(if running {
+            Spinner::new()
+                .xsmall()
+                .color(palette.text2)
+                .into_any_element()
+        } else {
+            Icon::new(IconName::Play)
+                .size(px(10.))
+                .text_color(palette.green)
+                .into_any_element()
+        })
+        .child(task.name.clone())
+        .child(
+            div()
+                .text_size(px(10.5))
+                .text_color(palette.text3)
+                .child(task.service.clone()),
+        )
+        .help(format!(
+            "Run `{}` in {} (from x-captain.tasks).",
+            task.command.display(),
+            task.service
+        ))
+}
+
+/// The exit code and the last lines of the last run.
+fn last_run(state: &TaskState, palette: &Palette) -> Option<Div> {
+    let (name, output) = state.last.as_ref()?;
+    let lines: Vec<&str> = output.output.lines().collect();
+    let tail = &lines[lines.len().saturating_sub(OUTPUT_LINES)..];
+    let color = if output.exit_code == 0 {
+        palette.green
+    } else {
+        palette.red
+    };
+    Some(
+        div()
+            .flex()
+            .flex_col()
+            .gap(px(4.))
+            .child(
+                div()
+                    .text_size(px(11.))
+                    .text_color(palette.readable(color))
+                    .child(format!("{name} exited with {}", output.exit_code)),
+            )
+            .when(!tail.is_empty(), |this| {
+                this.child(
+                    div()
+                        .p(px(8.))
+                        .rounded(px(8.))
+                        .bg(palette.terminal)
+                        .font_family(palette.mono())
+                        .text_size(px(10.5))
+                        .text_color(palette.text2)
+                        .children(
+                            tail.iter()
+                                .map(|line| div().truncate().child(line.to_string())),
+                        ),
+                )
+            }),
+    )
+}

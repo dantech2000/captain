@@ -28,8 +28,12 @@ pub struct InspectorView {
 
 impl InspectorView {
     pub fn new(workspace: Entity<Workspace>, cx: &mut Context<Self>) -> Self {
-        let observe = cx.observe(&workspace, |this, _, cx| {
+        let observe = cx.observe(&workspace, |this, workspace, cx| {
             this.follow_selection(cx);
+            // A card's Logs or Shell button asks for a tab.
+            if let Some(tab) = workspace.update(cx, |workspace, _| workspace.take_inspector_tab()) {
+                this.set_tab(tab.into(), cx);
+            }
             cx.notify();
         });
         let mut view = Self {
@@ -105,6 +109,22 @@ impl InspectorView {
     }
 }
 
+impl InspectorView {
+    fn set_tab(&mut self, tab: Tab, cx: &mut Context<Self>) {
+        self.tab = tab;
+        if tab == Tab::Terminal {
+            self.terminal.update(cx, |terminal, cx| terminal.show(cx));
+        }
+        if tab == Tab::Files {
+            self.files.update(cx, |files, cx| files.show(cx));
+        }
+        self.processes.update(cx, |processes, cx| {
+            processes.set_active(tab == Tab::Stats, cx)
+        });
+        cx.notify();
+    }
+}
+
 impl Render for InspectorView {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let palette = Palette::of(cx);
@@ -113,21 +133,7 @@ impl Render for InspectorView {
         };
         let entity = cx.entity().downgrade();
         let on_tab = move |tab: Tab, _: &mut Window, cx: &mut App| {
-            entity
-                .update(cx, |this, cx| {
-                    this.tab = tab;
-                    if tab == Tab::Terminal {
-                        this.terminal.update(cx, |terminal, cx| terminal.show(cx));
-                    }
-                    if tab == Tab::Files {
-                        this.files.update(cx, |files, cx| files.show(cx));
-                    }
-                    this.processes.update(cx, |processes, cx| {
-                        processes.set_active(tab == Tab::Stats, cx)
-                    });
-                    cx.notify();
-                })
-                .ok();
+            entity.update(cx, |this, cx| this.set_tab(tab, cx)).ok();
         };
 
         let body = match self.tab {

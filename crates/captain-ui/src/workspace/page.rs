@@ -7,6 +7,9 @@ use crate::icons::{CaptainIcon, Glyph};
 pub enum Page {
     #[default]
     Containers,
+    /// One sidebar entry: a Compose project, a Kubernetes namespace, or the loose
+    /// containers. [`Workspace::focus`](super::Workspace::focus) says which.
+    Project,
     Images,
     Volumes,
     Networks,
@@ -31,6 +34,7 @@ impl Page {
     pub fn label(self) -> &'static str {
         match self {
             Page::Containers => "Containers",
+            Page::Project => "Project",
             Page::Images => "Images",
             Page::Volumes => "Volumes",
             Page::Networks => "Networks",
@@ -47,6 +51,7 @@ impl Page {
     pub fn icon(self) -> Glyph {
         match self {
             Page::Containers => CaptainIcon::Container.into(),
+            Page::Project => CaptainIcon::Stack.into(),
             Page::Images => CaptainIcon::Image.into(),
             Page::Volumes => CaptainIcon::Volume.into(),
             Page::Networks => CaptainIcon::Network.into(),

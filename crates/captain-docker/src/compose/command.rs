@@ -14,6 +14,25 @@ pub struct ComposeCommand {
     pub dir: PathBuf,
 }
 
+/// A `docker compose` subcommand: its name for error messages, its arguments, and
+/// whether it needs the Compose files.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Subcommand {
+    pub label: String,
+    pub args: Vec<String>,
+    pub needs_files: bool,
+}
+
+impl From<ProjectAction> for Subcommand {
+    fn from(action: ProjectAction) -> Self {
+        Self {
+            label: action.label().into(),
+            args: action.args().iter().map(|arg| arg.to_string()).collect(),
+            needs_files: action.needs_files(),
+        }
+    }
+}
+
 /// Builds `compose --ansi never -p <name> -f <file>... <action>` for `project`.
 ///
 /// The command runs in the project's working directory, or in `fallback_dir` when
@@ -23,6 +42,16 @@ pub struct ComposeCommand {
 pub fn compose_command(
     project: &ComposeProject,
     action: ProjectAction,
+    fallback_dir: &Path,
+    exists: impl Fn(&Path) -> bool,
+) -> Result<ComposeCommand, String> {
+    compose_subcommand(project, action.into(), fallback_dir, exists)
+}
+
+/// Like [`compose_command`], for any subcommand, for example `exec` or `config`.
+pub fn compose_subcommand(
+    project: &ComposeProject,
+    subcommand: Subcommand,
     fallback_dir: &Path,
     exists: impl Fn(&Path) -> bool,
 ) -> Result<ComposeCommand, String> {
@@ -42,18 +71,17 @@ pub fn compose_command(
         .collect();
 
     let use_files = !files.is_empty() && missing.is_empty();
-    if action.needs_files() && !use_files {
+    if subcommand.needs_files && !use_files {
         return Err(if files.is_empty() {
             format!(
                 "Captain does not know the Compose files of {}. {} needs them.",
-                project.name,
-                action.label()
+                project.name, subcommand.label
             )
         } else {
             format!(
                 "Captain cannot find {} on this computer. {} needs the Compose files of {}.",
                 missing.join(", "),
-                action.label(),
+                subcommand.label,
                 project.name
             )
         });
@@ -68,7 +96,7 @@ pub fn compose_command(
             args.push(file.display().to_string());
         }
     }
-    args.extend(action.args().iter().map(|arg| arg.to_string()));
+    args.extend(subcommand.args);
 
     let dir = match working_dir {
         Some(dir) if exists(dir) => dir.to_path_buf(),

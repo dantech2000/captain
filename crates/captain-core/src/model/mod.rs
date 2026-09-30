@@ -13,10 +13,14 @@ mod exec;
 mod file;
 mod health;
 mod image;
+mod kube_name;
 mod log_line;
+mod log_options;
 mod network;
 mod port;
+mod port_link;
 mod process;
+mod project_task;
 mod stats;
 mod volume;
 
@@ -39,11 +43,15 @@ pub use file::{
 pub use health::Health;
 #[allow(unused_imports)]
 pub use image::*;
+pub use kube_name::kube_display_name;
 pub use log_line::{LogLevel, LogLine, LogStream, parse_rfc3339};
+pub use log_options::LogOptions;
 #[allow(unused_imports)]
 pub use network::*;
 pub use port::PortMapping;
+pub use port_link::PortLink;
 pub use process::ProcessTable;
+pub use project_task::{ProjectTask, ProjectTasks, TaskCommand, TaskOutput};
 pub use stats::{StatsSample, cpu_percent};
 #[allow(unused_imports)]
 pub use volume::*;

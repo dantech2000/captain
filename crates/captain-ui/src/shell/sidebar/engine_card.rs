@@ -10,8 +10,8 @@ use crate::theme::Palette;
 use crate::widgets::{ButtonTone, pill, text_button};
 use crate::workspace::{Connection, Workspace};
 
-/// The engine: with Captain Engine, its state and a Start or Stop button; while
-/// connected, its resources and how much the containers use.
+/// The engine: with Captain Engine, its state and a Start or Stop button; its
+/// resources and how much the containers use, empty while it is not connected.
 pub fn render(
     workspace: &Workspace,
     host: Option<&HostSummary>,
@@ -66,9 +66,14 @@ pub fn render(
                 })),
         )
         .children(host.map(|host| controls(host, palette)));
+    // Empty gauges while the engine is down keep the card's height, so the Start
+    // button does not move when the engine starts.
     match info {
         Some(info) => card.children(gauges(workspace, info, palette)),
-        None => card,
+        None => card.children([
+            gauge("CPU", "—".into(), 0.0, palette.accent, palette),
+            gauge("Memory", "—".into(), 0.0, palette.accent, palette),
+        ]),
     }
 }
 

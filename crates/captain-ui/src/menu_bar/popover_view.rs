@@ -97,7 +97,7 @@ impl PopoverView {
                 };
                 let facts = ExitFacts {
                     oom_killed: detail.oom_killed,
-                    memory_limit: detail.memory_limit,
+                    memory_limit: i64::try_from(detail.memory_limit).unwrap_or(i64::MAX),
                     restart_count: detail.restart_count,
                 };
                 this.update(cx, |this, cx| {

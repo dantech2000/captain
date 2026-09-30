@@ -26,6 +26,14 @@ impl StatsBoard {
         self.histories.retain(|id, _| keep(id));
     }
 
+    /// A board with only the containers that `keep` accepts, for totals over part of
+    /// the list.
+    pub fn only(&self, keep: impl Fn(&str) -> bool) -> StatsBoard {
+        let mut board = self.clone();
+        board.retain(keep);
+        board
+    }
+
     pub fn total_cpu(&self) -> f64 {
         self.latest().map(|s| s.cpu_percent).sum()
     }

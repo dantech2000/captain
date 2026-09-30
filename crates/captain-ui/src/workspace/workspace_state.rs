@@ -9,7 +9,7 @@ use captain_core::store::{
 use captain_core::{Engine, EngineError, ImageBuilder, ProjectRunner};
 use gpui_kit::*;
 
-use super::{Page, WorkspaceEvent};
+use super::{InspectorTab, Page, WorkspaceEvent};
 
 /// The state of the engine connection.
 #[derive(Debug, Clone)]
@@ -56,6 +56,12 @@ pub struct Workspace {
     pub(super) project_pending: HashMap<String, ProjectAction>,
     /// The project the Containers page shows alone, if any.
     pub(super) project_filter: Option<String>,
+    /// The sidebar entry the Project page shows.
+    pub(super) focus: Option<GroupKey>,
+    /// True while the Project page shows the inspector next to its cards.
+    pub(super) card_open: bool,
+    /// The inspector tab a card button asked for, until the inspector takes it.
+    pub(super) inspector_tab: Option<InspectorTab>,
 }
 
 impl EventEmitter<WorkspaceEvent> for Workspace {}
@@ -86,6 +92,9 @@ impl Workspace {
             extensions: None,
             project_pending: HashMap::new(),
             project_filter: None,
+            focus: None,
+            card_open: false,
+            inspector_tab: None,
         }
     }
 
