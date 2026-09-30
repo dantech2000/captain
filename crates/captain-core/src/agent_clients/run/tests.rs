@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 use std::process::Command;
 
-use super::{ClientStep, line_diff, run_step, shell_line};
+use super::{ClientStep, line_diff, run_step};
 
 fn scratch(name: &str) -> PathBuf {
     let dir = std::env::temp_dir().join(format!("captain-run-{name}-{}", std::process::id()));
@@ -14,6 +14,8 @@ fn scratch(name: &str) -> PathBuf {
 #[test]
 fn a_command_runs_with_its_arguments_as_shown() {
     use std::os::unix::fs::PermissionsExt;
+
+    use super::shell_line;
     let dir = scratch("stub");
     let stub = dir.join("claude");
     let record = dir.join("args");
