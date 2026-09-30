@@ -78,11 +78,17 @@ Images to pull or build show first. When no service changes, the dialog says "No
 
 Click **Apply** to run `docker compose up -d --remove-orphans`, or **Cancel** to stop. The file stays saved either way. Compose's output goes to the project log on the **Overview** tab, tagged `compose`. A message says when Compose is done.
 
+Captain notes the Compose files, the project's `.env` file, and the Dockerfiles when the preview starts. If one of them changes while the dialog is open, **Apply** does not run `up`. Captain runs the preview again, and the new dialog says that the files changed. So `up` never makes a change that the dialog did not show.
+
+If Compose fails, the error shows in red under the file's name. It stays there until your next **Save and apply** or **Rebuild**. A message also names the failure and then hides by itself, so it does not cover the editor's buttons. The project log has Compose's full output.
+
 A dry run can hang when a service waits for another service to finish (`condition: service_completed_successfully`). Captain stops the preview after 60 seconds.
 
 ## Rebuild a service
 
 A Dockerfile has a **Rebuild** button for each service that uses it, for example **Rebuild api**. It saves the file, builds the image again, and recreates the service's container (`docker compose up -d --build <service>`). A message says when the rebuild is done.
+
+**Rebuild** is off while the build check finds an error in the Dockerfile, because the build would fail. Fix the errors to turn it on. If you rename a service or change its build context, the open Dockerfile takes the new name and context after **Save and apply**. Your unsaved text and undo history stay.
 
 ## Limits
 

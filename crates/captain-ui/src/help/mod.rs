@@ -4,6 +4,7 @@
 mod help_ext;
 mod hover_batch;
 mod hover_help;
+mod liveness;
 
 pub use help_ext::{CMD, HelpExt};
 pub use hover_batch::hover_batch;

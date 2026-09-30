@@ -1,5 +1,6 @@
 use gpui_kit::*;
 
+use super::liveness::Alive;
 use super::{Hint, hover_help};
 
 /// The command key as the status bar shows it.
@@ -25,7 +26,9 @@ pub trait HelpExt: StatefulInteractiveElement {
             return self;
         };
         let hint = hint.into();
+        let alive = Alive::new(id.clone());
         self.on_hover(move |hovered, _, cx| {
+            let _ = &alive;
             let Some(model) = hover_help(cx) else {
                 return;
             };

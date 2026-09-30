@@ -76,3 +76,11 @@ fn reads_pulls_builds_removals_and_warnings() {
     );
     assert_eq!(preview.warnings.len(), 1);
 }
+
+#[test]
+fn keeps_a_real_container_whose_name_looks_like_a_fake_copy() {
+    let stderr = r#"{"id":"Container 0123456789ab_api","status":"Working","text":"Recreate"}"#;
+    let known = [("0123456789ab_api".to_string(), "api".to_string())];
+    let preview = parse_dry_run(stderr, "shop", &known);
+    assert_eq!(summary(&preview), [("api", "Recreate")]);
+}

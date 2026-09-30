@@ -14,6 +14,7 @@ fn a_problem_shows_its_line_and_its_fixes() {
         name: "web".into(),
         limit: 256 << 20,
         restarts: 4,
+        raised: false,
     };
     let menu = build(&TraySnapshot {
         problem: Some(problem.clone()),

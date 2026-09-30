@@ -47,3 +47,16 @@ fn a_control_that_enters_with_its_card_in_one_move_shows_its_own_hint() {
     assert!(help.leave(&button));
     assert_eq!(help.hint().map(|h| h.text.as_ref()), Some("Card"));
 }
+
+#[test]
+fn a_hint_goes_with_its_element() {
+    let row = ElementId::from("gone-row");
+    let alive = super::super::liveness::Alive::new(row.clone());
+    let mut help = HoverHelp::default();
+    help.enter(row, hint("node:22-alpine takes 224 MB."));
+    assert!(!help.forget_gone());
+
+    drop(alive);
+    assert!(help.forget_gone());
+    assert_eq!(help.hint(), None);
+}

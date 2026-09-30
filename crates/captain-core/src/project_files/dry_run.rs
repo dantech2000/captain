@@ -85,8 +85,8 @@ impl UpPreview {
 /// `<project>-<service>-<n>` name.
 ///
 /// Only the first action per container counts: after `Recreated`, the dry run
-/// names fake containers `<12 hex>_<name>`, and some `Starting` events are
-/// missing. See Compose issue #14269 for a dry run that hangs.
+/// names fake containers `<12 hex>_<name>` after a container it already named,
+/// and some `Starting` events are missing. See Compose issue #14269 for a dry run that hangs.
 pub fn parse_dry_run(stderr: &str, project: &str, known: &[(String, String)]) -> UpPreview {
     let mut preview = UpPreview::default();
     let mut seen: Vec<String> = Vec::new();
@@ -102,7 +102,7 @@ pub fn parse_dry_run(stderr: &str, project: &str, known: &[(String, String)]) ->
         let Some((kind, name)) = text("id").split_once(' ') else {
             continue;
         };
-        if seen.iter().any(|id| id == text("id")) || is_fake_copy(name) {
+        if seen.iter().any(|id| id == text("id")) || is_fake_copy(name, &seen, known) {
             continue;
         }
         seen.push(text("id").to_string());
@@ -133,10 +133,19 @@ pub fn parse_dry_run(stderr: &str, project: &str, known: &[(String, String)]) ->
     preview
 }
 
-/// `00fccd82ddf9_shop-web-1`, a name the dry run makes up after `Recreated`.
-fn is_fake_copy(name: &str) -> bool {
-    name.split_once('_').is_some_and(|(prefix, _)| {
-        prefix.len() == 12 && prefix.bytes().all(|b| b.is_ascii_hexdigit())
+/// `00fccd82ddf9_shop-web-1`, a name the dry run makes up after `Recreated`: the
+/// rest names a container seen before. A real container may have such a name too
+/// (`container_name: 0123456789ab_api`), so a known one is never a copy.
+fn is_fake_copy(name: &str, seen: &[String], known: &[(String, String)]) -> bool {
+    if known.iter().any(|(real, _)| real == name) {
+        return false;
+    }
+    name.split_once('_').is_some_and(|(prefix, rest)| {
+        prefix.len() == 12
+            && prefix.bytes().all(|b| b.is_ascii_hexdigit())
+            && seen
+                .iter()
+                .any(|id| id.strip_prefix("Container ") == Some(rest))
     })
 }
 

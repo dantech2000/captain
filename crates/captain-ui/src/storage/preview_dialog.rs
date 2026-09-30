@@ -52,11 +52,7 @@ impl Render for PreviewDialog {
             |_, window, cx| window.close_dialog(cx),
         )
         .help("Close this dialog. Nothing is removed.");
-        let note = if self.snapshot_first {
-            "Captain Engine saves a snapshot first and restarts. Then these items are removed."
-        } else {
-            "These items are removed. Volumes cannot come back without a snapshot."
-        };
+        let note = note(&self.items, self.snapshot_first);
         let groups = ReclaimGroup::ALL.into_iter().filter_map(|group| {
             let items: Vec<&ReclaimItem> = self
                 .items
@@ -125,6 +121,21 @@ fn group_list(group: ReclaimGroup, items: &[&ReclaimItem], palette: &Palette) ->
         }))
 }
 
+/// What happens on confirm. The warning about volumes shows only when the list has
+/// one.
+fn note(items: &[ReclaimItem], snapshot_first: bool) -> &'static str {
+    let volumes = items
+        .iter()
+        .any(|item| item.group == ReclaimGroup::UnusedVolumes);
+    match (snapshot_first, volumes) {
+        (true, _) => {
+            "Captain Engine saves a snapshot first and restarts. Then these items are removed."
+        }
+        (false, true) => "These items are removed. Volumes cannot come back without a snapshot.",
+        (false, false) => "These items are removed.",
+    }
+}
+
 fn count(n: usize) -> String {
     if n == 1 {
         "1 item".into()
@@ -154,3 +165,6 @@ pub fn open(model: Entity<StorageModel>, window: &mut Window, cx: &mut App) {
             .child(dialog.clone())
     });
 }
+
+#[cfg(test)]
+mod tests;

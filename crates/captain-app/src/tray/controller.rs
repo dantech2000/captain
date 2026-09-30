@@ -7,7 +7,6 @@ use std::time::Duration;
 
 use captain_core::kubernetes::{KubeContexts, load_contexts, user_kubeconfig_paths};
 use captain_core::model::ContainerState;
-use captain_core::problems::ExitFacts;
 use captain_ui::Workspace;
 use gpui_kit::*;
 use muda::{MenuId, MenuItem};
@@ -40,7 +39,7 @@ const COLOR: [u8; 3] = if cfg!(target_os = "macos") {
     [255, 255, 255]
 };
 
-struct Tray {
+pub(super) struct Tray {
     icon: TrayIcon,
     /// The snapshot that the current menu shows.
     shown: Option<TraySnapshot>,
@@ -50,7 +49,7 @@ struct Tray {
     rebuild: Option<Task<()>>,
     workspace: Entity<Workspace>,
     contexts: KubeContexts,
-    exits: ExitFactsCache,
+    pub(super) exits: ExitFactsCache,
     _observe: Vec<Subscription>,
     _events: Task<()>,
     _contexts: Option<Task<()>>,
@@ -59,7 +58,7 @@ struct Tray {
 }
 
 /// Keeps the tray alive for the life of the app.
-struct TrayHandle(Entity<Tray>);
+pub(super) struct TrayHandle(pub(super) Entity<Tray>);
 
 impl Global for TrayHandle {}
 
@@ -155,8 +154,8 @@ fn command(id: &MenuId, cx: &App) -> Option<TrayCommand> {
 impl Tray {
     /// Stats samples notify many times a second. Compare the small snapshot first,
     /// and rebuild only when the menu would change.
-    fn workspace_changed(&mut self, cx: &mut Context<Self>) {
-        let current = snapshot(&self.workspace, &self.contexts, self.exits.facts(), cx);
+    pub(super) fn workspace_changed(&mut self, cx: &mut Context<Self>) {
+        let current = snapshot(&self.workspace, &self.contexts, &self.exits.facts(), cx);
         if self.rebuild.is_some() || self.shown.as_ref() == Some(&current) {
             return;
         }
@@ -164,7 +163,7 @@ impl Tray {
             cx.background_executor().timer(REBUILD_DEBOUNCE).await;
             this.update(cx, |this, cx| {
                 this.rebuild = None;
-                let current = snapshot(&this.workspace, &this.contexts, this.exits.facts(), cx);
+                let current = snapshot(&this.workspace, &this.contexts, &this.exits.facts(), cx);
                 this.show(current, cx);
             })
             .ok();
@@ -196,9 +195,8 @@ impl Tray {
                 let Ok(detail) = inspect.await else {
                     return;
                 };
-                let facts = ExitFacts::of(&detail);
                 this.update(cx, |tray, cx| {
-                    if tray.exits.insert(id, facts) {
+                    if tray.exits.insert(id, detail) {
                         tray.workspace_changed(cx);
                     }
                 })

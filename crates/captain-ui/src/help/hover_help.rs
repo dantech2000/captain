@@ -1,5 +1,7 @@
 use gpui_kit::*;
 
+use super::liveness::is_alive;
+
 /// A help sentence and the shortcut keys of its control, if it has any.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Hint {
@@ -102,6 +104,19 @@ impl HoverHelp {
             self.hovered.retain(|(id, _)| *id != owner);
             self.hovered.push((owner, hint));
         }
+        self.hint() != before.as_ref()
+    }
+}
+
+impl HoverHelp {
+    /// Drops the hints of elements that left the screen, for example a row that a
+    /// cleanup removed while the mouse rested on it. True if the hint changed.
+    pub fn forget_gone(&mut self) -> bool {
+        if let Some(batch) = &mut self.batch {
+            batch.retain(|(id, _)| is_alive(id));
+        }
+        let before = self.hint().cloned();
+        self.hovered.retain(|(id, _)| is_alive(id));
         self.hint() != before.as_ref()
     }
 }

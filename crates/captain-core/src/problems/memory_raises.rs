@@ -27,8 +27,14 @@ impl MemoryRaises {
     /// The limit the last run ran out of, when the kernel killed it at the current
     /// limit. None after a raise, until a run with the new limit starts.
     pub fn oom_limit(&self, detail: &ContainerDetail) -> Option<u64> {
-        let raised = self.runs.get(&detail.id) == Some(&detail.started_at);
-        (detail.oom_killed && detail.memory_limit > 0 && !raised).then_some(detail.memory_limit)
+        (detail.oom_killed && detail.memory_limit > 0 && !self.raised(detail))
+            .then_some(detail.memory_limit)
+    }
+
+    /// True if Captain raised the limit after the run `detail` shows, which the
+    /// kernel killed. The next run uses the new limit.
+    pub fn raised(&self, detail: &ContainerDetail) -> bool {
+        self.runs.get(&detail.id) == Some(&detail.started_at)
     }
 }
 

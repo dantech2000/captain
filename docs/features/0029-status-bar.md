@@ -27,6 +27,7 @@ Every control says what it does. A 30 px bar at the bottom of the main window sh
   - `HoverHelp` keeps the hints of all hovered elements, innermost last, and shows the last one. A hover-out removes only the leaving element's hint, so moving between two controls does not flicker, and leaving a control inside another (a switch in a Settings row) shows the outer hint again.
   - Only the status bar observes `HoverHelp`, so a new hint redraws the bar and nothing else.
   - A mouse down anywhere in the window clears the hint, because a click can remove the control under the mouse, and a removed control never reports its hover-out.
+  - An element that disappears without a click (a list refresh, a cleanup) never reports its hover-out either. Each hint's hover listener holds a token (`help/liveness.rs`); GPUI drops the listener after the first frame without the element. After each frame with a hint, `hover_batch` drops the hints whose element has no live token.
 - **Help sentences** on: the sidebar pages, projects, search button, and engine card buttons; container row buttons and ports; Compose card buttons; the inspector buttons and tabs; the log, file, and image inspector tools; the toolbars of Images, Volumes, Networks, Snapshots, Extensions, Port Forwarding, and Diagnostics; the engine start and set-up screens.
 - `icon_button`, `action_button`, and `primary_button` take a help argument, so each of their buttons has a sentence.
 - **More help sentences** (the polish pass):
@@ -48,7 +49,6 @@ Every control says what it does. A 30 px bar at the bottom of the main window sh
 - GPUI allows one hover listener per element, so call `.help` once per element. Do not chain it onto a wrapper that already takes a help argument.
 - GPUI keeps hover state per element id. Two visible elements with the same id share it.
 - A help sentence with live data (counts, names, bytes that can be freed) is fixed when the mouse enters. It stays stale until the next hover. This is a known limitation.
-- An element that disappears without a click (a list refresh) never reports its hover-out, so its hint can stay under the current one until the next click.
 - A layer's full command in the image inspector now shows in the bar, where a long command is cut at the window's width.
 
 ## Verification

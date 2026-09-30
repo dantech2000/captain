@@ -50,6 +50,8 @@ pub struct FileEditor {
     /// What the Project page is doing with this file, for example "Checking what
     /// changes...". The buttons wait meanwhile.
     pub busy: Option<SharedString>,
+    /// Why the last Save and apply or Rebuild failed. The next action clears it.
+    pub action_error: Option<SharedString>,
     pub(super) check: Option<Task<()>>,
     /// The file changed on disk and has no unsaved edits: reload on the next frame,
     /// which has a window.
@@ -123,6 +125,7 @@ impl FileEditor {
             check_error: None,
             checking: false,
             busy: None,
+            action_error: None,
             check: None,
             reload_pending: false,
             view,
@@ -131,6 +134,19 @@ impl FileEditor {
         };
         this.load(window, cx);
         this
+    }
+
+    /// Takes the newest facts about the file and its project, for example a service
+    /// renamed in the Compose file or a new build context. The text and its undo
+    /// history stay; the checks run again when something changed.
+    pub fn rebind(&mut self, file: EditableFile, project: ComposeProject, cx: &mut Context<Self>) {
+        if self.file == file && self.project == project {
+            return;
+        }
+        self.file = file;
+        self.project = project;
+        self.schedule_check(cx);
+        cx.notify();
     }
 
     /// The file's name in the project folder, for example `app/Dockerfile`.

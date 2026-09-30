@@ -20,6 +20,9 @@ pub struct ExitFacts {
     /// The memory limit in bytes. 0 means no limit.
     pub memory_limit: i64,
     pub restart_count: i64,
+    /// Captain already raised the limit after this run (see [`MemoryRaises`]), so
+    /// a second raise waits for a run with the new limit.
+    pub raised: bool,
 }
 
 impl ExitFacts {
@@ -29,6 +32,7 @@ impl ExitFacts {
             oom_killed: detail.oom_killed,
             memory_limit: i64::try_from(detail.memory_limit).unwrap_or(i64::MAX),
             restart_count: detail.restart_count,
+            raised: false,
         }
     }
 }
@@ -57,6 +61,8 @@ pub enum Problem {
         name: String,
         limit: i64,
         restarts: i64,
+        /// Captain raised the limit after this run: no second Raise Memory.
+        raised: bool,
     },
     Restarting {
         id: String,
@@ -126,8 +132,8 @@ impl Problem {
         let mut fixes = Vec::new();
         let action = match self {
             // With no limit the engine itself ran out; a higher limit does not help.
-            Self::OutOfMemory { limit, .. } => {
-                if *limit > 0 {
+            Self::OutOfMemory { limit, raised, .. } => {
+                if *limit > 0 && !raised {
                     fixes.push(ContainerFix::RaiseMemory(raised_memory(*limit)));
                 }
                 ContainerAction::Stop
@@ -231,6 +237,7 @@ pub fn container_problems(
             name: c.name.clone(),
             limit: facts.memory_limit,
             restarts: facts.restart_count,
+            raised: facts.raised,
         })
     });
     let plain = plain.into_iter().map(|c| Problem::Restarting {

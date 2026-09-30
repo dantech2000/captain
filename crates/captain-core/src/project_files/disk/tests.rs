@@ -42,3 +42,20 @@ fn save_refuses_when_the_file_changed_on_disk() {
     assert_eq!(std::fs::read_to_string(&file).unwrap(), "a: outside\n");
     std::fs::remove_dir_all(&dir).ok();
 }
+
+#[test]
+fn save_refuses_a_change_made_while_it_writes() {
+    let dir = temp_dir("editor-race");
+    let file = dir.join("compose.yaml");
+    std::fs::write(&file, "a: 1\n").unwrap();
+    let loaded = read_text(&file).unwrap();
+
+    let result = save_staged(&file, "a: mine\n", &loaded.version, || {
+        std::fs::write(&file, "a: outside\n").unwrap();
+    });
+
+    assert!(matches!(result, Err(SaveError::Changed)));
+    assert_eq!(std::fs::read_to_string(&file).unwrap(), "a: outside\n");
+    assert_eq!(std::fs::read_dir(&dir).unwrap().count(), 1);
+    std::fs::remove_dir_all(&dir).ok();
+}

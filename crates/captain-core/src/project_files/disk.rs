@@ -4,7 +4,7 @@ use std::path::Path;
 
 use sha2::{Digest, Sha256};
 
-use crate::file_replace::{Mode, replace};
+use crate::file_replace::{Mode, commit, temp_path, write_new};
 use crate::link_target::link_target;
 
 /// The SHA-256 of a file's bytes. Two versions differ when the text on disk
@@ -64,12 +64,33 @@ pub fn disk_version(path: &Path) -> Option<TextVersion> {
 /// Writes `text` over the file at `path` if the file is still at `loaded`, and
 /// returns the new version. A symlink keeps pointing at its target, which gets
 /// the text; the file keeps its permissions. See [`crate::file_replace`].
+///
+/// The new file is written and synced first, and the version is checked right
+/// before the rename, so an outside save during the slow part is not lost.
 pub fn save_text(path: &Path, text: &str, loaded: &TextVersion) -> Result<TextVersion, SaveError> {
+    save_staged(path, text, loaded, || ())
+}
+
+/// [`save_text`], with `staged` run between the write of the new file and the
+/// version check. Tests change the file there.
+fn save_staged(
+    path: &Path,
+    text: &str,
+    loaded: &TextVersion,
+    staged: impl FnOnce(),
+) -> Result<TextVersion, SaveError> {
     let target = link_target(path);
     if disk_version(&target).as_ref() != Some(loaded) {
         return Err(SaveError::Changed);
     }
-    replace(&target, text.as_bytes(), Mode::Keep).map_err(SaveError::Io)?;
+    let temp = temp_path(&target);
+    write_new(&temp, &target, text.as_bytes(), Mode::Keep).map_err(SaveError::Io)?;
+    staged();
+    if disk_version(&target).as_ref() != Some(loaded) {
+        std::fs::remove_file(&temp).ok();
+        return Err(SaveError::Changed);
+    }
+    commit(&temp, &target).map_err(SaveError::Io)?;
     Ok(TextVersion::of(text.as_bytes()))
 }
 

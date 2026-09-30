@@ -20,6 +20,11 @@ pub enum ProjectNotice {
         title: String,
         error: String,
     },
+    /// Save and apply or Rebuild failed. The editor shows why, so the toast hides
+    /// itself and never covers the editor's buttons for long.
+    EditorFailed {
+        title: String,
+    },
     TaskDone {
         task: String,
         exit_code: i32,
@@ -44,6 +49,9 @@ impl ProjectNotice {
             Self::Failed { title, error } => Notification::error(error.clone())
                 .title(title.clone())
                 .autohide(false),
+            Self::EditorFailed { title } => {
+                Notification::error("The editor and the project log show why.").title(title.clone())
+            }
             Self::Applied {
                 project,
                 rebuilt: None,

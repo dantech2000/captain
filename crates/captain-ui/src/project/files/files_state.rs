@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
 
+use captain_core::model::ComposeProject;
 use captain_core::project_files::{EditableFile, compose_files};
 use gpui_kit::*;
 
@@ -97,7 +98,10 @@ impl ProjectView {
             let result = read.await;
             this.update(cx, |this, cx| {
                 this.files.dockerfiles = match result {
-                    Ok(files) => DockerfileList::Ready(files),
+                    Ok(files) => {
+                        this.rebind_editors(&files, &project, cx);
+                        DockerfileList::Ready(files)
+                    }
                     Err(error) => DockerfileList::Failed(error.to_string()),
                 };
                 cx.notify();
@@ -117,7 +121,10 @@ impl ProjectView {
             return;
         };
         let path = file.path.clone();
-        if !self.files.editors.contains_key(&path) {
+        if let Some(editor) = self.files.editors.get(&path) {
+            let project = project.clone();
+            editor.update(cx, |editor, cx| editor.rebind(file, project, cx));
+        } else {
             let runner = self.workspace.read(cx).project_runner();
             let view = cx.entity().downgrade();
             let project = project.clone();
@@ -126,5 +133,20 @@ impl ProjectView {
         }
         self.files.shown.insert(project.name, path);
         cx.notify();
+    }
+
+    /// Gives the open editors of `files` their new services and build contexts.
+    fn rebind_editors(
+        &self,
+        files: &[EditableFile],
+        project: &ComposeProject,
+        cx: &mut Context<Self>,
+    ) {
+        for file in files {
+            if let Some(editor) = self.files.editors.get(&file.path) {
+                let (file, project) = (file.clone(), project.clone());
+                editor.update(cx, |editor, cx| editor.rebind(file, project, cx));
+            }
+        }
     }
 }

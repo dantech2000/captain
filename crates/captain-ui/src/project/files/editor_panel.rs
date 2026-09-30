@@ -28,6 +28,12 @@ pub fn render(editor: &FileEditor, cx: &mut Context<FileEditor>) -> Div {
                 .clone()
                 .map(|error| inline_error(error, &palette)),
         )
+        .children(
+            editor
+                .action_error
+                .clone()
+                .map(|error| inline_error(error, &palette)),
+        )
         .children(reload_bar(editor, &this, &palette))
         .child(
             div()
@@ -60,12 +66,20 @@ fn toolbar(editor: &FileEditor, this: &Entity<FileEditor>, palette: &Palette) ->
     };
     let actions: Vec<AnyElement> = match editor.file.kind {
         FileKind::Compose => vec![apply_button(editor, this, busy.is_none(), palette)],
-        FileKind::Dockerfile => editor
-            .file
-            .services
-            .iter()
-            .map(|service| rebuild_button(service, editor, this, busy.is_none(), palette))
-            .collect(),
+        FileKind::Dockerfile => {
+            let errors = editor
+                .problems
+                .iter()
+                .any(|p| p.severity == Severity::Error);
+            editor
+                .file
+                .services
+                .iter()
+                .map(|service| {
+                    rebuild_button(service, editor, this, busy.is_none(), errors, palette)
+                })
+                .collect()
+        }
     };
     div()
         .flex()
@@ -154,11 +168,13 @@ fn apply_button(
     .into_any_element()
 }
 
+/// Waits while the build check finds errors: a build with them fails.
 fn rebuild_button(
     service: &str,
     editor: &FileEditor,
     this: &Entity<FileEditor>,
-    enabled: bool,
+    idle: bool,
+    errors: bool,
     palette: &Palette,
 ) -> AnyElement {
     let (this, name, view) = (this.clone(), service.to_string(), editor.view.clone());
@@ -166,7 +182,7 @@ fn rebuild_button(
         SharedString::from(format!("file-rebuild-{service}")),
         format!("Rebuild {service}"),
         ButtonTone::Accent,
-        enabled,
+        idle && !errors,
         palette,
         move |_, _, cx| {
             let this = this.clone();
@@ -175,9 +191,14 @@ fn rebuild_button(
                 .ok();
         },
     )
-    .help(format!(
-        "Save the Dockerfile, then build the image of {service} again and recreate its container."
-    ))
+    .help(if errors {
+        format!("Fix the errors the build check found first. A build of {service} with them fails.")
+    } else {
+        format!(
+            "Save the Dockerfile, then build the image of {service} again and recreate its \
+             container."
+        )
+    })
     .into_any_element()
 }
 

@@ -35,6 +35,7 @@ fn the_worst_problem_wins_the_warning_card() {
             oom_killed: true,
             memory_limit: 256 << 20,
             restart_count: 3,
+            raised: false,
         },
     )]);
     let all = [unhealthy.clone(), restarting.clone(), oom];
@@ -54,7 +55,8 @@ fn the_worst_problem_wins_the_warning_card() {
             id: "worker-id".into(),
             name: "worker".into(),
             limit: 256 << 20,
-            restarts: 3
+            restarts: 3,
+            raised: false
         })
     );
     let two = [unhealthy.clone(), restarting];
@@ -77,6 +79,7 @@ fn an_out_of_memory_line_names_the_limit_and_the_restarts() {
         name: "db".into(),
         limit: 512 * 1024 * 1024,
         restarts: 3,
+        raised: false,
     };
     assert_eq!(
         problem.line(),
