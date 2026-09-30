@@ -1,3 +1,5 @@
+use std::time::Instant;
+
 use gpui_kit::*;
 
 use super::{Scale, sparkline};
@@ -11,6 +13,8 @@ pub struct StatTile {
     pub color: Hsla,
     pub series: Vec<f64>,
     pub scale: Scale,
+    /// When the newest value arrived; `None` for a chart that does not scroll.
+    pub last_at: Option<Instant>,
 }
 
 /// A card with a label, a large value, and a sparkline.
@@ -43,6 +47,7 @@ pub fn stat_tile(tile: StatTile, chart: Size<Pixels>, palette: &Palette) -> Div 
                 tile.scale,
                 tile.color,
                 Some(palette.tint(tile.color)),
+                tile.last_at,
             )
             .w(chart.width)
             .h(chart.height),

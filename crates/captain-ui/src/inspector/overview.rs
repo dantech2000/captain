@@ -70,6 +70,7 @@ fn stats_grid(container: &Container, workspace: &Workspace, palette: &Palette) -
             color: palette.accent_fg,
             series: history.map(|h| h.cpu_series()).unwrap_or_default(),
             scale: scales::CPU,
+            last_at: history.and_then(|h| h.last_at()),
         },
         StatTile {
             label: "Memory",
@@ -80,6 +81,7 @@ fn stats_grid(container: &Container, workspace: &Workspace, palette: &Palette) -
             color: palette.indigo,
             series: history.map(|h| h.memory_series()).unwrap_or_default(),
             scale: scales::MEMORY,
+            last_at: history.and_then(|h| h.last_at()),
         },
         StatTile {
             label: "Net in",
@@ -88,6 +90,7 @@ fn stats_grid(container: &Container, workspace: &Workspace, palette: &Palette) -
             color: palette.teal,
             series: net(|pair| pair.0),
             scale: scales::NETWORK,
+            last_at: history.and_then(|h| h.last_at()),
         },
         StatTile {
             label: "Net out",
@@ -96,6 +99,7 @@ fn stats_grid(container: &Container, workspace: &Workspace, palette: &Palette) -
             color: palette.orange,
             series: net(|pair| pair.1),
             scale: scales::NETWORK,
+            last_at: history.and_then(|h| h.last_at()),
         },
     ];
     let mut tiles = tiles.into_iter().map(|tile| {

@@ -19,6 +19,7 @@ pub fn render(workspace: &Workspace, palette: &Palette) -> impl IntoElement {
             color: palette.green,
             series: Vec::new(),
             scale: scales::COUNT,
+            last_at: None,
         },
         StatTile {
             label: "CPU",
@@ -29,6 +30,7 @@ pub fn render(workspace: &Workspace, palette: &Palette) -> impl IntoElement {
             color: palette.accent_fg,
             series: stats.total_cpu_series(),
             scale: scales::CPU,
+            last_at: stats.last_at(),
         },
         StatTile {
             label: "Memory",
@@ -37,6 +39,7 @@ pub fn render(workspace: &Workspace, palette: &Palette) -> impl IntoElement {
             color: palette.indigo,
             series: stats.total_memory_series(),
             scale: scales::MEMORY,
+            last_at: stats.last_at(),
         },
         StatTile {
             label: "Network",
@@ -45,6 +48,7 @@ pub fn render(workspace: &Workspace, palette: &Palette) -> impl IntoElement {
             color: palette.teal,
             series: stats.total_net_series(),
             scale: scales::NETWORK,
+            last_at: stats.last_at(),
         },
     ];
 

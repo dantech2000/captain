@@ -79,6 +79,7 @@ pub fn render(
                             palette.text3
                         },
                         None,
+                        history.and_then(|h| h.last_at()),
                     )
                     .w(px(58.))
                     .h(px(20.)),

@@ -159,11 +159,16 @@ fn usage_row(card: &Card, palette: &Palette) -> Div {
         .text_color(palette.text2)
         .child(div().w(px(44.)).flex_shrink_0().child(cpu))
         .child(
-            div()
-                .flex_1()
-                .min_w_0()
-                .h(px(22.))
-                .child(sparkline(series, scales::CPU, line, None).size_full()),
+            div().flex_1().min_w_0().h(px(22.)).child(
+                sparkline(
+                    series,
+                    scales::CPU,
+                    line,
+                    None,
+                    card.history.and_then(|h| h.last_at()),
+                )
+                .size_full(),
+            ),
         )
         .child(div().flex_shrink_0().child(memory))
 }

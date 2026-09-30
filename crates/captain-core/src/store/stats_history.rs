@@ -29,6 +29,11 @@ impl StatsHistory {
         self.samples.push_back((at, sample));
     }
 
+    /// When the newest sample arrived.
+    pub fn last_at(&self) -> Option<Instant> {
+        self.samples.back().map(|(at, _)| *at)
+    }
+
     pub fn latest(&self) -> Option<&StatsSample> {
         self.samples.back().map(|(_, s)| s)
     }

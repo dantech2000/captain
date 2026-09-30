@@ -34,6 +34,14 @@ impl StatsBoard {
         board
     }
 
+    /// When the newest sample of any container arrived.
+    pub fn last_at(&self) -> Option<std::time::Instant> {
+        self.histories
+            .values()
+            .filter_map(StatsHistory::last_at)
+            .max()
+    }
+
     pub fn total_cpu(&self) -> f64 {
         self.latest().map(|s| s.cpu_percent).sum()
     }

@@ -34,6 +34,7 @@ pub fn render(history: Option<&StatsHistory>, palette: &Palette) -> impl IntoEle
             history.cpu_series(),
             scales::CPU,
             palette.accent_fg,
+            history.last_at(),
             palette,
         ))
         .child(chart(
@@ -42,6 +43,7 @@ pub fn render(history: Option<&StatsHistory>, palette: &Palette) -> impl IntoEle
             history.memory_series(),
             scales::MEMORY,
             palette.indigo,
+            history.last_at(),
             palette,
         ))
         .child(chart(
@@ -50,6 +52,7 @@ pub fn render(history: Option<&StatsHistory>, palette: &Palette) -> impl IntoEle
             net,
             scales::NETWORK,
             palette.teal,
+            history.last_at(),
             palette,
         ))
 }
@@ -60,6 +63,7 @@ fn chart(
     series: Vec<f64>,
     scale: Scale,
     color: Hsla,
+    last_at: Option<std::time::Instant>,
     palette: &Palette,
 ) -> Div {
     div()
@@ -91,7 +95,7 @@ fn chart(
                 ),
         )
         .child(
-            sparkline(series, scale, color, Some(palette.tint(color)))
+            sparkline(series, scale, color, Some(palette.tint(color)), last_at)
                 .w_full()
                 .h(px(84.)),
         )
