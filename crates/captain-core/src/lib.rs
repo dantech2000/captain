@@ -1,6 +1,7 @@
 //! Domain models and state for Captain. This crate has no UI or Docker dependencies.
 
 pub mod behavior;
+pub mod cli_tools;
 pub mod daemon;
 pub mod diagnostics;
 pub mod docker_context;

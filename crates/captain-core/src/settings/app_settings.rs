@@ -2,6 +2,7 @@ use serde::{Deserialize, Deserializer, Serialize};
 
 use super::{Appearance, EngineChoice, ThemeFamily};
 use crate::HostResources;
+use crate::cli_tools::CliToolsSettings;
 use crate::daemon::DaemonSettings;
 use crate::kubernetes::KubernetesSettings;
 
@@ -63,6 +64,9 @@ pub struct Settings {
     /// When the weekly cleanup last ran, in Unix seconds.
     #[serde(deserialize_with = "lenient")]
     pub build_cache_cleaned_at: Option<i64>,
+    /// The tool links, the plugin folder, and PATH. See feature 0035.
+    #[serde(deserialize_with = "lenient")]
+    pub command_line_tools: CliToolsSettings,
 }
 
 impl Default for Settings {
@@ -82,6 +86,7 @@ impl Default for Settings {
             debug_logging: false,
             weekly_build_cache_cleanup: false,
             build_cache_cleaned_at: None,
+            command_line_tools: CliToolsSettings::default(),
         }
     }
 }

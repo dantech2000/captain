@@ -5,6 +5,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::time::Duration;
 
+use captain_core::cli_tools::running_bundle;
 use captain_core::registry::{CredentialSource, DockerConfig, RegistryAuth};
 
 use crate::compose::locate_helper;
@@ -49,8 +50,13 @@ fn run_helper(name: &str, server_address: &str) -> Option<RegistryAuth> {
     let binary = format!("docker-credential-{name}");
     let path = std::env::var_os("PATH");
     let home = std::env::home_dir();
-    let Some(helper) = locate_helper(&binary, path.as_deref(), home.as_deref(), Path::is_file)
-    else {
+    let Some(helper) = locate_helper(
+        &binary,
+        running_bundle().as_ref(),
+        path.as_deref(),
+        home.as_deref(),
+        Path::is_file,
+    ) else {
         tracing::warn!(%binary, "the credential helper is not installed");
         return None;
     };

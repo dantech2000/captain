@@ -5,14 +5,15 @@ use gpui_kit::component::input::{InputEvent, InputState};
 use gpui_kit::*;
 
 use super::admin_access_section::{self, AdminAccess};
+use super::cli_tools_state::CliToolsCard;
 use super::context_actions::ContextChange;
 use super::daemon_form::DaemonForm;
 use super::engine_source::{self, DetectedEndpoint};
 use super::kube_form::KubeForm;
 use super::store::{self, SettingsStore};
 use super::{
-    about_section, appearance_section, behavior_section, captain_engine_section, daemon_section,
-    endpoint_picker, engine_section, kubernetes_section,
+    about_section, appearance_section, behavior_section, captain_engine_section, cli_tools_section,
+    daemon_section, endpoint_picker, engine_section, kubernetes_section,
 };
 use crate::engine_host::{HostModel, host_model};
 use crate::kubernetes::{KubernetesModel, kubernetes_model};
@@ -48,6 +49,8 @@ pub struct SettingsView {
     /// Why the last change to the login item failed.
     pub(super) login_error: Option<SharedString>,
     pub(super) admin_access: AdminAccess,
+    /// The Command-line tools card. A background read fills it.
+    pub(super) cli_tools: CliToolsCard,
     pub(super) subscriptions: Vec<Subscription>,
 }
 
@@ -82,9 +85,11 @@ impl SettingsView {
             context_change: ContextChange::default(),
             login_error: None,
             admin_access: AdminAccess::default(),
+            cli_tools: CliToolsCard::default(),
             subscriptions,
         };
         view.rescan(cx);
+        view.refresh_tools(cx);
         view
     }
 
@@ -209,6 +214,7 @@ impl Render for SettingsView {
                 .children(admin_access_section::render(self, &palette, cx))
                 .child(engine_section::render(self, &settings, &palette, cx))
                 .child(endpoint_picker::render(self, &input, &palette, cx))
+                .child(cli_tools_section::render(self, &settings, &palette, cx))
                 .child(about_section::render(&palette));
 
         div()

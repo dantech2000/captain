@@ -1,6 +1,7 @@
 //! Captain: a native desktop client for Docker.
 
 mod actions;
+mod cli_tools;
 mod connect;
 mod diagnostics;
 #[cfg(target_os = "macos")]
@@ -36,6 +37,7 @@ fn main() {
         logging.set_debug(true);
     }
     let diagnostics = diagnostics::setup(&logging);
+    cli_tools::refresh(&settings.command_line_tools);
     let endpoint = settings.engine_endpoint.clone();
     let engine = engine::EngineSetup::new(&settings);
 

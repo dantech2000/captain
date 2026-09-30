@@ -18,6 +18,7 @@ Captain ships as a download that works on its own. On macOS, `Captain.app` carri
   | docker CLI | 29.8.1 | `docker-<v>.tgz` from [download.docker.com/mac/static/stable](https://download.docker.com/mac/static/stable/) | Pinned in `tool-versions.env` (Docker publishes none) |
   | Compose | 5.5.1 | `docker-compose-darwin-<aarch64\|x86_64>` from [Compose releases](https://github.com/docker/compose/releases) | `checksums.txt` in the release |
   | Buildx | 0.37.1 | `buildx-v<v>.darwin-<arm64\|amd64>` from [Buildx releases](https://github.com/docker/buildx/releases) | `checksums-signed.txt` (macOS), else `checksums.txt` |
+  | docker-credential-osxkeychain | 0.9.9 | `docker-credential-osxkeychain-v<v>.darwin-<arm64\|amd64>` from [credential helper releases](https://github.com/docker/docker-credential-helpers/releases) | Pinned in `tool-versions.env`, from the release's `checksums.txt`; see [0035](0035-command-line-tools.md) |
 
 - **`scripts/fetch-tools.sh [darwin-arm64|darwin-x86_64]`** downloads the four tools, checks each SHA-256 sum, and fails on a mismatch. It writes `target/tools/<platform>/` in the bundle layout: `lima/bin/limactl`, `lima/share/lima`, `bin/docker`, and `cli-plugins/docker-{compose,buildx}`. It deletes each archive after it extracts it. A `VERSIONS` stamp makes a second run a no-op. The folder is under `target/`, which git ignores.
 - **`scripts/bundle-macos.sh`** runs `fetch-tools.sh` for the Mac's architecture and copies the tools into `Captain.app/Contents/Resources`. `CAPTAIN_SKIP_TOOLS=1` leaves them out.
@@ -33,7 +34,7 @@ Captain ships as a download that works on its own. On macOS, `Captain.app` carri
   - `currentContext` goes, because Captain sets `DOCKER_HOST`.
   - The file is mode 0600, because it can hold registry tokens.
 
-  The user's `~/.docker` is never written. Compose actions and the Diagnostics CLI checks use the same binary and config.
+  This never writes the user's `~/.docker`. Only the command-line tools of [0035](0035-command-line-tools.md) add Captain's plugin folder to the user's `config.json`. Compose actions and the Diagnostics CLI checks use the same binary and config.
 - **macOS release: `scripts/package-macos.sh`** takes `target/release/Captain.app` and does these steps:
   1. It signs the app when `CAPTAIN_SIGN_IDENTITY` is set.
   2. It builds `Captain-<version>-<arch>.dmg` with `hdiutil`. The image has an Applications link.

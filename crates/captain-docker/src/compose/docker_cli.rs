@@ -1,5 +1,5 @@
 //! The `docker` binary Captain runs, with the config folder that makes it use the
-//! bundled Compose and Buildx plugins.
+//! bundled Compose and Buildx plugins and credential helper.
 
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -40,11 +40,20 @@ impl DockerCli {
         Some(Self { binary, config_dir })
     }
 
-    /// A command for this binary, with `DOCKER_CONFIG` set when Captain has its own.
+    /// A command for this binary, with `DOCKER_CONFIG` set when Captain has its own,
+    /// and, for a bundled binary, the bundle's `bin` first on `PATH`.
     pub fn command(&self) -> Command {
         let mut command = Command::new(&self.binary);
         if let Some(dir) = &self.config_dir {
             command.env("DOCKER_CONFIG", dir);
+        }
+        // A bundled docker finds the bundled credential helper first.
+        if let Some(bundle) = Bundle::from_exe(&self.binary) {
+            let path = std::env::var_os("PATH").unwrap_or_default();
+            let dirs = std::iter::once(bundle.bin()).chain(std::env::split_paths(&path));
+            if let Ok(path) = std::env::join_paths(dirs) {
+                command.env("PATH", path);
+            }
         }
         command
     }

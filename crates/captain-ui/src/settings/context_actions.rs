@@ -74,6 +74,47 @@ pub fn make_default(
     });
 }
 
+/// Asks, then creates the `captain` context for `host` when `save` is true, and
+/// makes it the Docker CLI's default, so docker commands in a terminal use
+/// Captain Engine. See feature 0035.
+pub fn use_captain(
+    view: WeakEntity<SettingsView>,
+    host: String,
+    save: bool,
+    window: &mut Window,
+    cx: &mut App,
+) {
+    let create = match save {
+        true => format!("\"docker context create {CAPTAIN_CONTEXT}\" with the host {host}, then "),
+        false => String::new(),
+    };
+    let description = format!(
+        "Captain runs {create}\"docker context use {CAPTAIN_CONTEXT}\". New docker commands \
+         in every terminal then use Captain Engine."
+    );
+    window.open_alert_dialog(cx, move |alert, _, _| {
+        let (view, host) = (view.clone(), host.clone());
+        alert
+            .title("Make docker commands use Captain Engine?")
+            .description(description.clone())
+            .show_cancel(true)
+            .ok_text("Use Captain Engine")
+            .on_ok(move |_, _, cx| {
+                let job = engine_source(cx).map(|source| {
+                    let create =
+                        save.then(|| source.save_context(CAPTAIN_CONTEXT, "Captain Engine", &host));
+                    let use_it = source.use_context(CAPTAIN_CONTEXT);
+                    Box::new(move || {
+                        create.map_or(Ok(()), |create| create())?;
+                        use_it()
+                    }) as ContextJob
+                });
+                run(view.clone(), job, cx);
+                true
+            })
+    });
+}
+
 /// Runs `job` in the background, then reads the contexts again.
 fn run(view: WeakEntity<SettingsView>, job: Option<ContextJob>, cx: &mut App) {
     let Some(job) = job else {

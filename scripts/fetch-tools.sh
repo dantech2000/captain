@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Downloads the tools Captain.app ships with, checks their SHA-256 sums, and puts
 # them in target/tools/<platform>/ in the same layout as Contents/Resources:
-#   lima/bin/limactl, lima/share/lima, bin/docker, cli-plugins/docker-{compose,buildx}
+#   lima/bin/limactl, lima/share/lima, bin/docker, bin/docker-credential-osxkeychain,
+#   cli-plugins/docker-{compose,buildx}
 # Versions and pinned sums live in scripts/tool-versions.env.
 # Usage: scripts/fetch-tools.sh [darwin-arm64|darwin-x86_64]  (default: this Mac)
 set -euo pipefail
@@ -23,16 +24,16 @@ fi
 case "$platform" in
   darwin-arm64)
     lima_arch=arm64 docker_arch=aarch64 compose_arch=aarch64 buildx_arch=arm64
-    docker_sha="$DOCKER_SHA256_DARWIN_ARM64" ;;
+    docker_sha="$DOCKER_SHA256_DARWIN_ARM64" osxkeychain_sha="$OSXKEYCHAIN_SHA256_DARWIN_ARM64" ;;
   darwin-x86_64)
     lima_arch=x86_64 docker_arch=x86_64 compose_arch=x86_64 buildx_arch=amd64
-    docker_sha="$DOCKER_SHA256_DARWIN_X86_64" ;;
+    docker_sha="$DOCKER_SHA256_DARWIN_X86_64" osxkeychain_sha="$OSXKEYCHAIN_SHA256_DARWIN_X86_64" ;;
   *) echo "fetch-tools: unknown platform $platform" >&2; exit 1 ;;
 esac
 
 target_dir="${CARGO_TARGET_DIR:-$root/target}"
 out="$target_dir/tools/$platform"
-stamp="lima=$LIMA_VERSION docker=$DOCKER_VERSION compose=$COMPOSE_VERSION buildx=$BUILDX_VERSION licenses=1"
+stamp="lima=$LIMA_VERSION docker=$DOCKER_VERSION compose=$COMPOSE_VERSION buildx=$BUILDX_VERSION credential-helpers=$CREDENTIAL_HELPERS_VERSION licenses=2"
 if [[ -f "$out/VERSIONS" && "$(cat "$out/VERSIONS")" == "$stamp" ]]; then
   echo "$out is up to date ($stamp)"
   exit 0
@@ -115,18 +116,27 @@ fetch "$buildx_base/$buildx_name" "$out/cli-plugins/docker-buildx"
 verify "$out/cli-plugins/docker-buildx" \
   "$(sum_from "$buildx_name" "$buildx_base/checksums-signed.txt" "$buildx_base/checksums.txt")"
 
-# The tools are Apache-2.0, which asks for their license and notice to ship with them.
+# The credential helper for "credsStore": "osxkeychain":
+# https://github.com/docker/docker-credential-helpers/releases. Pinned in tool-versions.env.
+osxkeychain_name="docker-credential-osxkeychain-v$CREDENTIAL_HELPERS_VERSION.darwin-$buildx_arch"
+echo "docker-credential-osxkeychain $CREDENTIAL_HELPERS_VERSION"
+fetch "https://github.com/docker/docker-credential-helpers/releases/download/v$CREDENTIAL_HELPERS_VERSION/$osxkeychain_name" \
+  "$out/bin/docker-credential-osxkeychain"
+verify "$out/bin/docker-credential-osxkeychain" "$osxkeychain_sha"
+
+# The tools are Apache-2.0 (the credential helpers are MIT), which asks for their license and notice to ship with them.
 raw="https://raw.githubusercontent.com"
 for entry in "lima lima-vm/lima v$LIMA_VERSION LICENSE" \
   "docker docker/cli v$DOCKER_VERSION LICENSE" \
   "docker docker/cli v$DOCKER_VERSION NOTICE" \
   "compose docker/compose v$COMPOSE_VERSION LICENSE" \
-  "buildx docker/buildx v$BUILDX_VERSION LICENSE"; do
+  "buildx docker/buildx v$BUILDX_VERSION LICENSE" \
+  "credential-helpers docker/docker-credential-helpers v$CREDENTIAL_HELPERS_VERSION LICENSE"; do
   read -r tool repo tag file <<< "$entry"
   mkdir -p "$out/licenses/$tool"
   fetch "$raw/$repo/$tag/$file" "$out/licenses/$tool/$file"
 done
 
-chmod +x "$out/lima/bin/limactl" "$out/bin/docker" "$out/cli-plugins/"*
+chmod +x "$out/lima/bin/limactl" "$out/bin/"* "$out/cli-plugins/"*
 echo "$stamp" > "$out/VERSIONS"
 echo "$out"

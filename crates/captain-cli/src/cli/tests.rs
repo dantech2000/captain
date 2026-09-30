@@ -1,6 +1,6 @@
 use clap::{CommandFactory, Parser};
 
-use super::{Cli, Command, KubernetesCommand, SnapshotCommand};
+use super::{Cli, Command, KubernetesCommand, PathArg, SnapshotCommand, ToolsCommand};
 use crate::settings_keys::SettingKey;
 
 fn parse(args: &[&str]) -> Result<Cli, clap::Error> {
@@ -105,4 +105,12 @@ fn kubernetes_enable_takes_a_version_port_and_traefik_switch() {
         })
     );
     assert!(parse(&["kubernetes", "enable", "--port", "0"]).is_err());
+}
+
+#[test]
+fn tools_install_takes_a_path_mode() {
+    let cli = parse(&["tools", "install", "--path", "manual"]).expect("parses");
+    let path = Some(PathArg::Manual);
+    assert_eq!(cli.command, Command::Tools(ToolsCommand::Install { path }));
+    assert!(parse(&["tools", "install", "--path", "sometimes"]).is_err());
 }

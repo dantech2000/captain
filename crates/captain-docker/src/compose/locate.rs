@@ -38,11 +38,12 @@ pub fn locate_docker(
     locate_tool(BINARY, bundled, path, install_dirs(home), exists)
 }
 
-/// The first binary `name` (with `.exe` on Windows) in `path`, then the folders
-/// where `docker` gets installed, for example a credential helper. Captain.app does
-/// not bundle helpers.
+/// The first binary `name` (with `.exe` on Windows): the copy in `bundle`'s `bin`,
+/// then `path`, then the folders where `docker` gets installed. For example a
+/// credential helper; Captain.app bundles `docker-credential-osxkeychain`.
 pub fn locate_helper(
     name: &str,
+    bundle: Option<&Bundle>,
     path: Option<&OsStr>,
     home: Option<&Path>,
     exists: impl Fn(&Path) -> bool,
@@ -52,7 +53,8 @@ pub fn locate_helper(
     } else {
         name.to_string()
     };
-    locate_tool(&binary, None, path, install_dirs(home), exists)
+    let bundled = bundle.map(|bundle| bundle.bin().join(&binary));
+    locate_tool(&binary, bundled, path, install_dirs(home), exists)
 }
 
 /// The known install folders: the system ones, then the ones in `home`.

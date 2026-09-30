@@ -78,6 +78,10 @@ pub enum Command {
     /// Turn Kubernetes (k3s in Captain Engine) on or off, show it, or reset it.
     #[command(subcommand)]
     Kubernetes(KubernetesCommand),
+    /// Link docker, Compose, Buildx, and captain into ~/.captain/bin for your
+    /// terminal, or show or remove the links.
+    #[command(subcommand)]
+    Tools(ToolsCommand),
     /// Print the DOCKER_HOST for Captain Engine. Use: eval "$(captain docker-env)"
     DockerEnv,
     /// Print the version.
@@ -159,6 +163,36 @@ pub enum KubernetesCommand {
         #[arg(long, short)]
         yes: bool,
     },
+}
+
+/// `captain tools ...`. See docs/features/0035-command-line-tools.md.
+#[derive(Debug, PartialEq, Eq, Subcommand)]
+pub enum ToolsCommand {
+    /// Show the links, the plugin folder, the shell files, and where each tool
+    /// comes from in a new terminal.
+    Status {
+        /// Print JSON.
+        #[arg(long)]
+        json: bool,
+    },
+    /// Link the tools, add the plugin folder to ~/.docker/config.json, and, with
+    /// automatic PATH, add ~/.captain/bin to your shell files. Quit Captain first.
+    Install {
+        /// Who adds ~/.captain/bin to PATH. The default is the saved choice.
+        #[arg(long, value_enum)]
+        path: Option<PathArg>,
+    },
+    /// Remove the links, the plugin folder, and the PATH blocks. Quit Captain first.
+    Uninstall,
+}
+
+/// `--path` of `captain tools install`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, clap::ValueEnum)]
+pub enum PathArg {
+    /// Captain adds a marked block to each shell file it may write.
+    Automatic,
+    /// You add the line; `captain tools status` shows it.
+    Manual,
 }
 
 #[cfg(test)]

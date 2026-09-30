@@ -2,7 +2,8 @@
 # Wraps the captain binary in Captain.app so macOS shows the app icon in the Dock,
 # the app switcher, and Finder. Usage: scripts/bundle-macos.sh [debug|release]
 # The result is target/<profile>/Captain.app. Open it with `open`.
-# The app ships limactl, the docker CLI, Compose, and Buildx from
+# The app ships limactl, the docker CLI, docker-credential-osxkeychain, Compose,
+# and Buildx from
 # scripts/fetch-tools.sh. Set CAPTAIN_SKIP_TOOLS=1 to leave them out; Captain then
 # looks for them on PATH, like a `cargo run` build.
 # The `captain` CLI (crate captain-cli, binary captain-cli) goes in
@@ -34,7 +35,8 @@ if [[ "${CAPTAIN_SKIP_TOOLS:-}" != "1" ]]; then
     *) platform=darwin-x86_64 ;;
   esac
   scripts/fetch-tools.sh "$platform" >/dev/null
-  # lima/{bin,share}, bin/docker, and cli-plugins/docker-{compose,buildx}.
+  # lima/{bin,share}, bin/docker{,-credential-osxkeychain}, and
+  # cli-plugins/docker-{compose,buildx}.
   tools="$target_dir/tools/$platform"
   cp -R "$tools/lima" "$tools/bin" "$tools/cli-plugins" "$tools/licenses" "$app/Contents/Resources/"
 fi

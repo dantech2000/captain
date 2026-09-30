@@ -35,9 +35,24 @@ impl Bundle {
         self.resources.join("lima/bin/limactl")
     }
 
+    /// `bin`, with `docker`, `docker-credential-osxkeychain`, and `captain`.
+    pub fn bin(&self) -> PathBuf {
+        self.resources.join("bin")
+    }
+
     /// `bin/docker`.
     pub fn docker(&self) -> PathBuf {
         self.resources.join("bin/docker")
+    }
+
+    /// `bin/docker-credential-osxkeychain`, the macOS credential helper.
+    pub fn credential_helper(&self) -> PathBuf {
+        self.resources.join("bin/docker-credential-osxkeychain")
+    }
+
+    /// `bin/captain`, the command line.
+    pub fn captain_cli(&self) -> PathBuf {
+        self.resources.join("bin/captain")
     }
 
     /// `cli-plugins`, with `docker-compose` and `docker-buildx`.

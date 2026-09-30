@@ -13,6 +13,7 @@ mod snapshot;
 mod start;
 mod status;
 mod stop;
+mod tools;
 mod version;
 
 pub use run::run;
