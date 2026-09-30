@@ -32,7 +32,7 @@ if [[ -n "$identity" ]]; then
   if [[ -f "$resources/lima/bin/limactl" ]]; then
     sign --entitlements scripts/macos/limactl.entitlements "$resources/lima/bin/limactl"
   fi
-  # bin/ holds docker and the captain CLI.
+  # bin/ holds docker, the credential helper, kubectl, helm, and the captain CLI.
   for tool in "$resources/bin/"* "$resources/cli-plugins/"*; do
     if [[ -f "$tool" ]]; then sign "$tool"; fi
   done

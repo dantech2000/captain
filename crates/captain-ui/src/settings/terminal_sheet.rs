@@ -110,9 +110,11 @@ fn header(done: usize, palette: &Palette) -> Div {
                         .font_weight(FontWeight::EXTRA_BOLD)
                         .child("Use Captain from your terminal"),
                 )
-                .child(div().text_color(palette.text2).child(
-                    "docker, Compose, Buildx, and the keychain helper, pointed at Captain Engine.",
-                )),
+                .child(
+                    div()
+                        .text_color(palette.text2)
+                        .child("docker, Compose, Buildx, the keychain helper, kubectl, and helm."),
+                ),
         )
         .child(
             div()
@@ -138,10 +140,6 @@ fn sources(view: &SettingsView, palette: &Palette) -> Div {
                 .map_or("Not found".into(), |(_, source)| source.label()),
             Some(Err(error)) => error.clone(),
             None => "Checking\u{2026}".into(),
-        };
-        let source = match *tool {
-            "kubectl" | "helm" => format!("{source} \u{00b7} Captain does not ship {tool}"),
-            _ => source,
         };
         div()
             .flex()

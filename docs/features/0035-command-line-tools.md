@@ -6,11 +6,14 @@
 
 ## Goal
 
-The user's own terminal uses the tools inside `Captain.app`: `docker`, Compose, Buildx, the macOS credential helper, and `captain`. Then the user can uninstall Rancher Desktop, whose `~/.rd/bin` links provide these tools today. Rancher calls this "PATH management" ([Rancher Desktop: Environment](https://docs.rancherdesktop.io/ui/preferences/application/environment)).
+The user's own terminal uses the tools inside `Captain.app`: `docker`, Compose, Buildx, the macOS credential helper, `kubectl`, `helm`, and `captain`. Then the user can uninstall Rancher Desktop, whose `~/.rd/bin` links provide these tools today. Rancher calls this "PATH management" ([Rancher Desktop: Environment](https://docs.rancherdesktop.io/ui/preferences/application/environment)).
 
 ## In scope
 
 - **The credential helper.** `scripts/fetch-tools.sh` downloads `docker-credential-osxkeychain` 0.9.9 from [docker/docker-credential-helpers releases](https://github.com/docker/docker-credential-helpers/releases/tag/v0.9.9). `scripts/tool-versions.env` pins the SHA-256 of both Mac builds, copied from the release's [`checksums.txt`](https://github.com/docker/docker-credential-helpers/releases/download/v0.9.9/checksums.txt). Its MIT license goes to `licenses/credential-helpers/LICENSE`. `bundle-macos.sh` copies it to `Contents/Resources/bin`. A `config.json` with `"credsStore": "osxkeychain"` needs it for pulls and `docker login`.
+- **kubectl and Helm.** `scripts/fetch-tools.sh` downloads both, and `tool-versions.env` pins the SHA-256 of both Mac builds. `bundle-macos.sh` copies them to `Contents/Resources/bin`. Their Apache-2.0 licenses go to `licenses/kubectl` and `licenses/helm`.
+  - `kubectl` 1.37.1 from `https://dl.k8s.io/release/v1.37.1/bin/darwin/<arm64|amd64>/kubectl`. The sums come from `kubectl.sha256` next to each binary ([Install kubectl on macOS](https://kubernetes.io/docs/tasks/tools/install-kubectl-macos/)). `kubectl` works with a server one minor version older or newer ([version skew policy](https://kubernetes.io/releases/version-skew-policy/#kubectl)). The k3s channel server says stable is v1.36.4+k3s1 and latest is v1.37.0+k3s1 ([k3s channels](https://update.k3s.io/v1-release/channels)), and [`dl.k8s.io/release/stable.txt`](https://dl.k8s.io/release/stable.txt) says v1.37.1. So 1.37 covers the default k3s version and the newest one. The picker also offers k3s back to 1.29; those need the user's own `kubectl`.
+  - Helm 4.3.0 from `https://get.helm.sh/helm-v4.3.0-darwin-<arm64|amd64>.tar.gz`. The sums come from `<archive>.sha256sum` on get.helm.sh ([Helm releases](https://github.com/helm/helm/releases/tag/v4.3.0), [Installing Helm](https://helm.sh/docs/intro/install/)). Helm 4 is the current major version. Helm 3 gets only maintenance releases (3.22.0 shipped the same day as 4.3.0). Helm 4.3 supports Kubernetes 1.34 to 1.37 ([Helm version skew](https://helm.sh/docs/topics/version_skew/)).
 - Captain's own `docker` runs also find the bundled helper: `DockerCli` puts `Contents/Resources/bin` first on the `PATH` of the child, and Captain's registry login lookup checks the bundle first.
 - **Tool links.** `~/.captain/bin` holds symlinks into the running `Captain.app`:
 
@@ -20,6 +23,8 @@ The user's own terminal uses the tools inside `Captain.app`: `docker`, Compose, 
   | `~/.captain/bin/docker-compose` | `cli-plugins/docker-compose` (the plugin binary also runs on its own) |
   | `~/.captain/bin/docker-credential-osxkeychain` | `bin/docker-credential-osxkeychain` (macOS only) |
   | `~/.captain/bin/captain` | `bin/captain` |
+  | `~/.captain/bin/kubectl` | `bin/kubectl` |
+  | `~/.captain/bin/helm` | `bin/helm` |
   | `~/.captain/cli-plugins/docker-compose` | `cli-plugins/docker-compose` |
   | `~/.captain/cli-plugins/docker-buildx` | `cli-plugins/docker-buildx` |
 
@@ -51,7 +56,7 @@ The user's own terminal uses the tools inside `Captain.app`: `docker`, Compose, 
   Captain writes a shell file through a synced temporary file next to it and a rename, with the file's permissions, so a full disk or a crash never leaves it empty or half written. Before its first change to a file, Captain copies it to `<name>.captain-backup` (for example `~/.zshrc.captain-backup`), and never overwrites that backup. Captain's own fish file has no backup.
   Rancher's own block uses `### MANAGED BY RANCHER DESKTOP START (DO NOT EDIT)` markers ([manageLinesInFile.ts](https://github.com/rancher-sandbox/rancher-desktop/blob/main/pkg/rancher-desktop/integrations/manageLinesInFile.ts)); Captain's block is separate and comes later in the file, so `~/.captain/bin` wins while both exist.
 - **Settings > Command-line tools.** One card (since [0037](0037-settings-page.md): the Terminal line and its setup sheet; PATH Automatic or Manual is in the settings file):
-  - A row per tool (`docker`, `docker-compose`, `docker-credential-osxkeychain`, `captain`, and, for information, `kubectl` and `helm`) with what a new terminal runs: "Rancher Desktop (~/.rd/bin)", "Captain", "Docker Desktop", "Homebrew", "Nix", or the path. Captain runs `$SHELL -lic 'command -v …'` once, on a background thread, with a 10 s limit.
+  - A row per tool (`docker`, `docker-compose`, `docker-credential-osxkeychain`, `captain`, `kubectl`, and `helm`) with what a new terminal runs: "Rancher Desktop (~/.rd/bin)", "Captain", "Docker Desktop", "Homebrew", "Nix", or the path. Captain runs `$SHELL -lic 'command -v …'` once, on a background thread, with a 10 s limit.
   - The link state and a **Relink** button (**Install** after `captain tools uninstall`).
   - The plugin folder state in `config.json`.
   - **PATH**: Automatic or Manual, and a row per shell file with its state, and the line and a Copy button when the user must add it.
@@ -61,13 +66,14 @@ The user's own terminal uses the tools inside `Captain.app`: `docker`, Compose, 
 
 ## Out of scope
 
-- Bundling `kubectl` and `helm`. The user has `kubectl` from Nix and `helm` from Homebrew. Rancher links both; a follow-up adds them for parity.
+- A `kubectl` that follows the k3s version. Rancher Desktop downloads one per Kubernetes version. Captain ships one, which fits the stable and latest k3s channels.
 - Replacing links in `~/.docker/cli-plugins`. `cliPluginsExtraDirs` comes first, so they need no change.
 - `$ZDOTDIR`, `~/.profile`, csh, and tcsh. The app starts without the shell's environment, so it cannot see `ZDOTDIR`.
 - `DOCKER_HOST` or `DOCKER_CONTEXT` set in a shell file. They win over the default context; the card does not read them.
 
 ## Notes
 
+- With `~/.captain/bin` first on `PATH`, Captain's `kubectl` and `helm` win over copies from Nix or Homebrew, as Rancher's `~/.rd/bin` links did. To prefer another copy, put its folder before `~/.captain/bin` on `PATH`. A removed link comes back at the next start.
 - The link check reads each link with `readlink` and does nothing when all links are right, so it runs at every start.
 - Captain finds `chezmoi` on `PATH` and in the Homebrew and Nix profile folders, and treats a zero exit of [`chezmoi source-path <file>`](https://www.chezmoi.io/reference/commands/source-path/) as "managed".
 - `fish_add_path` is in fish 3.2 and later ([fish_add_path](https://fishshell.com/docs/current/cmds/fish_add_path.html)).
@@ -76,11 +82,11 @@ The user's own terminal uses the tools inside `Captain.app`: `docker`, Compose, 
 
 ## Verification
 
-1. Run `cargo test -p captain-core cli_tools`. The tests use temp folders: the link plan (create, relink after a move, keep a regular file), the shell block add and remove with its backup and permissions, the skip rules for adding and removing (a link into a fake `/nix/store`, a read-only file), the `config.json` merge that keeps the other keys and their order, and a `config.json` change by another program during Captain's write, which Captain keeps.
-2. Run `scripts/bundle-macos.sh` and check that `Captain.app/Contents/Resources/bin/docker-credential-osxkeychain` exists.
+1. Run `cargo test -p captain-core cli_tools`. The tests use temp folders: the link plan (create every link, including `kubectl` and `helm`, relink after a move, keep a regular file), the shell block add and remove with its backup and permissions, the skip rules for adding and removing (a link into a fake `/nix/store`, a read-only file), the `config.json` merge that keeps the other keys and their order, and a `config.json` change by another program during Captain's write, which Captain keeps.
+2. Run `scripts/bundle-macos.sh` and check that `Captain.app/Contents/Resources/bin/` holds `docker-credential-osxkeychain`, `kubectl`, and `helm`. `bin/kubectl version --client` prints v1.37.1, and `bin/helm version` prints v4.3.0.
 3. Open the bundled app. Check that `~/.captain/bin` and `~/.captain/cli-plugins` hold the links, and that `~/.docker/config.json` lists `~/.captain/cli-plugins` first in `cliPluginsExtraDirs`.
 4. Open Settings > Terminal > Set up…. The rows show where each tool comes from. With a chezmoi or home-manager `~/.zshrc`, the PATH row shows the line and a Copy button.
-5. Add the line, open a new terminal, and click Relink. The `docker` row says Captain. Run `docker compose version`, `docker buildx version`, and `docker pull` of a private image.
+5. Add the line, open a new terminal, and click Relink. The `docker`, `kubectl`, and `helm` rows say Captain. Run `docker compose version`, `docker buildx version`, and `docker pull` of a private image.
 6. Click **Use Captain Engine…** and confirm. `docker context ls` marks `captain-engine` with `*`.
 7. Move `Captain.app` and open it. The links point at the new place.
 8. Quit Captain and run `captain tools uninstall`. The links, the plugin folder entry, and the blocks are gone.

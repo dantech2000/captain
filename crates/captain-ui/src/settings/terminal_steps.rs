@@ -187,7 +187,7 @@ pub fn links(
     .help(if enabled {
         "Link the tools again, for example after you moved Captain.app."
     } else {
-        "Link docker, Compose, and the keychain helper into ~/.captain/bin, and add Captain's plugin folder to ~/.docker/config.json."
+        "Link docker, Compose, the keychain helper, kubectl, and helm into ~/.captain/bin, and add Captain's plugin folder to ~/.docker/config.json."
     });
     step(
         1,

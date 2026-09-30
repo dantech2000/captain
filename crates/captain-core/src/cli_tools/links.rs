@@ -8,11 +8,13 @@ use super::ToolPaths;
 use crate::tools::Bundle;
 
 /// The names Captain links into `~/.captain/bin`, and removes on uninstall.
-const BIN_NAMES: [&str; 4] = [
+const BIN_NAMES: [&str; 6] = [
     "docker",
     "docker-compose",
     "docker-credential-osxkeychain",
     "captain",
+    "kubectl",
+    "helm",
 ];
 
 /// The names Captain links into `~/.captain/cli-plugins`.
@@ -73,6 +75,7 @@ pub fn tool_links(bundle: &Bundle, paths: &ToolPaths) -> Vec<ToolLink> {
         ));
     }
     links.push((paths.bin.join("captain"), bundle.captain_cli()));
+    links.extend(["kubectl", "helm"].map(|name| (paths.bin.join(name), bundle.bin().join(name))));
     links.extend(PLUGIN_NAMES.map(|name| (paths.plugins.join(name), plugins.join(name))));
     links
         .into_iter()

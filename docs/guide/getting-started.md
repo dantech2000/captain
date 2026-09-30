@@ -13,7 +13,7 @@ Captain needs macOS 15 or later.
 3. Open the `.dmg` and drag Captain to Applications.
 4. If macOS says it cannot check the app, right-click Captain in Applications and choose **Open**. You can also allow it in System Settings > Privacy & Security. An unsigned build needs this once.
 
-`Captain.app` carries Lima, the `docker` CLI, Compose, Buildx, the macOS credential helper, and the `captain` command. You do not need Homebrew.
+`Captain.app` carries Lima, the `docker` CLI, Compose, Buildx, the macOS credential helper, `kubectl`, `helm`, and the `captain` command. You do not need Homebrew.
 
 ### From source
 

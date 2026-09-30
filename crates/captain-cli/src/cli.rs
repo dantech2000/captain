@@ -83,8 +83,8 @@ pub enum Command {
     /// Turn Kubernetes (k3s in Captain Engine) on or off, show it, or reset it.
     #[command(subcommand)]
     Kubernetes(KubernetesCommand),
-    /// Link docker, Compose, Buildx, and captain into ~/.captain/bin for your
-    /// terminal, or show or remove the links.
+    /// Link docker, Compose, Buildx, kubectl, helm, and captain into
+    /// ~/.captain/bin for your terminal, or show or remove the links.
     #[command(subcommand)]
     Tools(ToolsCommand),
     /// Print the DOCKER_HOST for Captain Engine. Use: eval "$(captain docker-env)"

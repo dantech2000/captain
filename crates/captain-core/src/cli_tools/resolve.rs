@@ -6,8 +6,7 @@ use std::time::Duration;
 
 use super::command::output_within;
 
-/// The tools the Settings card and `captain tools status` show. `kubectl` and
-/// `helm` are not Captain's, but Rancher Desktop links them too.
+/// The tools the Settings card and `captain tools status` show.
 pub const SHOWN_TOOLS: [&str; 6] = [
     "docker",
     "docker-compose",

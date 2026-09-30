@@ -2,7 +2,7 @@
 # Downloads the tools Captain.app ships with, checks their SHA-256 sums, and puts
 # them in target/tools/<platform>/ in the same layout as Contents/Resources:
 #   lima/bin/limactl, lima/share/lima, bin/docker, bin/docker-credential-osxkeychain,
-#   cli-plugins/docker-{compose,buildx}
+#   bin/kubectl, bin/helm, cli-plugins/docker-{compose,buildx}
 # Versions and pinned sums live in scripts/tool-versions.env.
 # Usage: scripts/fetch-tools.sh [darwin-arm64|darwin-x86_64]  (default: this Mac)
 set -euo pipefail
@@ -24,16 +24,18 @@ fi
 case "$platform" in
   darwin-arm64)
     lima_arch=arm64 docker_arch=aarch64 compose_arch=aarch64 buildx_arch=arm64
-    docker_sha="$DOCKER_SHA256_DARWIN_ARM64" osxkeychain_sha="$OSXKEYCHAIN_SHA256_DARWIN_ARM64" ;;
+    docker_sha="$DOCKER_SHA256_DARWIN_ARM64" osxkeychain_sha="$OSXKEYCHAIN_SHA256_DARWIN_ARM64"
+    kubectl_sha="$KUBECTL_SHA256_DARWIN_ARM64" helm_sha="$HELM_SHA256_DARWIN_ARM64" ;;
   darwin-x86_64)
     lima_arch=x86_64 docker_arch=x86_64 compose_arch=x86_64 buildx_arch=amd64
-    docker_sha="$DOCKER_SHA256_DARWIN_X86_64" osxkeychain_sha="$OSXKEYCHAIN_SHA256_DARWIN_X86_64" ;;
+    docker_sha="$DOCKER_SHA256_DARWIN_X86_64" osxkeychain_sha="$OSXKEYCHAIN_SHA256_DARWIN_X86_64"
+    kubectl_sha="$KUBECTL_SHA256_DARWIN_X86_64" helm_sha="$HELM_SHA256_DARWIN_X86_64" ;;
   *) echo "fetch-tools: unknown platform $platform" >&2; exit 1 ;;
 esac
 
 target_dir="${CARGO_TARGET_DIR:-$root/target}"
 out="$target_dir/tools/$platform"
-stamp="lima=$LIMA_VERSION docker=$DOCKER_VERSION compose=$COMPOSE_VERSION buildx=$BUILDX_VERSION credential-helpers=$CREDENTIAL_HELPERS_VERSION licenses=2"
+stamp="lima=$LIMA_VERSION docker=$DOCKER_VERSION compose=$COMPOSE_VERSION buildx=$BUILDX_VERSION credential-helpers=$CREDENTIAL_HELPERS_VERSION kubectl=$KUBECTL_VERSION helm=$HELM_VERSION licenses=3"
 if [[ -f "$out/VERSIONS" && "$(cat "$out/VERSIONS")" == "$stamp" ]]; then
   echo "$out is up to date ($stamp)"
   exit 0
@@ -124,6 +126,21 @@ fetch "https://github.com/docker/docker-credential-helpers/releases/download/v$C
   "$out/bin/docker-credential-osxkeychain"
 verify "$out/bin/docker-credential-osxkeychain" "$osxkeychain_sha"
 
+# kubectl: https://kubernetes.io/docs/tasks/tools/install-kubectl-macos/. Pinned
+# in tool-versions.env. Kubernetes names the architectures like Buildx.
+echo "kubectl $KUBECTL_VERSION"
+fetch "https://dl.k8s.io/release/v$KUBECTL_VERSION/bin/darwin/$buildx_arch/kubectl" "$out/bin/kubectl"
+verify "$out/bin/kubectl" "$kubectl_sha"
+
+# Helm: https://github.com/helm/helm/releases. Pinned in tool-versions.env.
+helm_name="helm-v$HELM_VERSION-darwin-$buildx_arch.tar.gz"
+echo "Helm $HELM_VERSION"
+fetch "https://get.helm.sh/$helm_name" "$work/$helm_name"
+verify "$work/$helm_name" "$helm_sha"
+tar -xzf "$work/$helm_name" -C "$work" "darwin-$buildx_arch/helm"
+mv "$work/darwin-$buildx_arch/helm" "$out/bin/helm"
+rm -rf "${work:?}/$helm_name" "${work:?}/darwin-$buildx_arch"
+
 # The tools are Apache-2.0 (the credential helpers are MIT), which asks for their license and notice to ship with them.
 raw="https://raw.githubusercontent.com"
 for entry in "lima lima-vm/lima v$LIMA_VERSION LICENSE" \
@@ -131,7 +148,9 @@ for entry in "lima lima-vm/lima v$LIMA_VERSION LICENSE" \
   "docker docker/cli v$DOCKER_VERSION NOTICE" \
   "compose docker/compose v$COMPOSE_VERSION LICENSE" \
   "buildx docker/buildx v$BUILDX_VERSION LICENSE" \
-  "credential-helpers docker/docker-credential-helpers v$CREDENTIAL_HELPERS_VERSION LICENSE"; do
+  "credential-helpers docker/docker-credential-helpers v$CREDENTIAL_HELPERS_VERSION LICENSE" \
+  "kubectl kubernetes/kubernetes v$KUBECTL_VERSION LICENSE" \
+  "helm helm/helm v$HELM_VERSION LICENSE"; do
   read -r tool repo tag file <<< "$entry"
   mkdir -p "$out/licenses/$tool"
   fetch "$raw/$repo/$tag/$file" "$out/licenses/$tool/$file"

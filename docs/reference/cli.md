@@ -31,7 +31,7 @@ Options for every command:
 - [`captain kubernetes disable`](#captain-kubernetes-disable): Turn Kubernetes off. The cluster keeps its state. Quit Captain first.
 - [`captain kubernetes status`](#captain-kubernetes-status): Show the settings and the state of the cluster.
 - [`captain kubernetes reset`](#captain-kubernetes-reset): Delete the cluster's workloads and state, then start it again. Images stay.
-- [`captain tools`](#captain-tools): Link docker, Compose, Buildx, and captain into ~/.captain/bin for your terminal, or show or remove the links.
+- [`captain tools`](#captain-tools): Link docker, Compose, Buildx, kubectl, helm, and captain into ~/.captain/bin for your terminal, or show or remove the links.
 - [`captain tools status`](#captain-tools-status): Show the links, the plugin folder, the shell files, and where each tool comes from in a new terminal.
 - [`captain tools install`](#captain-tools-install): Link the tools, add the plugin folder to ~/.docker/config.json, and, with automatic PATH, add ~/.captain/bin to your shell files. Quit Captain first.
 - [`captain tools uninstall`](#captain-tools-uninstall): Remove the links, the plugin folder, and the PATH blocks. Quit Captain first.
@@ -266,7 +266,7 @@ Options:
 
 ## captain tools
 
-Link docker, Compose, Buildx, and captain into ~/.captain/bin for your terminal, or show or remove the links.
+Link docker, Compose, Buildx, kubectl, helm, and captain into ~/.captain/bin for your terminal, or show or remove the links.
 
 ```text
 captain tools [OPTIONS] <COMMAND>

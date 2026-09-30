@@ -17,6 +17,8 @@ fn fake_bundle(dir: &Path) -> Bundle {
         "bin/docker",
         "bin/docker-credential-osxkeychain",
         "bin/captain",
+        "bin/kubectl",
+        "bin/helm",
         "cli-plugins/docker-compose",
         "cli-plugins/docker-buildx",
     ] {
@@ -56,9 +58,14 @@ fn links_every_tool_but_never_replaces_a_regular_file() {
         std::fs::read_link(paths.plugins.join("docker-buildx")).unwrap(),
         bundle.cli_plugins().join("docker-buildx")
     );
+    assert_eq!(
+        std::fs::read_link(paths.bin.join("helm")).unwrap(),
+        bundle.bin().join("helm")
+    );
 
     remove_links(&paths);
     assert!(!paths.bin.join("docker").exists());
+    assert!(!paths.bin.join("kubectl").exists());
     assert!(paths.bin.join("captain").exists());
     std::fs::remove_dir_all(&dir).ok();
 }

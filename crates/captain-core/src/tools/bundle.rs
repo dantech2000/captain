@@ -35,7 +35,8 @@ impl Bundle {
         self.resources.join("lima/bin/limactl")
     }
 
-    /// `bin`, with `docker`, `docker-credential-osxkeychain`, and `captain`.
+    /// `bin`, with `docker`, `docker-credential-osxkeychain`, `kubectl`, `helm`, and
+    /// `captain`.
     pub fn bin(&self) -> PathBuf {
         self.resources.join("bin")
     }

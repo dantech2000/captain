@@ -86,7 +86,7 @@ If a step fails, click **Retry** or **Roll back**. **Roll back** stops the copy 
 
 ## Set up your terminal
 
-Rancher Desktop puts `docker`, `kubectl`, and other tools in `~/.rd/bin`. Docker Desktop puts them in `/usr/local/bin`. After you uninstall the old app, those tools are gone. Captain ships its own `docker`, Compose, Buildx, the keychain credential helper, and `captain`.
+Rancher Desktop puts `docker`, `kubectl`, and other tools in `~/.rd/bin`. Docker Desktop puts them in `/usr/local/bin`. After you uninstall the old app, those tools are gone. Captain ships its own `docker`, Compose, Buildx, the keychain credential helper, `kubectl`, `helm`, and `captain`.
 
 Captain changes no shell file and no docker file until you ask.
 
@@ -157,14 +157,14 @@ If another context is the current one, `captain` does not replace it. To switch,
 
 Rancher Desktop's context is `rancher-desktop`. Docker Desktop's is `docker-desktop`. They stop working when you uninstall the old app. Delete them with `kubectl config delete-context <name>`.
 
-Captain does not ship `kubectl` or `helm` yet. Rancher Desktop's copies in `~/.rd/bin` go away with it. Install them first, for example with `brew install kubectl helm`.
+Rancher Desktop's `kubectl` and `helm` in `~/.rd/bin` go away with it. Captain links its own copies into `~/.captain/bin` when you [set up your terminal](#set-up-your-terminal).
 
 ## Before you uninstall the old app
 
 1. Copy your data with the Migration Assistant. Switch over the running databases. The old app's uninstall deletes its engine and everything in it.
 2. Start your projects in Captain and check that they work.
 3. Set up your terminal. Check that **Where each tool comes from now** shows Captain for `docker`.
-4. Install `kubectl` and `helm` from another source if you use them.
+4. Check that **Where each tool comes from now** shows Captain for `kubectl` and `helm`, if you use them.
 5. If `/var/run/docker.sock` points at the old engine, link it to Captain Engine, or check that your tools do not need it.
 6. Turn off the old app's start at login, and quit it.
 7. Open a new terminal and run `docker ps` and `docker compose ls`. Both must list Captain Engine's containers.
