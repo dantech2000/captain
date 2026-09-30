@@ -10,6 +10,7 @@ use serde_json::{Value, json};
 use super::client::{AgentClient, ConfigFormat, SERVER_NAME};
 use super::config_edit::{with_server, without_server};
 use super::paths::ClientPaths;
+use crate::cli_tools::chezmoi_manages;
 
 /// One step that connects or removes a client.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -161,6 +162,12 @@ fn edit(
     let (ConfigFormat::Json(key), Some(path)) = (client.format(), paths.config_file(client)) else {
         return Err(format!("{} does not run on this system.", client.name()));
     };
+    if chezmoi_manages(&paths.home, &path) {
+        return Err(format!(
+            "chezmoi manages {}. Add Captain there with Copy config.",
+            paths.tilde(&path)
+        ));
+    }
     let path = crate::link_target::link_target(&path);
     let before = match std::fs::read_to_string(&path) {
         Ok(text) => text,

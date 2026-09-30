@@ -14,6 +14,7 @@ mod resolve;
 mod settings;
 mod setup;
 
+pub(crate) use chezmoi::chezmoi_manages;
 pub use install::{RcStatus, ToolsStatus, install, status, uninstall};
 pub use links::{LinkReport, LinkState, ToolLink, link_state, relink, remove_links, tool_links};
 pub use paths::{SUPPORTED, ToolPaths, UNSUPPORTED, login_shell, running_bundle};

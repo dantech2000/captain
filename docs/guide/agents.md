@@ -44,7 +44,7 @@ The sheet lists the agents Captain finds on this computer, with **Connect** or *
 
 `<path>` is an absolute path: `~/.captain/bin/captain` (written out in full) when the [command-line tools](cli.md) are set up, else the `captain` inside Captain.app. Set up the command-line tools first, so the path stays right when you move Captain.app.
 
-Captain runs the commands in your login shell, as a new terminal would. When Captain edits a file, it keeps your comments and other servers, and saves a copy of the old file next to it with `.captain-backup` at the end the first time. **Remove** runs the agent's own remove command, or takes the `captain` entry out of the file again.
+Captain runs the commands in your login shell, as a new terminal would. When Captain edits a file, it keeps your comments and other servers, and saves a copy of the old file next to it with `.captain-backup` at the end the first time. **Remove** runs the agent's own remove command, or takes the `captain` entry out of the file again. If chezmoi manages the file, Captain does not edit it: use **Copy config** and add the entry to your chezmoi source.
 
 For another agent, click **Copy config**. It copies this JSON, with your path, to paste into that agent's MCP settings:
 
