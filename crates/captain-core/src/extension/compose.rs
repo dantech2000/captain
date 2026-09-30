@@ -27,8 +27,11 @@ pub fn image_project(id: &str, image: &str, socket: Option<&str>) -> Value {
 
 /// Takes a project from `docker compose config --format json` and adds the name, the
 /// volume, the proxy, and a restart policy, so the backend comes back when the
-/// engine restarts.
+/// engine restarts. It also turns each `$$` into `$`: Docker Desktop resolves an
+/// extension's Compose file once before Compose does, so extensions write a
+/// literal `$` as `$$$$` (Portainer's `--admin-password` hash does).
 pub fn with_guest_services(mut config: Value, id: &str, socket: Option<&str>) -> Value {
+    unescape_dollars(&mut config);
     let Some(project) = config.as_object_mut() else {
         return config;
     };
@@ -54,6 +57,16 @@ pub fn with_guest_services(mut config: Value, id: &str, socket: Option<&str>) ->
         volumes.insert(VOLUME.into(), json!({}));
     }
     config
+}
+
+/// Replaces `$$` with `$` in every string of `value`, one level of Compose escaping.
+fn unescape_dollars(value: &mut Value) {
+    match value {
+        Value::String(text) if text.contains("$$") => *text = text.replace("$$", "$"),
+        Value::Array(items) => items.iter_mut().for_each(unescape_dollars),
+        Value::Object(map) => map.values_mut().for_each(unescape_dollars),
+        _ => {}
+    }
 }
 
 /// Mounts the guest services volume, unless the service mounts something there.

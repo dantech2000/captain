@@ -42,3 +42,13 @@ fn a_compose_backend_keeps_its_own_mount_and_gets_no_proxy_without_a_socket() {
     assert_eq!(project["services"]["db"]["restart"], "always");
     assert!(project["services"].get(PROXY_SERVICE).is_none());
 }
+
+#[test]
+fn a_rendered_double_escape_resolves_once_more_like_docker_desktop() {
+    // `$$$$2y` in the extension's file: `compose config` gives `$$2y`, and `up`
+    // must see `$2y` after this step, so the container gets `$2y`.
+    let config =
+        json!({ "services": { "app": { "command": ["--admin-password", "$$2y$$05$$abc"] } } });
+    let project = with_guest_services(config, "acme", None);
+    assert_eq!(project["services"]["app"]["command"][1], "$2y$05$abc");
+}
