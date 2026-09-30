@@ -2,6 +2,8 @@
 
 The Storage page shows what fills the engine disk, who uses each large item, and what you can remove. Open it with the Disk card in the sidebar, the Storage button, or `disk` in the command palette.
 
+![The Storage page: 970 MB of 64.0 GB in use, the largest items with who uses them, and Free up space with 249 MB to free](../images/storage.png)
+
 ## The disk bar
 
 With Captain Engine, the header shows the bytes in use out of the disk size, for example "18.2 GB of 64 GB", and the free space on your Mac. **Change the disk size in Settings** opens Settings. The disk grows as it fills, up to its size. It cannot shrink.
@@ -56,6 +58,8 @@ To clean up:
 1. Check the groups you want. The button shows the total, for example **Review 18 items, free 6.1 GB**.
 2. Click the button. A dialog lists every item that the cleanup removes.
 3. Click **Remove N items and free X**, or **Cancel**.
+
+![Review 3 items opens a dialog that lists three images. Remove 3 items and free 249 MB removes them, and the disk drops to 746 MB.](../images/cleanup.gif)
 
 Captain removes images by ID, build cache by record, volumes by name, and containers by ID. It removes only the items in the dialog. If a container starts to use an item after you open the dialog, Captain does not remove that item. An image with tags in more than one repository stays, and the message names it. A message reports the bytes freed and any item that was not removed.
 

@@ -273,6 +273,7 @@ Clean up: turn off **Let agents use Captain**, and `docker compose down` in the 
 | 11. Popover and floating log | Pass after a fix: the warning card came and went during the crash loop, and Float logs opened the selected container. A crash tracker on the event stream fixed both. The Dock badge was not checked. |
 | 12. ⌘K commands | Pass for completions. |
 | 13. Storage | Pass for the page and the Disk card. No cleanup was run. |
+| 14.1–14.3, 14.5–14.6 Files tab | Pass, 2026-09-30, in the demo project `docs/demo/acme-shop` with a release build. The typo `imgae` showed its error on its line, and completion offered keys with hover docs. The preview named web for Recreate; it also listed Start for worker, which was restarting after an out-of-memory kill. Apply recreated web. Steps 4 and 7–10 were not run. |
 
 Notes for the UI/UX pass:
 

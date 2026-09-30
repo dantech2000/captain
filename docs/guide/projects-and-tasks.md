@@ -2,6 +2,8 @@
 
 A project is a Compose project, the containers that `docker compose up` started from one Compose file. Captain groups them by the labels that Compose puts on each container. Each project has an entry in the sidebar and a project page.
 
+![The acme-shop project page: the Open row, five service cards with a worker that ran out of memory, the Tasks card with the output of db-size, and the project log](../images/project.png)
+
 Kubernetes namespaces and loose containers also get a page. Their pages have no header buttons, no Open row, and no tasks, because those need a Compose project.
 
 The project buttons and tasks run the `docker compose` CLI. Captain.app includes it.
@@ -55,7 +57,9 @@ A card can also show **Resume** for a paused container, and **Raise memory** aft
 
 ### Raise memory
 
-When the kernel stops a container because it used all its memory, the card offers **Raise memory to N MB**. N is twice the old limit, and at least 512 MB.
+When the kernel stops a container because it used all its memory, the card offers **Raise memory to** *size*. The size is twice the old limit, and at least 512 MB.
+
+![Hovering Raise memory to 1.0 GB shows its help in the status bar. A click sets the limit to 1.0 GB, and a message confirms it.](../images/raise-memory.gif)
 
 The button changes the running container, like `docker update --memory`. The change lasts until Compose creates the container again, for example after you edit the Compose file and run `docker compose up`. To keep the new limit, put it in the Compose file:
 
@@ -118,6 +122,8 @@ Captain reads the tasks with `docker compose config`, so variables from `.env` w
 ## The Map tab
 
 Click **Map** in the project header to see how the services connect. Click **Overview** to go back to the cards.
+
+![The Map tab of acme-shop: port pins on the left, the services in the acme-shop_default network, lines from api to the services it talks to, and two volumes on the right](../images/map.png)
 
 The map has three columns:
 

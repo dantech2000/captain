@@ -30,9 +30,13 @@ The tools need about 200 MB of disk. Without `release`, the script makes a debug
 
 On the first launch, Captain shows the setup screen. It lists the CPUs, memory, and disk that Captain Engine gets. You can change them in Settings later.
 
+![The Set up Captain Engine screen: 5 CPUs, 6.0 GB memory, and 64.0 GB disk, with the buttons Set up Captain Engine and Use an existing engine](../images/first-run.png)
+
 1. If Captain finds another engine, such as Rancher Desktop or Docker Desktop, it lists it under **Other engines on this computer**. To copy its data after the setup, check **Bring your data along**. See [Moving from Docker Desktop or Rancher Desktop](moving-from-docker-desktop-or-rancher.md).
 2. Click **Set up Captain Engine**. Captain downloads an Ubuntu image and creates the VM. The screen shows the progress.
-3. Wait for the main window. The first start takes a few minutes. Later starts take seconds.
+3. Wait for the main window. The first start takes a few minutes. Later starts take 10 to 20 seconds.
+
+![The Starting Captain Engine screen with a progress bar and the last lines of the start log](../images/starting.png)
 
 To keep your current engine instead, click **Use an existing engine**. Captain then connects to that engine, but does not start or stop it.
 
@@ -49,6 +53,8 @@ When you quit Captain, Captain Engine stops, and its containers stop with it. To
 ## The main window
 
 The window has a sidebar on the left, the page on the right, and a status bar at the bottom.
+
+![The Containers page with two Compose projects and one loose container, and the inspector open on the api container](../images/containers.png)
 
 ### The sidebar
 

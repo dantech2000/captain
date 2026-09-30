@@ -12,6 +12,8 @@ It is off until you turn it on, and agents run actions only when you allow each 
 
 While it is off, an agent that connects sees only the `help` tool, which says how to turn it on.
 
+![The Connect AI agents sheet: Let agents use Captain is on with Restart and Run tasks checked, four agents found on this computer, and three calls from Claude Code under Agent activity](../images/agents.png)
+
 ## Choose the actions
 
 Under the switch, check the actions agents may run. All are off at first.

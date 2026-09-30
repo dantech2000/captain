@@ -9,6 +9,8 @@ Captain has two places for settings:
 
 Click the Settings button at the bottom of the sidebar. The page has these sections.
 
+![The Settings page with the sections Appearance, Engine, Kubernetes, Startup, Terminal, AI agents, and Everything else](../images/settings.png)
+
 ### Appearance
 
 Pick a theme: **Dusk**, **Periwinkle**, or **Harbor**. Then pick **System**, **Light**, or **Dark**. **System** follows the macOS appearance.

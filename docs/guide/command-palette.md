@@ -2,6 +2,8 @@
 
 Press ⌘K, or click the search button at the top of the sidebar. The palette finds containers, images, pages, and commands, and it runs short commands such as `restart api`.
 
+![Typing restart wo offers restart worker. Then logs db --since 10m and Return open the db container's Logs tab with the Since last 10 minutes filter.](../images/palette.gif)
+
 ## Keys
 
 | Key | What it does |
@@ -59,10 +61,12 @@ When a name fits more than one thing, the palette never guesses. It lists each m
 
 `logs api` opens the project page with the inspector at **Logs**.
 
-- `--since TIME` loads only the lines from that time on. A chip such as "Since 10 minutes" shows the filter. Click the chip to clear it. The filter stays when the container restarts, and goes when you select another container.
+- `--since TIME` loads only the lines from that time on. A chip such as "Since last 10 minutes" shows the filter. Click the chip to clear it. The filter stays when the container restarts, and goes when you select another container.
 - `--errors` shows only error lines.
 
 A time is a whole number and one unit: `30s`, `10m`, `1h`, or `2d`. `--since=10m` works too.
+
+![The palette with logs db --since 1 typed, offering 10m, 1h, and 1d, each with what it keeps](../images/palette.png)
 
 `logs shop` opens the project log. The project log has no filters, so `--since` and `--errors` need a container or a service.
 
