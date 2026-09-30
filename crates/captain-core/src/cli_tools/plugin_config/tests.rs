@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use super::{add_plugin_dir, with_plugin_dir, without_plugin_dir};
+use super::{with_plugin_dir, without_plugin_dir};
 
 const DIR: &str = "/Users/dan/.captain/cli-plugins";
 
@@ -36,6 +36,8 @@ fn removing_the_last_folder_removes_the_key_and_bad_json_is_an_error() {
 #[cfg(unix)]
 #[test]
 fn writes_through_a_link_and_backs_up_once() {
+    use super::add_plugin_dir;
+
     let dir = std::env::temp_dir().join(format!("captain-plugin-config-{}", std::process::id()));
     std::fs::remove_dir_all(&dir).ok();
     std::fs::create_dir_all(dir.join("dotfiles")).unwrap();

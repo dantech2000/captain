@@ -24,8 +24,8 @@ pub fn create_captain(
     cx: &mut App,
 ) {
     let (title, ok) = match update {
-        true => ("Update the captain context?", "Update"),
-        false => ("Create a captain context?", "Create"),
+        true => ("Update the captain-engine context?", "Update"),
+        false => ("Create a captain-engine context?", "Create"),
     };
     let description = format!(
         "Captain runs \"docker context {} {CAPTAIN_CONTEXT}\" with the host {host}. \

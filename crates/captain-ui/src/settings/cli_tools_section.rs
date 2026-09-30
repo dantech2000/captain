@@ -250,10 +250,10 @@ fn context_row(
     let points_here = existing.is_some_and(|context| context.host == socket);
     let done = points_here && view.contexts.is_current(CAPTAIN_CONTEXT);
     let note = match (&socket, done) {
-        (None, _) => "Captain Engine is not set up, so there is no captain context to use.",
+        (None, _) => "Captain Engine is not set up, so there is no captain-engine context to use.",
         (Some(_), true) => "New docker commands use Captain Engine.",
         (Some(_), false) => {
-            "Captain creates the captain context if needed and makes it the default."
+            "Captain creates the captain-engine context if needed and makes it the default."
         }
     };
     let this = cx.weak_entity();
@@ -269,7 +269,9 @@ fn context_row(
             }
         },
     )
-    .help("Make the captain context the docker CLI's default, and create it first if needed.");
+    .help(
+        "Make the captain-engine context the docker CLI's default, and create it first if needed.",
+    );
     settings_row(
         format!("docker commands use: {current}"),
         Some(note.into()),

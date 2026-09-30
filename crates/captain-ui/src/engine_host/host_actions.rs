@@ -260,6 +260,6 @@ impl HostModel {
 fn forget_kubernetes_context() {
     let paths = captain_core::kubernetes::user_kubeconfig_paths();
     if let Err(error) = captain_core::kubernetes::uninstall_captain(&paths) {
-        tracing::warn!(%error, "cannot remove the captain context");
+        tracing::warn!(%error, "cannot remove the captain-engine context");
     }
 }
