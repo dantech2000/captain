@@ -16,6 +16,17 @@ Captain already knows each project's files (the `com.docker.compose.project.conf
 - GPUI Kit 0.7's input is a code editor: tree-sitter highlighting (YAML behind the `tree-sitter-yaml` feature), line numbers, a `CompletionProvider`, a `HoverProvider`, and diagnostics (`gpui-component` `src/input`, `src/highlighter`). Dockerfile has no bundled grammar; register one through the highlighter registry (for example the `tree-sitter-dockerfile` grammar; check its license and maintenance first).
 - Captain already writes files safely (`captain_core::file_replace`: a temp file, sync, rename, permissions kept) and runs the Compose CLI with the engine's `DOCKER_HOST`.
 
+## Before work starts
+
+Check these first, cite the sources in this spec, and change the plan if one fails. GitHub issue "M32.0 Checks before work starts" tracks them.
+
+1. **`docker compose up --dry-run`:** the Compose version that added it, whether the Compose that Captain bundles has it, and whether its output names each service's action (recreate, create, remove, pull, build) in a form Captain can read.
+2. **`docker build --check`:** the minimum Docker and BuildKit versions, and whether it works against Captain Engine and other engines.
+3. **Dockerfile grammar:** the license and maintenance of `tree-sitter-dockerfile` (or another grammar), and that it builds on macOS, Linux, and Windows.
+4. **Compose Specification schema:** its license (to vendor it), and which schema version matches the bundled Compose.
+5. **GPUI Kit editor:** that the `tree-sitter-yaml` feature, the completion and hover providers, and diagnostics work in GPUI Kit 0.7 as needed, with a small spike.
+6. **`docker compose config` on unsaved text:** that a temp copy next to the real file resolves relative paths, `env_file`, and `extends` the same way.
+
 ## Build plan
 
 | # | Phase | Delivers | Done when |
