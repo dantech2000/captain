@@ -10,7 +10,7 @@ use captain_core::model::ContainerState;
 use captain_core::problems::ExitFacts;
 use captain_ui::Workspace;
 use gpui_kit::*;
-use muda::{IconMenuItem, MenuId};
+use muda::{MenuId, MenuItem};
 use tray_icon::{Icon, TrayIcon, TrayIconBuilder};
 
 use super::exit_facts::ExitFactsCache;
@@ -46,7 +46,7 @@ struct Tray {
     shown: Option<TraySnapshot>,
     commands: HashMap<MenuId, TrayCommand>,
     /// The engine's status line in the current menu.
-    status: Option<IconMenuItem>,
+    status: Option<MenuItem>,
     rebuild: Option<Task<()>>,
     workspace: Entity<Workspace>,
     contexts: KubeContexts,
@@ -248,7 +248,7 @@ impl Tray {
         if let (Some(shown), Some(status)) = (shown, &self.status)
             && shown.same_menu(&snapshot)
         {
-            status.set_text(&snapshot.status_line);
+            status.set_text(menu_model::status_text(&snapshot));
             self.shown = Some(snapshot);
             return;
         }

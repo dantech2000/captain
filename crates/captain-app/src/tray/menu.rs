@@ -3,9 +3,7 @@
 use std::collections::HashMap;
 
 use muda::accelerator::Accelerator;
-use muda::{
-    CheckMenuItem, IconMenuItem, IsMenuItem, Menu, MenuId, MenuItem, PredefinedMenuItem, Submenu,
-};
+use muda::{CheckMenuItem, IsMenuItem, Menu, MenuId, MenuItem, PredefinedMenuItem, Submenu};
 
 use super::menu_model::{TrayCommand, TrayItem};
 
@@ -15,7 +13,7 @@ pub struct NativeMenu {
     pub commands: HashMap<MenuId, TrayCommand>,
     /// The first status line, the engine's. Its text changes in place as the stats
     /// change, without a new menu.
-    pub status: Option<IconMenuItem>,
+    pub status: Option<MenuItem>,
 }
 
 impl NativeMenu {
@@ -40,7 +38,7 @@ impl NativeMenu {
         match item {
             TrayItem::Label(label) => Box::new(MenuItem::new(label, false, None)),
             TrayItem::Status { label, light } => {
-                let status = IconMenuItem::new(label, false, Some(light.icon()), None);
+                let status = MenuItem::new(light.label(label), false, None);
                 self.status.get_or_insert_with(|| status.clone());
                 Box::new(status)
             }
@@ -69,10 +67,11 @@ impl NativeMenu {
                 light,
                 items,
             } => {
+                let label = match light {
+                    Some(light) => light.label(label),
+                    None => label.clone(),
+                };
                 let submenu = Submenu::new(label, true);
-                if let Some(light) = light {
-                    submenu.set_icon(Some(light.icon()));
-                }
                 let children = self.build_items(items);
                 if let Err(error) = submenu.append_items(&as_refs(&children)) {
                     tracing::warn!(%error, "cannot build a menu bar submenu");

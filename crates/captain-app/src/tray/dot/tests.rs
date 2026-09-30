@@ -1,14 +1,9 @@
-use super::{Light, rgba};
-use crate::tray::icon::SIZE;
+use super::Light;
 
 #[test]
-fn a_dot_is_solid_in_the_middle_and_clear_at_the_corner() {
-    let dot = rgba(Light::Green);
-    let pixel = |x: u32, y: u32| {
-        let at = ((y * SIZE + x) * 4) as usize;
-        dot[at..at + 4].to_vec()
-    };
-    let middle = SIZE / 2;
-    assert_eq!(pixel(middle, middle), [0x34, 0xC7, 0x59, 255]);
-    assert_eq!(pixel(0, 0)[3], 0);
+fn each_light_has_its_own_circle_in_front_of_the_label() {
+    let all = [Light::Green, Light::Amber, Light::Red, Light::Gray];
+    let glyphs: std::collections::HashSet<_> = all.iter().map(|l| l.glyph()).collect();
+    assert_eq!(glyphs.len(), all.len());
+    assert!(Light::Red.label("worker").ends_with(" worker"));
 }

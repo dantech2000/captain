@@ -105,6 +105,11 @@ impl TrayItem {
     }
 }
 
+/// The engine's status line with its light, as the menu shows it.
+pub fn status_text(snapshot: &TraySnapshot) -> String {
+    engine_light(snapshot.engine).label(&snapshot.status_line)
+}
+
 /// The whole menu for `snapshot`, top to bottom.
 pub fn build(snapshot: &TraySnapshot) -> Vec<TrayItem> {
     let mut items = vec![TrayItem::Status {
