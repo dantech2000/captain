@@ -58,7 +58,7 @@ Every control says what it does. A 30 px bar at the bottom of the main window sh
 3. Move the mouse over each sidebar entry, then down the list without a stop. Check that the sentence changes with no blank frame in between.
 4. Hover the search button. Check that the bar shows the ⌘ and K key chips.
 5. Hover a Compose card's Down button. Check that the sentence names the project and its container count.
-6. Run `docker run -d --name captain-agent-crash --restart on-failure:3 alpine sh -c 'sleep 2; exit 1'`. Wait ten seconds. Check that the bar shows "captain-agent-crash restarted 3 times, then exited at …". Remove the container.
+6. Run `docker run -d --name captain-agent-crash --restart on-failure:3 alpine sh -c 'sleep 2; exit 1'`. Wait ten seconds. Check that the bar shows "captain-agent-crash exited again at …, after 3 restarts". Remove the container.
 7. Stop a container with its Stop button. Check that the bar does not show it as an event.
 8. Check that no tooltip bubble appears anywhere in the main window.
 9. Hover each segment of the Containers filter, then "Show Kubernetes containers". Check the sentences.

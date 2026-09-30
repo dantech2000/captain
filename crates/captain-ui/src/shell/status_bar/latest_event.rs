@@ -74,7 +74,8 @@ impl LatestEvent {
         let name = &event.name;
         Some(match (event.running, event.restarts) {
             (false, 0) => format!("{name} exited at {time}"),
-            (false, n) => format!("{name} restarted {n} times, then exited at {time}"),
+            // A restart policy may bring it back again; the event cannot tell.
+            (false, n) => format!("{name} exited again at {time}, after {n} restarts"),
             (true, 1) => format!("{name} restarted at {time}"),
             (true, n) => format!("{name} restarted {n} times · last at {time}"),
         })
