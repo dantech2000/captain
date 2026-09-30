@@ -11,6 +11,8 @@ use super::client::{AgentClient, ConfigFormat, SERVER_NAME};
 use super::config_edit::{with_server, without_server};
 use super::paths::ClientPaths;
 use crate::cli_tools::chezmoi_manages;
+use crate::file_replace::sibling;
+use crate::settings::jsonc::parse;
 
 /// One step that connects or removes a client.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -45,13 +47,27 @@ pub fn copy_config(captain: &Path) -> String {
 
 /// How to connect `client` to `captain` (an absolute path to the `captain`
 /// command). `has_command` says whether the client's command is on the user's
-/// PATH.
+/// PATH. Every step changes the client's file, so none is given for a file that
+/// chezmoi manages.
 pub fn connect_step(
     client: AgentClient,
     paths: &ClientPaths,
     captain: &Path,
     has_command: bool,
 ) -> Result<ClientStep, String> {
+    let manages = |file: &Path| chezmoi_manages(&paths.home, file);
+    connect_step_with(client, paths, captain, has_command, &manages)
+}
+
+/// [`connect_step`], with `manages` saying whether chezmoi manages a file.
+fn connect_step_with(
+    client: AgentClient,
+    paths: &ClientPaths,
+    captain: &Path,
+    has_command: bool,
+    manages: &dyn Fn(&Path) -> bool,
+) -> Result<ClientStep, String> {
+    unmanaged(client, paths, manages)?;
     let path = captain.display().to_string();
     let argv = |args: &[&str]| args.iter().map(ToString::to_string).collect();
     match client {
@@ -110,18 +126,30 @@ pub fn connect_step(
                     .replace('=', "%3D")
             )))
         }
-        _ => edit(client, paths, |text, key| {
+        _ => edit(client, paths, |text, key, _| {
             with_server(text, key, &server_entry(client, captain))
         }),
     }
 }
 
-/// How to remove Captain's server from `client`.
+/// How to remove Captain's server from `client`, unless chezmoi manages its file.
 pub fn remove_step(
     client: AgentClient,
     paths: &ClientPaths,
     has_command: bool,
 ) -> Result<ClientStep, String> {
+    let manages = |file: &Path| chezmoi_manages(&paths.home, file);
+    remove_step_with(client, paths, has_command, &manages)
+}
+
+/// [`remove_step`], with `manages` saying whether chezmoi manages a file.
+fn remove_step_with(
+    client: AgentClient,
+    paths: &ClientPaths,
+    has_command: bool,
+    manages: &dyn Fn(&Path) -> bool,
+) -> Result<ClientStep, String> {
+    unmanaged(client, paths, manages)?;
     let argv = |args: &[&str]| args.iter().map(ToString::to_string).collect();
     match client {
         AgentClient::ClaudeCode | AgentClient::Codex | AgentClient::GeminiCli if !has_command => {
@@ -149,25 +177,50 @@ pub fn remove_step(
             "user",
             SERVER_NAME,
         ]))),
-        _ => edit(client, paths, without_server),
+        _ => edit(client, paths, |text, key, path| {
+            without_server(text, key, !had_servers(path, key))
+        }),
     }
 }
 
-/// An edit of `client`'s JSON file with `change`.
+/// An error when chezmoi manages `client`'s file, since the next `chezmoi apply`
+/// would undo any change to it.
+fn unmanaged(
+    client: AgentClient,
+    paths: &ClientPaths,
+    manages: &dyn Fn(&Path) -> bool,
+) -> Result<(), String> {
+    match paths.config_file(client) {
+        Some(path) if manages(&path) => Err(format!(
+            "chezmoi manages {}. Add Captain there with Copy config.",
+            paths.tilde(&path)
+        )),
+        _ => Ok(()),
+    }
+}
+
+/// True unless the backup of the file at `path`, from before Captain first changed
+/// it, shows that Captain added the object at `key`. An empty backup is a file
+/// Captain created. Without a backup, or with one Captain cannot read, the object
+/// stays.
+fn had_servers(path: &Path, key: &str) -> bool {
+    match std::fs::read_to_string(sibling(path, "captain-backup")) {
+        Ok(text) if text.trim().is_empty() => false,
+        Ok(text) => parse(&text).map_or(true, |value| value.get(key).is_some()),
+        Err(_) => true,
+    }
+}
+
+/// An edit of `client`'s JSON file with `change`, which gets the text, the key,
+/// and the file's path.
 fn edit(
     client: AgentClient,
     paths: &ClientPaths,
-    change: impl Fn(&str, &str) -> Result<String, String>,
+    change: impl Fn(&str, &str, &Path) -> Result<String, String>,
 ) -> Result<ClientStep, String> {
     let (ConfigFormat::Json(key), Some(path)) = (client.format(), paths.config_file(client)) else {
         return Err(format!("{} does not run on this system.", client.name()));
     };
-    if chezmoi_manages(&paths.home, &path) {
-        return Err(format!(
-            "chezmoi manages {}. Add Captain there with Copy config.",
-            paths.tilde(&path)
-        ));
-    }
     let path = crate::link_target::link_target(&path);
     let before = match std::fs::read_to_string(&path) {
         Ok(text) => text,
@@ -179,7 +232,7 @@ fn edit(
             ));
         }
     };
-    let after = change(&before, key)
+    let after = change(&before, key, &path)
         .map_err(|why| format!("Captain cannot change {}: {why}", paths.tilde(&path)))?;
     Ok(ClientStep::Edit {
         path,

@@ -9,11 +9,24 @@ fn connect_then_remove_gives_the_file_back_with_its_comments() {
     let added = with_server(zed, "context_servers", &entry).unwrap();
     assert!(added.contains("// mine") && added.contains("\"other\""));
     assert!(has_server(&added, "context_servers").unwrap());
-    assert_eq!(without_server(&added, "context_servers").unwrap(), zed);
+    assert_eq!(
+        without_server(&added, "context_servers", false).unwrap(),
+        zed
+    );
 
     let plain = "{\n  \"globalShortcut\": \"\"\n}\n";
     let added = with_server(plain, "mcpServers", &entry).unwrap();
-    assert_eq!(without_server(&added, "mcpServers").unwrap(), plain);
+    assert_eq!(without_server(&added, "mcpServers", true).unwrap(), plain);
+}
+
+#[test]
+fn remove_keeps_a_servers_object_that_holds_a_comment() {
+    let zed = "{\n  \"context_servers\": {\n    // none yet\n  }\n}\n";
+    let entry = json!({ "command": "/c", "args": ["mcp"] });
+    let added = with_server(zed, "context_servers", &entry).unwrap();
+    let removed = without_server(&added, "context_servers", true).unwrap();
+    assert!(removed.contains("// none yet"), "{removed}");
+    assert!(!has_server(&removed, "context_servers").unwrap());
 }
 
 #[test]

@@ -24,9 +24,9 @@ pub fn with_server(text: &str, key: &str, entry: &Value) -> Result<String, Strin
     Ok(root.to_string())
 }
 
-/// `text` without the `captain` server in the object at `key`, and without that
-/// object when it is left empty.
-pub fn without_server(text: &str, key: &str) -> Result<String, String> {
+/// `text` without the `captain` server in the object at `key`. The object goes too
+/// when Captain `created` it and nothing is left in it, not even a comment.
+pub fn without_server(text: &str, key: &str, created: bool) -> Result<String, String> {
     if text.trim().is_empty() {
         return Ok(text.to_string());
     }
@@ -40,7 +40,12 @@ pub fn without_server(text: &str, key: &str) -> Result<String, String> {
     if let Some(prop) = servers.get(SERVER_NAME) {
         prop.remove();
     }
-    if servers.properties().is_empty()
+    let bare = servers
+        .to_string()
+        .chars()
+        .all(|c| c.is_whitespace() || "{},".contains(c));
+    if created
+        && bare
         && let Some(prop) = object.get(key)
     {
         prop.remove();

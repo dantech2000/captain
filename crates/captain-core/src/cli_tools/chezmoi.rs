@@ -31,7 +31,8 @@ fn install_dirs(home: &Path) -> Vec<PathBuf> {
 /// installed.
 pub fn chezmoi_manages(home: &Path, file: &Path) -> bool {
     let path = std::env::var_os("PATH");
-    let Some(chezmoi) = locate_tool("chezmoi", None, path.as_deref(), install_dirs(home), |p| {
+    let binary = format!("chezmoi{}", std::env::consts::EXE_SUFFIX);
+    let Some(chezmoi) = locate_tool(&binary, None, path.as_deref(), install_dirs(home), |p| {
         p.is_file()
     }) else {
         return false;

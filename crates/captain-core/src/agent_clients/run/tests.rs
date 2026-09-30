@@ -57,6 +57,8 @@ fn an_edit_refuses_a_file_that_changed_and_keeps_a_backup() {
     };
     let launch = |_: &[String]| Command::new("false");
     assert!(run_step(&step("{ }\n"), &launch).is_err());
+    // The refused edit removes its staged file; the file and its backup stay.
+    assert_eq!(std::fs::read_dir(&dir).unwrap().count(), 2);
     run_step(&step("{}\n"), &launch).unwrap();
     assert_eq!(
         std::fs::read_to_string(&path).unwrap(),
@@ -65,6 +67,17 @@ fn an_edit_refuses_a_file_that_changed_and_keeps_a_backup() {
     assert_eq!(
         std::fs::read_to_string(dir.join("mcp.json.captain-backup")).unwrap(),
         "{}\n"
+    );
+    let new = dir.join("new.json");
+    let create = ClientStep::Edit {
+        path: new.clone(),
+        before: String::new(),
+        after: "{}\n".into(),
+    };
+    run_step(&create, &launch).unwrap();
+    assert_eq!(
+        std::fs::read_to_string(dir.join("new.json.captain-backup")).unwrap(),
+        ""
     );
     assert_eq!(line_diff("a\nb\nc", "a\nx\nc"), "- b\n+ x");
     std::fs::remove_dir_all(&dir).ok();

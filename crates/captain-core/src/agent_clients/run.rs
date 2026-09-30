@@ -9,7 +9,7 @@ use std::time::Duration;
 use super::paths::ClientPaths;
 use super::plan::ClientStep;
 use crate::cli_tools::command::output_within;
-use crate::file_replace::{Mode, backup_once, replace, sibling};
+use crate::file_replace::{Mode, backup_once, commit, sibling, temp_path, write_new};
 
 /// How long a client's installer may take.
 const TIMEOUT: Duration = Duration::from_secs(60);
@@ -79,23 +79,48 @@ pub fn run_step(step: &ClientStep, launch: &dyn Fn(&[String]) -> Command) -> Res
             path,
             before,
             after,
-        } => {
-            let now = match std::fs::read_to_string(path) {
-                Ok(text) => text,
-                Err(error) if error.kind() == std::io::ErrorKind::NotFound => String::new(),
-                Err(error) => return Err(error.to_string()),
-            };
-            if &now != before {
-                return Err(format!(
-                    "{} changed since Captain read it. Try again.",
-                    path.display()
-                ));
-            }
-            backup_once(path, &sibling(path, "captain-backup"))
-                .and_then(|()| replace(path, after.as_bytes(), Mode::Keep))
-                .map_err(|error| format!("Captain cannot write {}: {error}", path.display()))
-        }
+        } => edit_file(path, before, after),
     }
+}
+
+/// Writes `after` over `path` if the file still holds `before`. The new file is
+/// staged and the backup made first, so the check comes right before the rename.
+/// A file Captain creates gets an empty backup, which tells Remove that Captain
+/// added everything in it.
+fn edit_file(path: &Path, before: &str, after: &str) -> Result<(), String> {
+    let cannot =
+        |error: std::io::Error| format!("Captain cannot write {}: {error}", path.display());
+    let temp = temp_path(path);
+    write_new(&temp, path, after.as_bytes(), Mode::Keep).map_err(cannot)?;
+    let backup = sibling(path, "captain-backup");
+    let checked = backup_once(path, &backup)
+        .map_err(cannot)
+        .and_then(|()| unchanged(path, before));
+    if let Err(why) = checked {
+        std::fs::remove_file(&temp).ok();
+        return Err(why);
+    }
+    commit(&temp, path).map_err(cannot)?;
+    if !backup.exists() {
+        std::fs::File::create_new(&backup).ok();
+    }
+    Ok(())
+}
+
+/// Ok if the file at `path` still holds `before`. A missing file holds nothing.
+fn unchanged(path: &Path, before: &str) -> Result<(), String> {
+    let now = match std::fs::read_to_string(path) {
+        Ok(text) => text,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => String::new(),
+        Err(error) => return Err(format!("Captain cannot read {}: {error}", path.display())),
+    };
+    if now != before {
+        return Err(format!(
+            "{} changed since Captain read it. Try again.",
+            path.display()
+        ));
+    }
+    Ok(())
 }
 
 /// The lines that differ between `before` and `after`, with `-` and `+`, after the

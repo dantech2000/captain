@@ -91,13 +91,18 @@ impl ClientPaths {
 /// The `captain` command that agents run, as an absolute path:
 /// `~/.captain/bin/captain` when the command-line tools put it there, so it stays
 /// right when Captain.app moves; else the copy inside Captain.app; else
-/// `captain-cli` next to `exe`, in a development build.
+/// `captain-cli` (`captain-cli.exe` on Windows) next to `exe`, in a development
+/// build.
 pub fn captain_command(home: &Path, exe: &Path) -> Option<PathBuf> {
     let linked = home.join(".captain/bin/captain");
     let bundled = crate::tools::Bundle::from_exe(exe).map(|bundle| bundle.captain_cli());
-    let built = exe.parent().map(|dir| dir.join("captain-cli"));
+    let cli = format!("captain-cli{}", std::env::consts::EXE_SUFFIX);
+    let built = exe.parent().map(|dir| dir.join(cli));
     [Some(linked), bundled, built]
         .into_iter()
         .flatten()
         .find(|path| path.exists())
 }
+
+#[cfg(test)]
+mod tests;

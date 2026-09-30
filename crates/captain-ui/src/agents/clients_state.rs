@@ -1,15 +1,13 @@
 //! The sheet's client list: which agents Captain finds (a background read that runs
-//! a login shell), and Connect or Remove, which show their step first and then run
+//! a login shell, or searches PATH on Windows), and Connect or Remove, which show their step first and then run
 //! it. See docs/features/0038-agent-tools.md.
 
 use std::path::PathBuf;
-use std::process::Command;
 
 use captain_core::agent_clients::{
-    AgentClient, ClientPaths, ClientState, ClientStep, captain_command, connect_step, detect,
-    find_commands, login_shell_command, remove_step, run_step,
+    AgentClient, ClientPaths, ClientState, ClientStep, captain_command, client_command,
+    connect_step, detect, remove_step, run_step, user_commands,
 };
-use captain_core::cli_tools::login_shell;
 use gpui_kit::component::WindowExt;
 use gpui_kit::component::notification::Notification;
 use gpui_kit::*;
@@ -62,9 +60,7 @@ impl AgentsSheet {
         self.clients.states = None;
         cx.notify();
         let task = cx.background_executor().spawn(async move {
-            let commands = login_shell()
-                .map(|shell| find_commands(&shell, &paths.home))
-                .unwrap_or_default();
+            let commands = user_commands(&paths.home);
             detect(&paths, &commands)
         });
         cx.spawn(async move |this, cx| {
@@ -124,18 +120,9 @@ impl AgentsSheet {
         self.clients.busy = true;
         cx.notify();
         let step = pending.step;
-        let task = cx.background_executor().spawn(async move {
-            let shell = login_shell();
-            let launch = move |argv: &[String]| match &shell {
-                Some(shell) => login_shell_command(shell, argv),
-                None => {
-                    let mut command = Command::new(&argv[0]);
-                    command.args(&argv[1..]);
-                    command
-                }
-            };
-            run_step(&step, &launch)
-        });
+        let task = cx
+            .background_executor()
+            .spawn(async move { run_step(&step, &client_command) });
         let done = if pending.connect {
             format!("Connected {name} to Captain.")
         } else {
