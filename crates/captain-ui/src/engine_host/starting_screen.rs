@@ -30,7 +30,7 @@ pub fn render(host: &HostModel, palette: &Palette) -> Stateful<Div> {
             div().w(px(360.)).pt(px(4.)).child(
                 Progress::new("host-progress")
                     .loading(true)
-                    .color(palette.accent),
+                    .color(palette.accent_fg),
             ),
         )
         .children((!host.log().is_empty()).then(|| log(host, palette)));

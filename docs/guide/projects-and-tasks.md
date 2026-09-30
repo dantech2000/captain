@@ -113,7 +113,7 @@ The Tasks card shows one button per task, sorted by name. Hover a button to see 
 
 Captain runs `docker compose exec -T SERVICE COMMAND`. The output shows when the task ends, not while it runs.
 
-Captain reads the tasks with `docker compose config`, so variables from `.env` work in the command. If a task has no service or no command, the card shows a problem line for it. With no tasks, the card shows an example to copy.
+Captain reads the tasks with `docker compose config`, so variables from `.env` work in the command. If a task has no service or no command, the card shows a problem line for it. With no tasks, the card shows one line with a link to this section.
 
 ## The Map tab
 

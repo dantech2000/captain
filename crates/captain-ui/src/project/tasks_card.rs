@@ -14,9 +14,15 @@ use crate::theme::Palette;
 /// How many lines of a task's output the card shows.
 const OUTPUT_LINES: usize = 6;
 
+/// The guide section on `x-captain.tasks`.
+const TASKS_GUIDE: &str = concat!(
+    env!("CARGO_PKG_REPOSITORY"),
+    "/blob/main/docs/guide/projects-and-tasks.md#tasks"
+);
+
 /// The Tasks card: a button per task in `x-captain.tasks`, the end of the last run,
-/// or a hint on how to add tasks. `project` is the Compose project's name, and `file`
-/// its Compose file's name.
+/// or a line with a link to the guide on how to add tasks. `project` is the Compose
+/// project's name, and `file` its Compose file's name.
 pub fn render(
     state: &TaskState,
     project: &str,
@@ -42,12 +48,9 @@ pub fn render(
         TaskList::Failed(error) => {
             card.child(note(format!("Cannot read the tasks: {error}"), palette))
         }
-        TaskList::Ready(tasks) if tasks.tasks.is_empty() && tasks.problems.is_empty() => card
-            .child(note(
-                format!("Add named commands under x-captain.tasks in {file}:"),
-                palette,
-            ))
-            .child(example(palette)),
+        TaskList::Ready(tasks) if tasks.tasks.is_empty() && tasks.problems.is_empty() => {
+            card.child(no_tasks(file, palette))
+        }
         TaskList::Ready(tasks) => card
             .child(note(format!("From x-captain.tasks in {file}"), palette))
             .child(
@@ -75,19 +78,20 @@ fn note(text: impl Into<SharedString>, palette: &Palette) -> Div {
         .child(text.into())
 }
 
-fn example(palette: &Palette) -> Div {
-    div()
-        .p(px(8.))
-        .rounded(px(8.))
-        .bg(palette.terminal)
-        .font_family(palette.mono())
-        .text_size(px(10.5))
-        .text_color(palette.text2)
-        .child("x-captain:")
-        .child("  tasks:")
-        .child("    migrate:")
-        .child("      service: api")
-        .child("      command: npm run migrate")
+/// One line: no tasks yet, and a link to the guide section on tasks.
+fn no_tasks(file: &str, palette: &Palette) -> Div {
+    note(format!("No x-captain.tasks in {file}."), palette)
+        .flex()
+        .gap(px(6.))
+        .child(
+            div()
+                .id("tasks-guide")
+                .text_color(palette.link)
+                .cursor_pointer()
+                .on_click(|_, _, cx| cx.open_url(TASKS_GUIDE))
+                .child("How to add tasks")
+                .help("Open the guide section on tasks: named commands in the Compose file."),
+        )
 }
 
 fn task_button(
