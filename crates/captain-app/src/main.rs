@@ -127,7 +127,8 @@ fn app_lock(settings: &Path) -> Option<ProcessLock> {
 }
 
 /// The saved settings, or the defaults when there is no file or it cannot be read.
-/// A file from before format 2 drops its default values first, and the schema for
+/// A missing file is created as a starter file with examples in comments, a file
+/// from before format 2 drops its default values first, and the schema for
 /// editors goes next to it. See ADR 0013.
 fn load_settings(path: Option<&Path>) -> Settings {
     let Some(path) = path else {
@@ -136,8 +137,8 @@ fn load_settings(path: Option<&Path>) -> Settings {
     // The `captain` CLI changes the file under this lock.
     let _lock = ProcessLock::acquire(&settings_lock_path(path))
         .inspect_err(|error| tracing::warn!(%error, "cannot lock the settings"));
-    if let Err(error) = Settings::migrate_file(path) {
-        tracing::warn!(%error, "cannot migrate the settings");
+    if let Err(error) = Settings::prepare_file(path) {
+        tracing::warn!(%error, "cannot create or migrate the settings file");
     }
     if let Err(error) = captain_core::settings::write_schema(path) {
         tracing::warn!(%error, "cannot write the settings schema");

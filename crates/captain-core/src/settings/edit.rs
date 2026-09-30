@@ -8,11 +8,26 @@ use serde_json::Value;
 use super::overrides::{self, KeyPath, get, is_version, leaves};
 use super::{FileProblem, SETTINGS_VERSION, Settings, jsonc};
 
-/// A new file: a note, the schema for editors, and the format version.
+/// A new file: what the file is for, where every option is described, the schema
+/// for editors, the format version, and a few examples in comments. Comments are
+/// not settings, so the examples change nothing until the user removes the `//`.
+/// The trailing commas are allowed, so each example works on its own.
 pub(super) fn new_file() -> String {
     format!(
-        "{{\n  // Only the settings you change. Every option and its default: Settings > All options,\n  \
-         // or {url}\n  \"$schema\": \"./settings.schema.json\",\n  \"version\": {SETTINGS_VERSION}\n}}\n",
+        "// Captain settings. Captain has good defaults, so this file holds only what you change.\n\
+         // Every option, its default, and what it does: Settings > All options, or\n\
+         // {url}\n\
+         // Captain applies this file when you save it.\n\
+         {{\n\
+         \x20 \"$schema\": \"./settings.schema.json\",\n\
+         \x20 \"version\": {SETTINGS_VERSION},\n\
+         \n\
+         \x20 // Examples. Remove the // in front of a line to use it.\n\
+         \x20 // \"theme\": \"harbor\",\n\
+         \x20 // \"stop_engine_on_quit\": false,\n\
+         \x20 // \"engine_daemon\": {{ \"registry_mirrors\": [\"https://mirror.gcr.io\"] }},\n\
+         \x20 // \"kubernetes\": {{ \"traefik\": false }},\n\
+         }}\n",
         url = super::REFERENCE_URL
     )
 }

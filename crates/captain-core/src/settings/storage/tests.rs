@@ -118,3 +118,37 @@ fn directory_in_place_of_file_is_an_io_error() {
         Err(SettingsError::Io { .. })
     ));
 }
+
+#[test]
+fn prepare_creates_a_starter_file_whose_examples_are_off_until_uncommented() {
+    let dir = TempDir::new();
+    let path = dir.0.join("settings.json");
+    Settings::prepare_file(&path).unwrap();
+    let text = fs::read_to_string(&path).unwrap();
+    assert!(text.contains("\"$schema\""));
+    assert_eq!(Settings::load(&path).unwrap(), Settings::default());
+
+    fs::write(&path, text.replace("// \"theme\"", "\"theme\"")).unwrap();
+    assert_eq!(Settings::load(&path).unwrap().theme, ThemeFamily::Harbor);
+
+    // A second start leaves the file, and the user's edit, as they are.
+    let edited = fs::read_to_string(&path).unwrap();
+    Settings::prepare_file(&path).unwrap();
+    assert_eq!(fs::read_to_string(&path).unwrap(), edited);
+}
+
+#[test]
+fn a_change_from_the_app_keeps_the_starter_comments() {
+    let dir = TempDir::new();
+    let path = dir.0.join("settings.json");
+    Settings::prepare_file(&path).unwrap();
+    let before = Settings::default();
+    let after = Settings {
+        theme: ThemeFamily::Periwinkle,
+        ..Settings::default()
+    };
+    Settings::save_change(&path, &before, &after).unwrap();
+    let text = fs::read_to_string(&path).unwrap();
+    assert!(text.contains("// \"stop_engine_on_quit\": false,"), "{text}");
+    assert_eq!(Settings::load(&path).unwrap().theme, ThemeFamily::Periwinkle);
+}

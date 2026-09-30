@@ -93,6 +93,13 @@ impl Settings {
     pub fn migrate_file(path: &Path) -> Result<(), SettingsError> {
         edit_file(path, false, |_| {})
     }
+
+    /// Like [`Settings::migrate_file`], but a missing file is created: a starter
+    /// file with a note, the `$schema` line, and examples in comments. Captain
+    /// calls this at each start, so the file is there to open and edit.
+    pub fn prepare_file(path: &Path) -> Result<(), SettingsError> {
+        edit_file(path, true, |_| {})
+    }
 }
 
 /// Opens the file, migrates it if it is old, runs `change`, and writes it back if

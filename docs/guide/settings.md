@@ -55,14 +55,16 @@ The file is at:
 
 It holds only the options that you changed. Captain keeps the defaults, so the file stays short, and a new default in a later version reaches you.
 
-A file can look like this:
+Captain creates the file at its first start. The new file has a note at the top, the `$schema` line, and a few examples in comments. An example does nothing until you remove the `//` in front of it.
+
+After some changes, a file can look like this:
 
 ```jsonc
 {
-  // Only what you change. Every option and its default: Settings > All options.
   "$schema": "./settings.schema.json",
+  "version": 2,
 
-  "theme": "dusk",
+  "theme": "harbor",
 
   // Pulls try this mirror before Docker Hub.
   "engine_daemon": {
@@ -70,7 +72,6 @@ A file can look like this:
   },
 
   "kubernetes": {
-    "port": 6443,
     "traefik": false
   },
 
