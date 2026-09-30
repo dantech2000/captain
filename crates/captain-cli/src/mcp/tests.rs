@@ -2,6 +2,7 @@
 //! engine.
 
 mod actions;
+mod logs;
 
 use std::sync::{Arc, Mutex};
 

@@ -7,6 +7,7 @@ use schemars::JsonSchema;
 use serde::Serialize;
 
 use super::container_rows::port_links;
+use super::untrusted::plain;
 use crate::model::{Container, Health};
 use crate::problems::{ExitFacts, first_problem};
 use crate::store::{Crash, GroupKey};
@@ -126,7 +127,7 @@ impl ProjectList {
             parts.extend(row.urls.iter().cloned());
             parts.extend(row.problem.clone());
             text.push('\n');
-            text.push_str(&parts.join(" · "));
+            text.push_str(&plain(&parts.join(" · ")));
         }
         text
     }

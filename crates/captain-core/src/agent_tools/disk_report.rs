@@ -4,6 +4,7 @@
 use schemars::JsonSchema;
 use serde::Serialize;
 
+use super::untrusted::plain;
 use crate::format::{age_label, bytes_label};
 use crate::model::{DiskUsage, kube_display_name};
 use crate::snapshot::Snapshot;
@@ -155,10 +156,10 @@ impl DiskReport {
         lines.push(categories.join(" · "));
         lines.push("Largest:".into());
         for item in &self.largest {
-            lines.push(format!(
+            lines.push(plain(&format!(
                 "  {} {} ({}) · {}",
                 item.kind, item.name, item.size, item.used
-            ));
+            )));
         }
         lines.push(format!(
             "Clean up with the default choices frees {}.",

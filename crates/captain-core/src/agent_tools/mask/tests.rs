@@ -44,3 +44,27 @@ fn leaves_ordinary_lines_alone() {
     let line = "GET /health 200 in 3ms at 12:30:01 from http://web:8080/";
     assert_eq!(mask_secrets(line), line);
 }
+
+#[test]
+fn masks_every_secret_in_a_json_line() {
+    assert_eq!(
+        mask_secrets(r#"{"level":"info","password":"hun\"ter2","token":"abc","port":80}"#),
+        r#"{"level":"info","password":"[masked]","token":"[masked]","port":80}"#
+    );
+    assert_eq!(
+        mask_secrets(r#"{"msg":"{\"api_key\":\"abc123\"}"}"#),
+        r#"{"msg":"{\"api_key\":\"[masked]\"}"}"#
+    );
+}
+
+#[test]
+fn masks_the_whole_of_a_quoted_value() {
+    assert_eq!(
+        mask_secrets(r#"password="correct horse battery staple" user=app"#),
+        r#"password="[masked]" user=app"#
+    );
+    assert_eq!(
+        mask_secrets("secret = 'two words' done"),
+        "secret = '[masked]' done"
+    );
+}

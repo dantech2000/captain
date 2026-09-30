@@ -93,21 +93,36 @@ pub fn activity_path(home: &Path) -> PathBuf {
 }
 
 /// Adds `entry` as one line, and drops the older half once the file passes
-/// [`ACTIVITY_CAP`].
+/// [`ACTIVITY_CAP`]. Each call holds a lock on a sibling `.lock` file, so a
+/// rotation in one server cannot lose a line another server appends.
 pub fn append_activity(path: &Path, entry: &Activity) -> io::Result<()> {
     if let Some(dir) = path.parent() {
         fs::create_dir_all(dir)?;
     }
     let mut line = serde_json::to_string(entry).map_err(io::Error::other)?;
     line.push('\n');
+    let lock = OpenOptions::new()
+        .create(true)
+        .write(true)
+        .truncate(false)
+        .open(lock_path(path))?;
+    // Released when `lock` closes.
+    lock.lock()?;
     let mut file = OpenOptions::new().create(true).append(true).open(path)?;
-    // One write per line, so lines from two servers do not mix.
     file.write_all(line.as_bytes())?;
     if file.metadata()?.len() > ACTIVITY_CAP {
         let text = fs::read_to_string(path)?;
         replace(path, newer_half(&text).as_bytes(), Mode::Keep)?;
     }
     Ok(())
+}
+
+/// `agent-activity.jsonl.lock` next to the log. It stays, so every server locks
+/// the same file.
+fn lock_path(path: &Path) -> PathBuf {
+    let mut name = path.file_name().unwrap_or_default().to_os_string();
+    name.push(".lock");
+    path.with_file_name(name)
 }
 
 /// The newest `limit` entries, newest first. Lines that do not parse are skipped;
@@ -123,10 +138,11 @@ pub fn read_activity(path: &Path, limit: usize) -> Vec<Activity> {
         .collect()
 }
 
-/// The whole lines of the newer half of `text`.
+/// The whole lines of the newer half of `text`. The middle byte can fall inside a
+/// character, so the search for the next line break goes by bytes.
 fn newer_half(text: &str) -> &str {
     let middle = text.len() / 2;
-    match text[middle..].find('\n') {
+    match text.as_bytes()[middle..].iter().position(|b| *b == b'\n') {
         Some(end) => &text[middle + end + 1..],
         None => "",
     }

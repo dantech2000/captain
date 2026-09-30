@@ -1,6 +1,6 @@
 use serde_json::{Map, Value, json};
 
-use super::{ACTIVITY_CAP, Activity, append_activity, read_activity};
+use super::{ACTIVITY_CAP, Activity, append_activity, newer_half, read_activity};
 
 fn arguments(value: Value) -> Map<String, Value> {
     value.as_object().cloned().unwrap_or_default()
@@ -63,5 +63,50 @@ fn the_file_stays_under_its_cap() {
     let read = read_activity(&path, 1000);
     assert_eq!(read[0].at, 599);
     assert!(read.windows(2).all(|pair| pair[0].at == pair[1].at + 1));
+    std::fs::remove_dir_all(&dir).ok();
+}
+
+#[test]
+fn the_newer_half_starts_after_a_line_break_even_mid_character() {
+    // The middle byte, 8, is inside the second emoji.
+    assert_eq!(newer_half("x😀😀😀\nok\n"), "ok\n");
+}
+
+#[test]
+fn concurrent_appends_and_rotations_lose_no_newer_line() {
+    let dir = std::env::temp_dir().join(format!("captain-activity-race-{}", std::process::id()));
+    let path = dir.join("agent-activity.jsonl");
+    std::fs::remove_dir_all(&dir).ok();
+    let long = "x".repeat(250);
+    let writers: Vec<_> = (0..4)
+        .map(|writer| {
+            let (path, long) = (path.clone(), long.clone());
+            std::thread::spawn(move || {
+                for at in 0..400 {
+                    let entry =
+                        Activity::new(at, &writer.to_string(), "logs", Map::new(), true, &long);
+                    append_activity(&path, &entry).unwrap();
+                }
+            })
+        })
+        .collect();
+    for writer in writers {
+        writer.join().unwrap();
+    }
+    // A rotation drops only the oldest lines, so each writer's lines that remain
+    // run without a gap.
+    let mut read = read_activity(&path, usize::MAX);
+    read.reverse();
+    for writer in ["0", "1", "2", "3"] {
+        let times: Vec<i64> = read
+            .iter()
+            .filter(|a| a.client == writer)
+            .map(|a| a.at)
+            .collect();
+        assert!(
+            times.windows(2).all(|pair| pair[1] == pair[0] + 1),
+            "{writer}: {times:?}"
+        );
+    }
     std::fs::remove_dir_all(&dir).ok();
 }

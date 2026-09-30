@@ -1,10 +1,18 @@
 //! The arguments of the tools. The doc comments are the schema descriptions that
-//! agents read.
+//! agents read. An unknown argument is refused, so a misspelled filter does not
+//! widen an answer; rmcp returns serde's message, which lists the known ones, as
+//! an `isError` result.
 
 use schemars::JsonSchema;
 use serde::Deserialize;
 
+/// The arguments of a tool that takes none.
 #[derive(Debug, Default, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct NoParams {}
+
+#[derive(Debug, Default, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
 pub struct ListContainersParams {
     /// Only the containers of this Compose project.
     #[serde(default)]
@@ -15,12 +23,14 @@ pub struct ListContainersParams {
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
 pub struct ContainerParams {
     /// The container: its name, its pod/container name, or an ID prefix.
     pub container: String,
 }
 
 #[derive(Debug, Default, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
 pub struct LogsParams {
     /// One container: its name, its pod/container name, or an ID prefix.
     #[serde(default)]
@@ -28,6 +38,9 @@ pub struct LogsParams {
     /// A whole Compose project, its containers' lines merged in time order.
     #[serde(default)]
     pub project: Option<String>,
+    /// With project: only this Compose service's lines.
+    #[serde(default)]
+    pub service: Option<String>,
     /// Past lines per container, before the filters. Default 100, or 1000 with
     /// errors_only or grep; at most 5000.
     #[serde(default)]
@@ -45,6 +58,7 @@ pub struct LogsParams {
 }
 
 #[derive(Debug, Default, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
 pub struct WaitParams {
     /// One container: its name, its pod/container name, or an ID prefix.
     #[serde(default)]
@@ -52,12 +66,13 @@ pub struct WaitParams {
     /// Every container of a Compose project.
     #[serde(default)]
     pub project: Option<String>,
-    /// How long to wait. Default 60, at most 600.
+    /// How long to wait, in seconds. Default 60, at most 600; 0 looks once.
     #[serde(default)]
     pub timeout_seconds: Option<u64>,
 }
 
 #[derive(Debug, Default, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
 pub struct ActionParams {
     /// One container: its name, its pod/container name, or an ID prefix.
     #[serde(default)]
@@ -68,6 +83,7 @@ pub struct ActionParams {
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
 pub struct TaskParams {
     /// The Compose project whose file declares the task.
     pub project: String,

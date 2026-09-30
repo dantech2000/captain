@@ -10,9 +10,11 @@ pub const UNTRUSTED_LABEL: &str = "UNTRUSTED CONTAINER OUTPUT";
 
 /// `body` between a begin line and an end line that carry a random ID, so text in
 /// `body` cannot close the block early. `source` names the container or project.
-/// Control characters and terminal escapes in `body` are dropped.
+/// Control characters and terminal escapes in `body` are dropped; in `source`, they
+/// are escaped, so it stays on the begin line.
 pub fn wrap_untrusted(source: &str, body: &str) -> String {
     let id = block_id();
+    let source = plain(source);
     let body = clean(body);
     let newline = if body.is_empty() || body.ends_with('\n') {
         ""
@@ -54,6 +56,25 @@ pub fn clean(text: &str) -> String {
         }
     }
     out
+}
+
+/// A line of Captain's own text that holds names from containers (project and
+/// service labels, Kubernetes names, image and mount names), with control
+/// characters escaped: a label cannot start a new line of text that looks like
+/// Captain's, or like an END line. The JSON answer escapes them by itself.
+pub fn plain(line: &str) -> String {
+    if !line.chars().any(char::is_control) {
+        return line.to_string();
+    }
+    line.chars()
+        .map(|c| {
+            if c.is_control() {
+                c.escape_default().to_string()
+            } else {
+                c.to_string()
+            }
+        })
+        .collect()
 }
 
 #[cfg(test)]

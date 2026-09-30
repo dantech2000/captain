@@ -8,7 +8,7 @@ use rmcp::handler::server::tool::schema_for_output;
 use rmcp::handler::server::wrapper::Parameters;
 use rmcp::{tool, tool_router};
 
-use super::params::ContainerParams;
+use super::params::{ContainerParams, NoParams};
 use super::reply::{ToolResult, refuse, reply};
 use super::server::{CaptainServer, now};
 
@@ -22,7 +22,7 @@ impl CaptainServer {
         annotations(title = "Container problems", read_only_hint = true, open_world_hint = false),
         output_schema = schema_for_output::<ProblemReport>()
     )]
-    async fn container_problems(&self) -> ToolResult {
+    async fn container_problems(&self, _: Parameters<NoParams>) -> ToolResult {
         let report = match self.containers().await {
             Ok((engine, containers)) => {
                 let details = self.problem_details(&engine, &containers).await;
@@ -65,7 +65,7 @@ impl CaptainServer {
         annotations(title = "Disk usage", read_only_hint = true, open_world_hint = false),
         output_schema = schema_for_output::<DiskReport>()
     )]
-    async fn disk_usage(&self) -> ToolResult {
+    async fn disk_usage(&self, _: Parameters<NoParams>) -> ToolResult {
         let engine = match self.source.engine().await {
             Ok(engine) => engine,
             Err(why) => return refuse(why),

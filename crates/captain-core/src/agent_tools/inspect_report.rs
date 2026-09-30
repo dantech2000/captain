@@ -6,7 +6,7 @@ use serde::Serialize;
 
 use super::container_rows::{group_of, port_links};
 use super::mask::{MASK, mask_secrets};
-use super::untrusted::{clean, wrap_untrusted};
+use super::untrusted::{clean, plain, wrap_untrusted};
 use crate::format::bytes_label;
 use crate::model::{Container, ContainerDetail, EnvVar};
 
@@ -145,6 +145,7 @@ impl InspectReport {
         for entry in &self.env {
             untrusted.push_str(&format!("\n{}={}", entry.key, entry.value));
         }
+        let mut lines: Vec<String> = lines.iter().map(|line| plain(line)).collect();
         lines.push(wrap_untrusted(&self.name, &untrusted));
         lines.join("\n")
     }

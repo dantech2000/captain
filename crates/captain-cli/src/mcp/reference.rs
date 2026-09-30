@@ -31,7 +31,9 @@ pub fn markdown() -> String {
          [AI agents](../guide/agents.md) in the user guide explains how to connect one.\n\n\
          A tool is listed only while the settings allow it: `help` always, the read tools \
          while `agent_tools.enabled` is `true`, and each action while `agent_tools.actions` \
-         also names it. See [the settings reference](settings.md#ai-agents).\n\n",
+         also names it. See [the settings reference](settings.md#ai-agents).\n\n\
+         A call with an argument that a tool does not take is refused with `isError`, \
+         and the message lists the arguments it takes.\n\n",
     );
     for (title, read_only) in [("Read tools", true), ("Actions", false)] {
         let _ = writeln!(out, "## {title}\n");

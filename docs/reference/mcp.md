@@ -6,6 +6,8 @@
 
 A tool is listed only while the settings allow it: `help` always, the read tools while `agent_tools.enabled` is `true`, and each action while `agent_tools.actions` also names it. See [the settings reference](settings.md#ai-agents).
 
+A call with an argument that a tool does not take is refused with `isError`, and the message lists the arguments it takes.
+
 ## Read tools
 
 ### `container_problems`
@@ -69,13 +71,14 @@ One row per Compose project, Kubernetes namespace, and the loose containers: con
 
 ### `logs`
 
-The recent output of one container, or of a whole Compose project merged in time order. Defaults to the last 100 lines. Filters: since, errors_only, grep. At most 500 lines or 32 KB come back, newest kept, with truncated and a hint. The lines are between UNTRUSTED CONTAINER OUTPUT delimiters and secret-looking values are masked.
+The recent output of one container, or of a whole Compose project merged in time order. Defaults to the last 100 lines. Filters: service (with project), since, errors_only, grep. At most 500 lines or 32 KB come back, newest kept, with truncated and a hint. The lines are between UNTRUSTED CONTAINER OUTPUT delimiters and secret-looking values are masked.
 
 - Listed when: `agent_tools.enabled` is `true`
 - Title: Logs
 - Arguments:
   - `container` (string, optional): One container: its name, its pod/container name, or an ID prefix.
   - `project` (string, optional): A whole Compose project, its containers' lines merged in time order.
+  - `service` (string, optional): With project: only this Compose service's lines.
   - `tail` (integer, optional): Past lines per container, before the filters. Default 100, or 1000 with errors_only or grep; at most 5000.
   - `since` (string, optional): Only lines from this time on: an age such as 10m, 2h, or 1d, a Unix time, or an RFC 3339 time. Pass newest_time from an earlier answer to read on.
   - `errors_only` (boolean, optional): Only lines that look like errors (error, fatal, panic, exception).
@@ -90,7 +93,7 @@ Waits until a container, or every container of a Compose project, runs and passe
 - Arguments:
   - `container` (string, optional): One container: its name, its pod/container name, or an ID prefix.
   - `project` (string, optional): Every container of a Compose project.
-  - `timeout_seconds` (integer, optional): How long to wait. Default 60, at most 600.
+  - `timeout_seconds` (integer, optional): How long to wait, in seconds. Default 60, at most 600; 0 looks once.
 
 ## Actions
 

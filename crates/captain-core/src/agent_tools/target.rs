@@ -2,6 +2,7 @@
 //! matches a real container or project reaches the engine, and a value that starts
 //! with `-` never does, so it cannot pass as an option to a command.
 
+use super::untrusted::plain;
 use crate::model::Container;
 
 /// How many names an error lists.
@@ -74,9 +75,36 @@ pub fn find_project<'a>(
     ))
 }
 
+/// The members of `project` that run `service`: the Compose service name, which
+/// must be one of the project's.
+pub fn find_service<'a>(
+    members: Vec<&'a Container>,
+    project: &str,
+    service: &str,
+) -> Result<Vec<&'a Container>, String> {
+    let service = check_name("service", service)?;
+    let mut services: Vec<String> = members
+        .iter()
+        .filter_map(|c| c.compose.service.clone())
+        .collect();
+    let running: Vec<&Container> = members
+        .into_iter()
+        .filter(|c| c.compose.service.as_deref() == Some(service))
+        .collect();
+    if !running.is_empty() {
+        return Ok(running);
+    }
+    services.sort();
+    services.dedup();
+    Err(format!(
+        "The project {project} has no service named \"{service}\". {}",
+        listed("Services", services.into_iter())
+    ))
+}
+
 /// `Containers: a, b, c.`, at most [`LISTED`] names, or a note that there are none.
 fn listed(what: &str, names: impl Iterator<Item = String>) -> String {
-    let names: Vec<String> = names.collect();
+    let names: Vec<String> = names.map(|name| plain(&name)).collect();
     match names.len() {
         0 => format!("{what}: none."),
         n if n > LISTED => format!(

@@ -3,6 +3,7 @@
 use schemars::JsonSchema;
 use serde::Serialize;
 
+use super::untrusted::plain;
 use crate::model::{Container, PortLink};
 use crate::problems::needs_attention;
 
@@ -136,7 +137,7 @@ impl ContainerList {
             parts.extend(row.image.clone());
             parts.extend(row.ports.iter().cloned());
             text.push('\n');
-            text.push_str(&parts.join(" · "));
+            text.push_str(&plain(&parts.join(" · ")));
         }
         text
     }

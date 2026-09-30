@@ -4,6 +4,7 @@
 use schemars::JsonSchema;
 use serde::Serialize;
 
+use super::untrusted::plain;
 use crate::model::{Container, ContainerState, Health};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, JsonSchema)]
@@ -84,6 +85,7 @@ impl WaitReport {
         let mut lines = vec![head];
         lines.extend(self.reason.clone());
         lines.extend(self.containers.iter().cloned());
+        let lines: Vec<String> = lines.iter().map(|line| plain(line)).collect();
         lines.join("\n")
     }
 }

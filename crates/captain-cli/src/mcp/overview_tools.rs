@@ -9,7 +9,7 @@ use rmcp::handler::server::tool::schema_for_output;
 use rmcp::handler::server::wrapper::Parameters;
 use rmcp::{tool, tool_router};
 
-use super::params::ListContainersParams;
+use super::params::{ListContainersParams, NoParams};
 use super::reply::{ToolResult, refuse, reply};
 use super::server::CaptainServer;
 
@@ -21,7 +21,7 @@ impl CaptainServer {
         annotations(title = "Help", read_only_hint = true, open_world_hint = false),
         output_schema = schema_for_output::<HelpReport>()
     )]
-    async fn help(&self) -> ToolResult {
+    async fn help(&self, _: Parameters<NoParams>) -> ToolResult {
         let report = self.help_report();
         reply(&report, report.text())
     }
@@ -32,7 +32,7 @@ impl CaptainServer {
         annotations(title = "Engine status", read_only_hint = true, open_world_hint = false),
         output_schema = schema_for_output::<EngineReport>()
     )]
-    async fn engine_status(&self) -> ToolResult {
+    async fn engine_status(&self, _: Parameters<NoParams>) -> ToolResult {
         let host = self.source.host_status().await;
         let answer: EngineAnswer = match self.source.engine().await {
             Ok(engine) => futures::try_join!(engine.info(), engine.list_containers())
@@ -56,7 +56,7 @@ impl CaptainServer {
         annotations(title = "List projects", read_only_hint = true, open_world_hint = false),
         output_schema = schema_for_output::<ProjectList>()
     )]
-    async fn list_projects(&self) -> ToolResult {
+    async fn list_projects(&self, _: Parameters<NoParams>) -> ToolResult {
         let (engine, containers) = match self.containers().await {
             Ok(found) => found,
             Err(why) => return refuse(why),

@@ -10,6 +10,7 @@ mod disk_report;
 mod engine_report;
 mod help;
 mod inspect_report;
+mod log_buffer;
 mod log_query;
 mod log_report;
 mod mask;
@@ -32,6 +33,7 @@ pub use disk_report::{CleanupGroup, DiskCategory, DiskItem, DiskReport, disk_rep
 pub use engine_report::{EngineAnswer, EngineReport, engine_report};
 pub use help::{GUIDE, HelpReport, ToolLine};
 pub use inspect_report::{EnvEntry, InspectReport, inspect_report};
+pub use log_buffer::LogBuffer;
 pub use log_query::{
     DEFAULT_TAIL, FILTERED_TAIL, LogQuery, MAX_BYTES, MAX_LINE_CHARS, MAX_LINES, MAX_TAIL,
     parse_since,
@@ -42,5 +44,5 @@ pub use problem_report::{ContainerProblem, ProblemReport, problem_report};
 pub use project_rows::{ProjectList, ProjectRow, project_list};
 pub use readiness::{Readiness, WaitReport, readiness, status};
 pub use settings::{AgentAction, AgentToolsSettings};
-pub use target::{check_name, find_container, find_project};
-pub use untrusted::{UNTRUSTED_LABEL, clean, wrap_untrusted};
+pub use target::{check_name, find_container, find_project, find_service};
+pub use untrusted::{UNTRUSTED_LABEL, clean, plain, wrap_untrusted};

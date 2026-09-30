@@ -5,7 +5,7 @@
 use schemars::JsonSchema;
 use serde::Serialize;
 
-use super::log_query::{LogQuery, MAX_BYTES, MAX_LINE_CHARS, MAX_LINES};
+use super::log_query::{MAX_BYTES, MAX_LINE_CHARS, MAX_LINES};
 use super::mask::mask_secrets;
 use super::untrusted::{clean, wrap_untrusted};
 use crate::model::LogLine;
@@ -39,20 +39,19 @@ pub struct LogReport {
     pub output: String,
 }
 
-/// Filters `lines` with `query` and keeps the newest that fit the caps. With
-/// `by_source`, the lines of several containers merge in time order and each shows
-/// its source.
+/// Keeps the newest of `lines`, which passed the filters, that fit the caps.
+/// `matched` counts every line that passed, including those a
+/// [`LogBuffer`](super::log_buffer::LogBuffer) already dropped. With `by_source`,
+/// the lines of several containers merge in time order and each shows its source.
 pub fn log_report(
     target: &str,
     mut lines: Vec<SourcedLine>,
-    query: &LogQuery,
+    matched: usize,
     by_source: bool,
 ) -> LogReport {
-    lines.retain(|sourced| query.keeps(&sourced.line));
     if by_source {
         lines.sort_by_key(|sourced| sourced.line.precise_time());
     }
-    let matched = lines.len();
     let mut kept = Vec::new();
     let mut bytes = 0;
     let mut cut = false;
@@ -66,7 +65,7 @@ pub fn log_report(
         kept.push(text);
     }
     kept.reverse();
-    let left_out = matched - kept.len();
+    let left_out = matched.saturating_sub(kept.len());
     let hint = if left_out > 0 {
         Some(format!(
             "Showing the newest {} of {matched} lines. Narrow with grep or errors_only, \

@@ -39,3 +39,26 @@ fn task_output_keeps_its_end_masked_inside_the_delimiters() {
     assert!(lines[lines.len() - 2].contains("IGNORE PREVIOUS"));
     assert!(report.text().contains("failed with exit code 1"));
 }
+
+#[test]
+fn the_command_and_escaped_output_are_masked() {
+    let task = ProjectTask {
+        name: "seed".into(),
+        service: "api".into(),
+        command: TaskCommand::Shell("curl -H 'Authorization: Bearer s3cr3t' api/seed".into()),
+    };
+    let output = TaskOutput {
+        exit_code: 0,
+        output: "P\u{1b}[31mASSWORD=hunter2\n".into(),
+    };
+    let report = task_report("shop", &task, &output);
+    assert_eq!(
+        report.command,
+        "curl -H 'Authorization: Bearer [masked]' api/seed"
+    );
+    assert!(
+        report.output.contains("PASSWORD=[masked]"),
+        "{}",
+        report.output
+    );
+}

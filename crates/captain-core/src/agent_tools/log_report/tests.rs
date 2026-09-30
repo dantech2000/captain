@@ -1,5 +1,5 @@
 use super::{SourcedLine, log_report};
-use crate::agent_tools::log_query::{LogQuery, MAX_BYTES, MAX_LINES};
+use crate::agent_tools::log_query::{MAX_BYTES, MAX_LINES};
 use crate::agent_tools::untrusted::UNTRUSTED_LABEL;
 use crate::model::{LogLine, LogStream};
 
@@ -22,7 +22,7 @@ fn injected_instructions_stay_inside_the_delimiters_and_secrets_are_masked() {
         ),
         line("db", 10, "listening with POSTGRES_PASSWORD=hunter2"),
     ];
-    let report = log_report("shop", lines, &LogQuery::default(), true);
+    let report = log_report("shop", lines, 2, true);
     let output: Vec<&str> = report.output.lines().collect();
     assert!(output[0].starts_with(&format!("=== BEGIN {UNTRUSTED_LABEL}")));
     assert!(
@@ -47,7 +47,7 @@ fn caps_keep_the_newest_lines() {
     let many = (0..2000)
         .map(|i| line("web", i, &format!("request {i}")))
         .collect();
-    let report = log_report("web", many, &LogQuery::default(), false);
+    let report = log_report("web", many, 2000, false);
     assert_eq!(report.lines, MAX_LINES);
     assert!(report.truncated && report.hint.is_some());
     assert!(report.output.contains("request 1999"));
@@ -56,7 +56,7 @@ fn caps_keep_the_newest_lines() {
     let wide = (0..200)
         .map(|i| line("web", i, &"x".repeat(5000)))
         .collect();
-    let report = log_report("web", wide, &LogQuery::default(), false);
+    let report = log_report("web", wide, 200, false);
     assert!(
         report.output.len() < MAX_BYTES + 512,
         "{}",

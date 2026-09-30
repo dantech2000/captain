@@ -8,6 +8,7 @@ use schemars::JsonSchema;
 use serde::Serialize;
 
 use super::container_rows::group_of;
+use super::untrusted::plain;
 use crate::format::bytes_label;
 use crate::model::{Container, ContainerDetail};
 use crate::problems::{ContainerFix, ExitFacts, Problem, container_problems};
@@ -115,7 +116,7 @@ impl ProblemReport {
             }
             line.push_str(" Fixes: ");
             line.push_str(&problem.fixes.join(" "));
-            lines.push(line);
+            lines.push(plain(&line));
         }
         if lines.is_empty() {
             return "No problems: no container restarts, crashed lately, or fails its health check.".into();

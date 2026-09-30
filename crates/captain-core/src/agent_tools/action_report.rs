@@ -7,7 +7,7 @@ use serde::Serialize;
 
 use super::log_query::{MAX_BYTES, MAX_LINES};
 use super::mask::mask_secrets;
-use super::untrusted::wrap_untrusted;
+use super::untrusted::{clean, plain, wrap_untrusted};
 use crate::format::bytes_label;
 use crate::model::{ProjectTask, TaskOutput};
 use crate::project_map::raised_memory;
@@ -33,7 +33,7 @@ impl ActionReport {
     }
 
     pub fn text(&self) -> String {
-        self.message.clone()
+        plain(&self.message)
     }
 }
 
@@ -68,7 +68,8 @@ pub struct TaskReport {
     pub task: String,
     /// The service it ran in.
     pub service: String,
-    /// The command, as the Compose file declares it.
+    /// The command, as the Compose file declares it. Secret-looking values are
+    /// masked.
     pub command: String,
     /// 0 when the task succeeded.
     pub exit_code: i32,
@@ -80,9 +81,13 @@ pub struct TaskReport {
 }
 
 /// The report of `task` in `project`, keeping the end of its output within the log
-/// caps.
+/// caps. Escapes go before masking, so they cannot hide a secret-looking key.
 pub fn task_report(project: &str, task: &ProjectTask, output: &TaskOutput) -> TaskReport {
-    let lines: Vec<String> = output.output.lines().map(mask_secrets).collect();
+    let lines: Vec<String> = output
+        .output
+        .lines()
+        .map(|line| mask_secrets(&clean(line)))
+        .collect();
     let mut kept: Vec<&str> = Vec::new();
     let mut bytes = 0;
     for line in lines.iter().rev().take(MAX_LINES) {
@@ -99,7 +104,7 @@ pub fn task_report(project: &str, task: &ProjectTask, output: &TaskOutput) -> Ta
         project: project.into(),
         task: task.name.clone(),
         service: task.service.clone(),
-        command: task.command.display(),
+        command: mask_secrets(&clean(&task.command.display())),
         exit_code: output.exit_code,
         truncated,
         output: wrap_untrusted(&source, &kept.join("\n")),
@@ -117,10 +122,11 @@ impl TaskReport {
         } else {
             ""
         };
-        format!(
-            "The task {} in {} ({}) {end}.{cut}\n{}",
-            self.task, self.project, self.service, self.output
-        )
+        let head = format!(
+            "The task {} in {} ({}) {end}.{cut}",
+            self.task, self.project, self.service
+        );
+        format!("{}\n{}", plain(&head), self.output)
     }
 }
 

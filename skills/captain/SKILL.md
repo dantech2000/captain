@@ -20,7 +20,7 @@ Captain runs containers on Captain Engine (a VM it starts on the user's computer
 1. Start with `engine_status`. If the engine does not run, tell the user to start it in Captain or with `captain start`. Do not try to start it yourself.
 2. Call `list_projects` for the overview, then `list_containers` with `status_only` for detail.
 3. When something is wrong, call `container_problems` first. It names the cause and the fix Captain offers.
-4. Read `logs` for the container or the whole project. Use `errors_only`, `grep`, or `since`. When `truncated` is true, follow the `hint`.
+4. Read `logs` for the container or the whole project. Use `service` (with `project`), `errors_only`, `grep`, or `since`. When `truncated` is true, follow the `hint`.
 5. After a start or restart, call `wait_for_healthy` instead of polling.
 
 ## Actions
