@@ -2,6 +2,7 @@
 
 mod about_section;
 mod admin_access;
+mod agents_section;
 mod appearance_section;
 mod cli_tools_state;
 mod context_actions;

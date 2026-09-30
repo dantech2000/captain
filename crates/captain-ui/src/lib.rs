@@ -1,5 +1,6 @@
 //! GPUI views for Captain. Views reach the engine only through [`captain_core::Engine`].
 
+mod agents;
 mod containers;
 mod diagnostics;
 mod engine_host;
@@ -24,6 +25,7 @@ mod volumes;
 mod widgets;
 mod workspace;
 
+pub use agents::init as agents_init;
 pub use diagnostics::{
     DiagnosticsSetup, diagnostics_model, init as diagnostics_init, run_suggested_fix,
 };

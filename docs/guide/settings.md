@@ -36,6 +36,10 @@ A switch for the k3s cluster in Captain Engine. Off uses no memory. See [Kuberne
 
 This row says where your terminal's `docker` comes from, for example "Your terminal's docker still comes from Rancher Desktop." Click **Set up…** to link Captain's tools, put them on your `PATH`, and make `docker` use Captain Engine. See [Set up your terminal](moving-from-docker-desktop-or-rancher.md#set-up-your-terminal).
 
+### AI agents
+
+This row says whether AI agents can use Captain, which actions they may run, and their last call. Click **Set up…** to turn agent tools on, choose the actions, and connect Claude Code, Codex, Cursor, and other agents. See [AI agents](agents.md).
+
 ### Everything else
 
 Registry mirrors, the Docker socket, `daemon.json`, the Kubernetes port and Traefik, and the other options are in the settings file.

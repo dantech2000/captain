@@ -2,6 +2,7 @@
 //! trailing commas. See ADR 0013.
 
 use jsonc_parser::ast;
+use jsonc_parser::cst::CstInputValue;
 use jsonc_parser::{CollectOptions, ParseOptions, parse_to_ast};
 use serde_json::Value;
 
@@ -9,7 +10,7 @@ use super::FileProblem;
 
 /// Comments and trailing commas, as editors allow in JSONC. Nothing looser, so
 /// the file stays valid for editors that read it as JSONC.
-pub(super) fn options() -> ParseOptions {
+pub(crate) fn options() -> ParseOptions {
     ParseOptions {
         allow_comments: true,
         allow_trailing_commas: true,
@@ -25,7 +26,7 @@ pub(super) fn options() -> ParseOptions {
 }
 
 /// The value in `text`. An empty file is an empty object.
-pub(super) fn parse(text: &str) -> Result<Value, FileProblem> {
+pub(crate) fn parse(text: &str) -> Result<Value, FileProblem> {
     let value: Option<Value> =
         jsonc_parser::parse_to_serde_value(text, &options()).map_err(|error| FileProblem {
             line: error.line_display(),
@@ -70,4 +71,18 @@ pub(super) fn line_of(text: &str, path: &[String]) -> Option<usize> {
         value = &prop.value;
     }
     Some(text[..start?].matches('\n').count() + 1)
+}
+
+/// `value` for the syntax tree.
+pub(crate) fn cst_value(value: &Value) -> CstInputValue {
+    match value {
+        Value::Null => CstInputValue::Null,
+        Value::Bool(b) => CstInputValue::Bool(*b),
+        Value::Number(n) => CstInputValue::Number(n.to_string()),
+        Value::String(s) => CstInputValue::String(s.clone()),
+        Value::Array(items) => CstInputValue::Array(items.iter().map(cst_value).collect()),
+        Value::Object(map) => {
+            CstInputValue::Object(map.iter().map(|(k, v)| (k.clone(), cst_value(v))).collect())
+        }
+    }
 }

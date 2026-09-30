@@ -110,6 +110,8 @@ pub enum Command {
 pub enum DocsCommand {
     /// Print the Markdown reference in docs/reference/cli.md.
     Cli,
+    /// Print the Markdown reference of the MCP tools in docs/reference/mcp.md.
+    Mcp,
 }
 
 /// `captain snapshot ...`. `NAME` is a snapshot's name or ID.

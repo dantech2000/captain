@@ -30,8 +30,10 @@ Each page says when a feature needs macOS.
 10. [Settings](settings.md): the Settings page and the settings file.
 11. [Troubleshooting](troubleshooting.md): the Diagnostics checks and their fixes, and the logs.
 12. [The command line](cli.md): the `captain` command.
+13. [AI agents](agents.md): let Claude Code, Codex, Cursor, and other agents read and run your projects through `captain mcp`.
 
 ## Reference
 
 - [Settings reference](../reference/settings.md): every option in `settings.json`, with its default.
 - [Command reference](../reference/cli.md): every `captain` command and its options.
+- [MCP tool reference](../reference/mcp.md): every tool of `captain mcp` and its arguments.

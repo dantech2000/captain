@@ -6,7 +6,7 @@ mod app_settings;
 mod appearance;
 mod edit;
 mod engine_choice;
-mod jsonc;
+pub(crate) mod jsonc;
 mod overrides;
 mod problem;
 mod reference;

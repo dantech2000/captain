@@ -4,7 +4,8 @@ use gpui_kit::component::Icon;
 use gpui_kit::*;
 
 use super::latest_event::LatestEvent;
-use super::segments::{Segment, disk, segments};
+use super::segments::{Segment, agent, disk, segments};
+use crate::agents::{activity_time, agent_activity, latest_activity};
 use crate::engine_host::{host_model, summary as host_summary};
 use crate::help::{self, HelpExt, Hint};
 use crate::kubernetes::kubernetes_model;
@@ -42,6 +43,8 @@ impl StatusBar {
             .extend(kubernetes_model(cx).map(|model| cx.observe(&model, |_, _, cx| cx.notify())));
         subscriptions
             .extend(storage_model(cx).map(|model| cx.observe(&model, |_, _, cx| cx.notify())));
+        subscriptions
+            .extend(agent_activity(cx).map(|watch| cx.observe(&watch, |_, _, cx| cx.notify())));
         let mut bar = Self {
             workspace: workspace.clone(),
             latest: LatestEvent::default(),
@@ -176,6 +179,9 @@ impl Render for StatusBar {
                 .position(|s| s.id == "status-memory")
                 .map_or(right.len().min(1), |ix| ix + 1);
             right.insert(at, segment);
+        }
+        if let Some(entry) = latest_activity(cx) {
+            right.insert(0, agent(&entry, &activity_time(entry.at), &palette));
         }
         div()
             .h(px(30.))

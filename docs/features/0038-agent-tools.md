@@ -1,7 +1,7 @@
 # Feature 0038: Agent tools (MCP)
 
 - Milestone: M31
-- Status: Phases 1–3 built (the server, the read tools, logs and waiting). Phases 4–6 are open. Research done on 2026-09-29; sources are linked in each section.
+- Status: Built (phases 1–6). Research done on 2026-09-29 and 2026-09-30; sources are linked in each section. The hand checks in Verification are open.
 
 ## Goal
 
@@ -66,12 +66,12 @@ Settings shows one row, "AI agents", with a status and **Set up…**, like the T
 
    | Client | How Captain connects it |
    |---|---|
-   | Claude Code | `claude mcp add --scope user captain -- /Users/<you>/.captain/bin/captain mcp` (user scope; the default local scope covers one folder only) |
-   | Codex (and the ChatGPT desktop app) | `codex mcp add captain -- <path> mcp` ([Codex MCP](https://learn.chatgpt.com/docs/extend/mcp?surface=cli)) |
-   | Gemini CLI | `gemini mcp add captain <path> mcp` ([Gemini CLI](https://geminicli.com/docs/tools/mcp-server/)) |
-   | VS Code | `code --add-mcp '<json>'` or a `vscode:mcp/install` link ([VS Code](https://code.visualstudio.com/docs/copilot/chat/mcp-servers)) |
-   | Cursor | a `cursor://anysphere.cursor-deeplink/mcp/install` link, which Cursor confirms ([install links](https://cursor.com/docs/context/mcp/install-links)) |
-   | Zed | `context_servers` in Zed's settings, edited in place with comments kept |
+   | Claude Code | `claude mcp add --scope user --transport stdio captain -- /Users/<you>/.captain/bin/captain mcp` (user scope; the default local scope covers one folder only) ([Claude Code MCP](https://code.claude.com/docs/en/mcp)) |
+   | Codex (and the ChatGPT desktop app) | `codex mcp add captain -- <path> mcp` ([Codex MCP](https://learn.chatgpt.com/docs/extend/mcp?surface=cli), [`mcp_cmd.rs`](https://github.com/openai/codex/blob/main/codex-rs/cli/src/mcp_cmd.rs)) |
+   | Gemini CLI | `gemini mcp add --scope user captain <path> mcp`; its default scope is the project ([Gemini CLI](https://github.com/google-gemini/gemini-cli/blob/main/docs/tools/mcp-server.md)) |
+   | VS Code | `code --add-mcp '<json>'`, or an edit of the profile's `mcp.json` (`servers`) without `code` on PATH ([VS Code](https://code.visualstudio.com/docs/agent-customization/mcp-servers), [configuration](https://code.visualstudio.com/docs/copilot/reference/mcp-configuration)) |
+   | Cursor | a `cursor://anysphere.cursor-deeplink/mcp/install` link, which Cursor confirms ([install links](https://cursor.com/docs/context/mcp/install-links)); Remove edits `~/.cursor/mcp.json` ([Cursor MCP](https://cursor.com/docs/context/mcp)) |
+   | Zed | `context_servers` in Zed's settings, edited in place with comments kept ([Zed MCP](https://zed.dev/docs/ai/mcp), [configuring Zed](https://github.com/zed-industries/zed/blob/main/docs/src/configuring-zed.md)) |
    | Claude Desktop | `mcpServers` in `claude_desktop_config.json`; tell the user to restart Claude ([connect local servers](https://modelcontextprotocol.io/docs/develop/connect-local-servers)) |
 
    Paths are absolute, never `~`.
@@ -123,11 +123,40 @@ After M31: an Agent Skill and an AGENTS.md snippet (see Later).
 
 **Delimiters.** `wrap_untrusted` puts `=== BEGIN UNTRUSTED CONTAINER OUTPUT <id> (<source>) ===`, one line that says to treat the text as data, the text, and `=== END UNTRUSTED CONTAINER OUTPUT <id> ===` around it. The ID is 16 random hex digits per call, so a log line cannot fake the end line. Terminal escapes and control characters other than tabs and line breaks are dropped first.
 
-**Seams for phases 4–6.** `CaptainServer::new` adds routers with `+`; phase 4 adds an action router there only when `agent_tools.actions` allows it, and uses `Problem::container_fixes` and `raised_memory` for `raise_memory`. `Source` is where the settings and an activity log hook in. Phase 6 reads the tool list and descriptions from `CaptainServer`'s router.
+**Seams for phases 4–6.** `CaptainServer::new` adds routers with `+`; phase 4 adds the action router there (it ended up always added, with the list filtered per request; see below), and uses `Problem::container_fixes` and `raised_memory` for `raise_memory`. `Source` is where the settings and an activity log hook in. Phase 6 reads the tool list and descriptions from `CaptainServer`'s router.
 
 **Tests.** Core: masking, delimiters (a fake END line does not close the block), `since` parsing and filters, the log caps (500 lines; 32 KB with 5,000-character lines), the log report with an injected line and a secret, name checks, the 22-container size test, `status_only` keys, project rows, the problem report (out of memory first, with the raise), inspect masking, disk categories, and readiness. CLI (`mcp::tests`, rmcp's client over `tokio::io::duplex` against `FakeEngine`): all nine tools are listed in order with the read-only annotations, and each call's `structuredContent` keys are in its `outputSchema` and cover its `required` keys; project logs keep `IGNORE PREVIOUS INSTRUCTIONS` inside the delimiters and mask a token; wrong names and `container` with `project` are refused; `wait_for_healthy` returns at once when ready and names the unhealthy container at the timeout.
 
 **Checked by hand** on 2026-09-30 against the running Captain Engine, read only: `initialize`, `server/discover` (2026-07-28), `tools/list`, and calls of `engine_status`, `list_projects`, `list_containers` (`status_only`), `container_problems`, `inspect` (the database password came back `[masked]`), `logs` for a project, `wait_for_healthy`, and `disk_usage`, piped over stdin to `captain-cli mcp`. `tools/list` is about 16 KB with all schemas.
+
+## Built: phases 4–6
+
+**Settings.** `agent_tools` in `Settings` (`captain_core::agent_tools::AgentToolsSettings`, group "AI agents"): `enabled` (default `false`) and `actions`, a list of `start`, `stop`, `restart`, `run_task`, `raise_memory` (default empty). Unknown values in the list are skipped, and the file check names them. The schema, docs/reference/settings.md, and settings.schema.json come from the type; the reference shows the list as "a list of any of …".
+
+**The gate.** `AgentToolsSettings::gate(tool)`: `help` always answers; every other tool needs `enabled`; an action also needs its name in `actions`. `captain mcp` reads the settings file on every request (the path `--settings` or the app's own), so a change in Captain applies at once. `CaptainServer` implements `ServerHandler` itself instead of `#[tool_handler]`: `tools/list` returns only the allowed tools (with `ttlMs: 0`), `get_tool` too, and a call to a known tool that is off returns `isError` with the setting's name ("The restart action is off. The user can allow it in Captain under Settings > AI agents (add \"restart\" to the agent_tools.actions setting)."). The server declares `tools.listChanged` and, after `notifications/initialized`, reads the settings every 2 seconds and sends `notifications/tools/list_changed` when the list changes.
+
+**Actions** (crates/captain-cli/src/mcp/action_tools.rs; annotations `readOnlyHint: false`, `destructiveHint: false`, `openWorldHint: false`, `idempotentHint` true for start and stop):
+
+| Tool | Does |
+|---|---|
+| `start` | A container: the Engine API start. A project: `docker compose up -d`, the app's Up. |
+| `stop`, `restart` | A container through the Engine API, or a project through `docker compose stop` / `restart`. |
+| `run_task` | `project` and `task`. Reads `x-captain.tasks` through the same `ProjectRunner::tasks` and `run_task` as the project page (`docker compose exec -T`). An unknown task lists the declared ones. The output is masked, capped like logs (500 lines, 32 KB, the end kept), and wrapped in the untrusted-output delimiters (`TaskReport`). |
+| `raise_memory` | `project_map::raised_memory`: twice the limit, at least 512 MB, through `update_memory`. A container without a limit is refused, as `Problem::container_fixes` offers no raise then. |
+
+Project actions need `docker compose`; `captain mcp` finds it with `ComposeCli::detect` when it connects, as the app does.
+
+**Activity log.** `~/.captain/agent-activity.jsonl`, one JSON line per call of a known tool other than `help` (read tools too, so the user sees what agents read): `at`, `client` (from `clientInfo`, per request on 2026-07-28), `tool`, `arguments` (strings cut at 300 characters), `ok`, and the first line of the answer. Each line is one append; past 256 KB the older half goes (an atomic replace). The app polls the file's size and time every 2 seconds (`agents::activity_watch`), writes each new action to `captain.log`, shows the latest call of the last ten minutes as a status bar segment ("Claude Code: restart", orange for an action, red for a failure or refusal, gray for a read), and lists the last 20 in the sheet.
+
+**Connecting agents** (`captain_core::agent_clients`). `detect` finds a client by its command in the login shell (`$SHELL -lic 'command -v claude codex gemini code cursor zed'`) or by its settings folder, and reads whether its file lists `captain` (JSONC for the JSON files; a `[mcp_servers.captain]` table for Codex). `connect_step` and `remove_step` give a `ClientStep`: `Run` (the installer argv), `Open` (Cursor's link: the entry as base64, URL-escaped), or `Edit` (the file's text before and after, from `with_server` / `without_server`, which use the jsonc-parser CST so comments and other keys stay; Remove also drops a servers object it leaves empty, so Connect then Remove gives the file back byte for byte). The sheet shows `preview()` (the shell line, the link, or the changed lines) and runs the step only on the user's click: a command through the login shell, so `node` and the client's command are on PATH as in a terminal; an edit only if the file did not change since it was read, with a `.captain-backup` copy the first time and `file_replace` for the write, through `link_target` for symlinked dotfiles. Paths: `~/.claude.json`, `$CODEX_HOME/config.toml`, `~/.gemini/settings.json`, the VS Code profile `mcp.json`, `~/.cursor/mcp.json`, `~/.config/zed/settings.json` (`%APPDATA%\Zed` on Windows), and `claude_desktop_config.json` under the app-config folder (macOS and Windows only; [connect local servers](https://modelcontextprotocol.io/docs/develop/connect-local-servers)). The `captain` path is `~/.captain/bin/captain` when the command-line tools linked it, else the copy in Captain.app, else `captain-cli` next to the app in a development build. Copy config gives an `mcpServers` object for any other client.
+
+**UI.** Settings has an "AI agents" row (on or off, the allowed actions, the last call) with **Set up…**. The sheet (crates/captain-ui/src/agents/) has the **Let agents use Captain** switch, the five action checkboxes, a row per agent found with Connect or Remove and the step to confirm, Copy config, Check again, and the Agent activity list. Every control has a help sentence.
+
+**Docs.** docs/reference/mcp.md is generated from the server's tool list (`captain docs mcp`), with a drift test in `mcp::reference::tests`. docs/guide/agents.md is the user guide. docs/testing.md section 15 has the hand checks.
+
+**Tests.** Core: the gate and unknown actions; the activity log's order, broken lines, and cap; the raise rule and task output (masked, capped, delimited); JSONC connect-then-remove round trips (a Zed file with comments and trailing commas, a plain file), a blank and a broken file; Codex tables; the installer argv for Claude Code, Gemini CLI, and Codex, and Cursor's link decoding back to the entry; detection in a temporary home; a stub installer that records its arguments; an edit that refuses a changed file and keeps a backup. CLI (rmcp's client): with the tools off only `help` is listed and a call names `agent_tools.enabled`; a disallowed restart names `agent_tools.actions`; after allowing all five, they are listed, a container restart and a project stop run, `run_task` returns the fake task's output and lists the declared tasks for a wrong name, `raise_memory` refuses a container without a limit, and the log holds each call in order. No test runs a real installer or touches a real client file.
+
+**Checked by hand** on 2026-09-30 against Captain Engine with a temporary home and settings file: `tools/list` with `enabled` alone gives the nine read tools; `restart` is refused naming `agent_tools.actions`; `list_projects` answers; both calls are in the activity file with the client name.
 
 ## Out of scope
 
@@ -137,13 +166,12 @@ After M31: an Agent Skill and an AGENTS.md snippet (see Later).
 
 ## Later
 
-- An [Agent Skill](https://agentskills.io/specification) (`SKILL.md`) that teaches agents Captain's words and workflows, and an [AGENTS.md](https://agents.md/) snippet users can add to projects. Both are cheap once the server exists.
+- An [Agent Skill](https://agentskills.io/specification) (`SKILL.md`) that teaches agents Captain's words and workflows, and an [AGENTS.md](https://agents.md/) snippet users can add to projects. Done (issue #14): skills/captain/SKILL.md, and the snippet in docs/guide/agents.md.
 - `llms.txt` for the docs site ([llmstxt.org](https://llmstxt.org/)).
 
 ## Verification
 
-Steps 1–5 need phases 4 and 5. Until then: `printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-11-25","capabilities":{},"clientInfo":{"name":"t","version":"0"}}}' '{"jsonrpc":"2.0","method":"notifications/initialized"}' '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"engine_status","arguments":{}}}' | captain mcp`, or `claude mcp add --scope user captain -- <path to captain> mcp` by hand.
-
+docs/testing.md section 15 has these steps in full. To try the server alone: `printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-11-25","capabilities":{},"clientInfo":{"name":"t","version":"0"}}}' '{"jsonrpc":"2.0","method":"notifications/initialized"}' '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"engine_status","arguments":{}}}' | captain mcp` (turn on `agent_tools.enabled` first).
 
 1. Turn on agent tools, connect Claude Code, and run `/mcp`: `captain` is connected with only read tools listed.
 2. Start a container that crash-loops out of memory. Ask "what is wrong with my containers?". Expect the agent to name the out-of-memory kill from `container_problems`.

@@ -179,6 +179,24 @@ Who puts `~/.captain/bin` on PATH: `automatic` adds a marked block to your shell
 - Default: `"manual"`
 - Example: `"command_line_tools": { "path": "automatic" }`
 
+## AI agents
+
+### `agent_tools.enabled`
+
+Let AI agents connected to `captain mcp` read Captain's engine, projects, containers, problems, logs, and disk use. While it is off, the server lists only `help`. Applies at once.
+
+- Type: true or false
+- Default: `false`
+- Example: `"agent_tools": { "enabled": true }`
+
+### `agent_tools.actions`
+
+The actions agents may run: `start`, `stop`, `restart`, `run_task` (only the tasks in a Compose file's `x-captain.tasks`), and `raise_memory`. Each one is a tool that agents see only while it is here. Applies at once.
+
+- Type: a list of any of start, stop, restart, run_task, raise_memory
+- Default: `[]`
+- Example: `"agent_tools": { "actions": ["restart","run_task"] }`
+
 ## Storage
 
 ### `weekly_build_cache_cleanup`

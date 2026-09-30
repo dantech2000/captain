@@ -3,7 +3,7 @@
 //! the PATH lines in the shell files. See docs/features/0035-command-line-tools.md.
 
 mod chezmoi;
-mod command;
+pub(crate) mod command;
 mod install;
 mod links;
 mod paths;

@@ -2,9 +2,10 @@
 //! formatting stay. It uses the concrete syntax tree of `jsonc-parser`
 //! (https://docs.rs/jsonc-parser/0.34.0/jsonc_parser/cst/index.html). See ADR 0013.
 
-use jsonc_parser::cst::{CstInputValue, CstObject, CstRootNode};
+use jsonc_parser::cst::{CstObject, CstRootNode};
 use serde_json::{Map, Value};
 
+use super::jsonc::cst_value as input;
 use super::overrides::{self, KeyPath, get, is_version, leaves};
 use super::{FileProblem, SETTINGS_VERSION, Settings, jsonc};
 
@@ -182,20 +183,6 @@ impl FileEdit {
             if let Some(prop) = chain[depth - 1].get(&path[depth - 1]) {
                 prop.remove();
             }
-        }
-    }
-}
-
-/// `value` for the syntax tree.
-fn input(value: &Value) -> CstInputValue {
-    match value {
-        Value::Null => CstInputValue::Null,
-        Value::Bool(b) => CstInputValue::Bool(*b),
-        Value::Number(n) => CstInputValue::Number(n.to_string()),
-        Value::String(s) => CstInputValue::String(s.clone()),
-        Value::Array(items) => CstInputValue::Array(items.iter().map(input).collect()),
-        Value::Object(map) => {
-            CstInputValue::Object(map.iter().map(|(k, v)| (k.clone(), input(v))).collect())
         }
     }
 }

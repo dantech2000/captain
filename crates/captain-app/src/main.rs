@@ -48,6 +48,7 @@ fn main() {
         gpui_kit::init(cx);
         captain_ui::settings_init(cx, settings, path);
         captain_ui::settings_watch_init(cx);
+        captain_ui::agents_init(cx);
         captain_ui::engine_source_init(cx, Rc::new(connect::DockerSource));
         captain_ui::OpenMigrationAssistant::set_backend(
             cx,

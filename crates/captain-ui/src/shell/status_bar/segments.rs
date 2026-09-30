@@ -1,4 +1,6 @@
 use captain_core::HostStatus;
+use captain_core::agent_clients::client_label;
+use captain_core::agent_tools::Activity;
 use captain_core::format::{bytes_label, percent_label};
 use captain_core::kubernetes::KubernetesStatus;
 use gpui_kit::*;
@@ -58,6 +60,31 @@ pub fn segments(
         dot: None,
     }));
     segments
+}
+
+/// The latest agent call, such as "Claude Code: restart api", for ten minutes.
+/// See feature 0038.
+pub fn agent(entry: &Activity, time: &str, palette: &Palette) -> Segment {
+    let client = client_label(&entry.client);
+    let dot = match (entry.ok, entry.is_action()) {
+        (false, _) => palette.red,
+        (true, true) => palette.orange,
+        (true, false) => palette.gray,
+    };
+    let outcome = match (entry.ok, entry.result.is_empty()) {
+        (true, _) | (false, true) => String::new(),
+        (false, false) => format!(" It failed: {}", entry.result),
+    };
+    Segment {
+        id: "status-agent",
+        label: format!("{client}: {}", entry.tool).into(),
+        help: format!(
+            "{client} called {} at {time}.{outcome} Every call is in Settings > AI agents.",
+            entry.summary()
+        )
+        .into(),
+        dot: Some(dot),
+    }
 }
 
 /// "Disk 18.2 GB of 64 GB", or without the size for an engine Captain does not run.

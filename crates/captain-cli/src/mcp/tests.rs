@@ -1,8 +1,12 @@
 //! Drives the server with rmcp's client over an in-memory pipe, against the fake
 //! engine.
 
-use std::sync::Arc;
+mod actions;
 
+use std::sync::{Arc, Mutex};
+
+use captain_core::ProjectRunner;
+use captain_core::agent_tools::AgentToolsSettings;
 use captain_core::model::{Container, ContainerState, EngineInfo, Health, LogLine, LogStream};
 use captain_core::{Engine, FakeEngine};
 use rmcp::model::{CallToolRequestParams, CallToolResult};
@@ -10,7 +14,7 @@ use rmcp::service::RunningService;
 use rmcp::{RoleClient, ServiceExt};
 use serde_json::{Value, json};
 
-use super::{CaptainServer, Connect, Source};
+use super::{CaptainServer, Connect, Connected, ReadSettings, Source};
 
 const READ_TOOLS: [&str; 9] = [
     "container_problems",
@@ -68,11 +72,39 @@ fn fake() -> FakeEngine {
     }
 }
 
+/// Agent tools on, no actions.
+fn enabled() -> Arc<Mutex<AgentToolsSettings>> {
+    Arc::new(Mutex::new(AgentToolsSettings {
+        enabled: true,
+        actions: Vec::new(),
+    }))
+}
+
 async fn client(engine: FakeEngine) -> RunningService<RoleClient, ()> {
-    let (server_io, client_io) = tokio::io::duplex(256 * 1024);
+    serve(
+        Source::new("Other engine", None, connect(engine, None), false)
+            .with_settings(read(enabled())),
+    )
+    .await
+}
+
+fn connect(engine: FakeEngine, runner: Option<Arc<dyn ProjectRunner>>) -> Connect {
     let engine: Arc<dyn Engine> = Arc::new(engine);
-    let connect: Connect = Arc::new(move || Ok(engine.clone()));
-    let server = CaptainServer::new(Source::new("Other engine", None, connect, false));
+    Arc::new(move || {
+        Ok(Connected {
+            engine: engine.clone(),
+            runner: runner.clone(),
+        })
+    })
+}
+
+fn read(settings: Arc<Mutex<AgentToolsSettings>>) -> ReadSettings {
+    Arc::new(move || settings.lock().unwrap().clone())
+}
+
+async fn serve(source: Source) -> RunningService<RoleClient, ()> {
+    let (server_io, client_io) = tokio::io::duplex(256 * 1024);
+    let server = CaptainServer::new(source);
     tokio::spawn(async move {
         if let Ok(running) = server.serve(server_io).await {
             let _ = running.waiting().await;

@@ -186,6 +186,19 @@
           "$ref": "#/definitions/CliToolsSettings"
         }
       ]
+    },
+    "agent_tools": {
+      "description": "What AI agents may see and do through `captain mcp`. See the keys below.",
+      "x-captain-group": "AI agents",
+      "default": {
+        "enabled": false,
+        "actions": []
+      },
+      "allOf": [
+        {
+          "$ref": "#/definitions/AgentToolsSettings"
+        }
+      ]
     }
   },
   "definitions": {
@@ -396,6 +409,64 @@
           "description": "The user adds the line; Captain only shows it.",
           "type": "string",
           "const": "manual"
+        }
+      ]
+    },
+    "AgentToolsSettings": {
+      "description": "The saved choices for AI agents.",
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "description": "Let AI agents connected to `captain mcp` read Captain's engine, projects, containers, problems, logs, and disk use. While it is off, the server lists only `help`. Applies at once.",
+          "type": "boolean",
+          "examples": [
+            true
+          ],
+          "default": false
+        },
+        "actions": {
+          "description": "The actions agents may run: `start`, `stop`, `restart`, `run_task` (only the tasks in a Compose file's `x-captain.tasks`), and `raise_memory`. Each one is a tool that agents see only while it is here. Applies at once.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/AgentAction"
+          },
+          "examples": [
+            [
+              "restart",
+              "run_task"
+            ]
+          ],
+          "default": []
+        }
+      }
+    },
+    "AgentAction": {
+      "description": "An action that agents may run through Captain's MCP server when the user allows it. Each one is also the name of its tool.",
+      "oneOf": [
+        {
+          "description": "Start a container or a Compose project.",
+          "type": "string",
+          "const": "start"
+        },
+        {
+          "description": "Stop a container or a Compose project.",
+          "type": "string",
+          "const": "stop"
+        },
+        {
+          "description": "Restart a container or a Compose project.",
+          "type": "string",
+          "const": "restart"
+        },
+        {
+          "description": "Run a task that a Compose file declares in `x-captain.tasks`.",
+          "type": "string",
+          "const": "run_task"
+        },
+        {
+          "description": "Raise the memory limit of a container: twice the old one, at least 512 MB.",
+          "type": "string",
+          "const": "raise_memory"
         }
       ]
     }

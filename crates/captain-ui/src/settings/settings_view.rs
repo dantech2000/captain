@@ -10,8 +10,8 @@ use super::engine_source::{self, DetectedEndpoint};
 use super::kube_form::KubeForm;
 use super::store::{self, SettingsStore};
 use super::{
-    about_section, appearance_section, engine_section, file_section, kubernetes_section,
-    startup_section, terminal_section,
+    about_section, agents_section, appearance_section, engine_section, file_section,
+    kubernetes_section, startup_section, terminal_section,
 };
 use crate::engine_host::{HostModel, host_model};
 use crate::kubernetes::{KubernetesModel, kubernetes_model};
@@ -61,6 +61,10 @@ impl SettingsView {
         let host = host_model(cx);
         let kubernetes = kubernetes_model(cx);
         let mut subscriptions = vec![observe, settings];
+        subscriptions.extend(
+            crate::agents::agent_activity(cx)
+                .map(|watch| cx.observe(&watch, |_, _, cx| cx.notify())),
+        );
         subscriptions.extend(
             host.as_ref()
                 .map(|host| cx.observe(host, |_, _, cx| cx.notify())),
@@ -225,6 +229,7 @@ impl Render for SettingsView {
             .children(kubernetes)
             .children(startup_section::render(self, &settings, &palette, cx))
             .child(terminal_section::render(self, &settings, &palette, cx))
+            .child(agents_section::render(&settings.agent_tools, &palette, cx))
             .child(file_section::render(&palette))
             .child(about_section::render(self, &palette, cx));
 

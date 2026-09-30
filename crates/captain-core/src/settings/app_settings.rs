@@ -3,6 +3,7 @@ use serde::{Deserialize, Deserializer, Serialize};
 
 use super::{Appearance, EngineChoice, ThemeFamily};
 use crate::HostResources;
+use crate::agent_tools::AgentToolsSettings;
 use crate::cli_tools::CliToolsSettings;
 use crate::daemon::DaemonSettings;
 use crate::kubernetes::KubernetesSettings;
@@ -104,6 +105,11 @@ pub struct Settings {
     #[serde(deserialize_with = "lenient")]
     #[schemars(extend("x-captain-group" = "Terminal"))]
     pub command_line_tools: CliToolsSettings,
+    /// What AI agents may see and do through `captain mcp`. See the keys below.
+    // Feature 0038.
+    #[serde(deserialize_with = "lenient")]
+    #[schemars(extend("x-captain-group" = "AI agents"))]
+    pub agent_tools: AgentToolsSettings,
 }
 
 impl Default for Settings {
@@ -124,6 +130,7 @@ impl Default for Settings {
             weekly_build_cache_cleanup: false,
             build_cache_cleaned_at: None,
             command_line_tools: CliToolsSettings::default(),
+            agent_tools: AgentToolsSettings::default(),
         }
     }
 }

@@ -57,6 +57,24 @@ pub struct WaitParams {
     pub timeout_seconds: Option<u64>,
 }
 
+#[derive(Debug, Default, Deserialize, JsonSchema)]
+pub struct ActionParams {
+    /// One container: its name, its pod/container name, or an ID prefix.
+    #[serde(default)]
+    pub container: Option<String>,
+    /// Every service of a Compose project.
+    #[serde(default)]
+    pub project: Option<String>,
+}
+
+#[derive(Debug, Deserialize, JsonSchema)]
+pub struct TaskParams {
+    /// The Compose project whose file declares the task.
+    pub project: String,
+    /// The task's name in the project's x-captain.tasks.
+    pub task: String,
+}
+
 /// A container or a whole project.
 pub enum Target {
     Container(String),

@@ -8,13 +8,14 @@ use super::overrides::defaults;
 use super::settings_schema;
 
 /// The headings of the reference, in order.
-pub const GROUPS: [&str; 8] = [
+pub const GROUPS: [&str; 9] = [
     "Appearance",
     "Engine",
     "Docker daemon",
     "Kubernetes",
     "Startup",
     "Terminal",
+    "AI agents",
     "Storage",
     "Diagnostics",
 ];
@@ -195,6 +196,9 @@ fn one_type(schema: &Value, node: &Value, kind: &str) -> String {
         },
         "array" => match node.get("items").map(|items| type_label(schema, items)) {
             Some(item) if item == "a string" => "a list of strings".into(),
+            Some(item) if item.starts_with("one of ") => {
+                format!("a list of any of {}", &item["one of ".len()..])
+            }
             _ => "a list".into(),
         },
         "object" => match node.get("required").and_then(Value::as_array) {

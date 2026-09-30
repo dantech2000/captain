@@ -4,14 +4,15 @@
 use std::sync::Arc;
 
 use anyhow::Result;
-use captain_core::Engine;
-use captain_core::settings::EngineChoice;
-use captain_docker::{DiscoveryInput, DockerEngine, Endpoint, discover_host};
+use captain_core::agent_tools::activity_path;
+use captain_core::settings::{EngineChoice, Settings};
+use captain_core::{Engine, ProjectRunner};
+use captain_docker::{ComposeCli, DiscoveryInput, DockerEngine, Endpoint, discover_host};
 use rmcp::ServiceExt;
 use tracing_subscriber::EnvFilter;
 
 use crate::context::Context;
-use crate::mcp::{CaptainServer, Connect, Source};
+use crate::mcp::{CaptainServer, Connect, Connected, ReadSettings, Source};
 
 pub fn run(context: &Context) -> Result<()> {
     // `CAPTAIN_LOG=debug` shows more; stdout must stay clean for the protocol.
@@ -52,13 +53,34 @@ fn source(context: &Context) -> Source {
                 .map_err(|error| error.to_string())?,
         };
         let endpoint = Endpoint::resolve(&address)?;
-        let engine = DockerEngine::connect(endpoint).map_err(|error| error.to_string())?;
-        Ok(Arc::new(engine.with_label(address)) as Arc<dyn Engine>)
+        let engine = DockerEngine::connect(endpoint.clone()).map_err(|error| error.to_string())?;
+        // The app runs project actions and tasks through the same CLI.
+        let runner = ComposeCli::detect(&endpoint)
+            .map_err(|reason| tracing::warn!(%reason, "docker compose is not available"))
+            .ok()
+            .map(|cli| Arc::new(cli) as Arc<dyn ProjectRunner>);
+        Ok(Connected {
+            engine: Arc::new(engine.with_label(address)) as Arc<dyn Engine>,
+            runner,
+        })
     });
-    Source::new(
+    // Read on every call, so a change in Captain's Settings applies at once. A file
+    // that cannot be read turns the tools off.
+    let path = context.settings_path.clone();
+    let read: ReadSettings = Arc::new(move || {
+        Settings::load(&path)
+            .map(|settings| settings.agent_tools)
+            .unwrap_or_default()
+    });
+    let source = Source::new(
         choice.label(),
         host,
         connect,
         choice == EngineChoice::Captain && settings.kubernetes.enabled,
     )
+    .with_settings(read);
+    match dirs::home_dir() {
+        Some(home) => source.with_activity(activity_path(&home)),
+        None => source,
+    }
 }
