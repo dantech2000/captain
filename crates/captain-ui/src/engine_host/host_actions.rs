@@ -101,7 +101,8 @@ impl HostModel {
             None => {
                 self.status = HostStatus::Running;
                 self.connect_workspace(cx);
-                if setup && self.migrate_after_setup {
+                // Only when the setup screen listed another engine and offered the copy.
+                if setup && self.migrate_after_setup && !self.detected.is_empty() {
                     cx.emit(HostEvent::OpenMigration);
                 }
             }

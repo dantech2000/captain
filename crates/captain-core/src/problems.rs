@@ -8,6 +8,10 @@ use crate::format::bytes_label;
 use crate::model::{Container, ContainerAction, ContainerDetail, ContainerState, Health};
 use crate::store::Crash;
 
+mod memory_raises;
+
+pub use memory_raises::MemoryRaises;
+
 /// Why a restarting container stopped, from `inspect`.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct ExitFacts {

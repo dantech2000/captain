@@ -17,10 +17,12 @@ pub fn body(
     cx: &mut Context<MigrationAssistant>,
 ) -> Div {
     let Some(target) = view.target.clone() else {
-        return section_note(
-            "Connect to an engine first. It receives the copies.",
-            palette,
-        );
+        let note = if view.connecting {
+            "Connecting to the engine that receives the copies…"
+        } else {
+            "Connect to an engine first. It receives the copies."
+        };
+        return section_note(note, palette);
     };
     if view.backend.is_none() {
         return section_note(

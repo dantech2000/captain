@@ -47,6 +47,13 @@ pub struct DiagnosticsModel {
     _subscriptions: Vec<Subscription>,
 }
 
+/// True when a change needs new facts about this computer too: the first run, and
+/// a change in Captain Engine's status, since the engine's files (the Lima logs)
+/// appear with its setup. A connection change alone reuses them.
+fn probes_machine(old: Option<&Trigger>, new: Option<&Trigger>) -> bool {
+    old.is_none_or(|old| new.is_none_or(|new| old.captain != new.captain))
+}
+
 struct DiagnosticsHandle(Entity<DiagnosticsModel>);
 
 impl Global for DiagnosticsHandle {}
@@ -149,9 +156,9 @@ impl DiagnosticsModel {
             captain: captain_status(cx),
         });
         if trigger != self.trigger {
-            let first = self.trigger.is_none();
+            let machine = probes_machine(self.trigger.as_ref(), trigger.as_ref());
             self.trigger = trigger;
-            self.run(first, cx);
+            self.run(machine, cx);
         }
     }
 
@@ -209,3 +216,6 @@ impl DiagnosticsModel {
         cx.notify();
     }
 }
+
+#[cfg(test)]
+mod tests;

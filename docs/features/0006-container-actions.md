@@ -15,7 +15,7 @@ Finish M2. Captain can pause and resume a container, delete a running container 
 - Row actions: the selected row shows Start or Stop, Pause or Resume (running and paused containers only), and Restart.
 - Delete confirmation: Delete opens a dialog, "Delete captain-web? This removes the container. Its volumes stay.", with Cancel and a red Delete button. For a running or paused container the red button is "Stop and delete". It sends `ContainerAction::ForceRemove`, a remove with `force: true`.
 - Notifications: a failed action shows an error toast with the engine's message. The toast stays until the user closes it. A delete shows a short success toast. The workspace emits `WorkspaceEvent`, and `AppShell` turns each event into a toast.
-- Project actions: a Compose card header has Restart all, and Stop all (or Start all when no container runs). Each runs the action on every container in the group. The Standalone card has no project actions.
+- Project actions: a Compose card header has Restart all, and Stop all (or Start all when no container runs). Each runs the action on every container in the group. The Loose containers card has no project actions.
 - Collapsible cards: a click on a card header folds its rows. The chevron points right while the card is folded. The workspace keeps the folded cards, so a card stays folded when the list reloads.
 
 ## Out of scope

@@ -15,9 +15,16 @@ pub struct Hint {
 /// flickering when the mouse moves between two controls. A control inside another,
 /// such as a switch in a Settings row, shows its own hint; leaving it shows the
 /// outer one again.
+///
+/// One mouse move reports its hovers innermost first. When the mouse lands on a
+/// button in a card in one move, or moves again after a click, the button and the
+/// card enter together; a batch (see [`hover_batch`](super::hover_batch)) keeps the
+/// button's hint on top.
 #[derive(Debug, Default)]
 pub struct HoverHelp {
     hovered: Vec<(ElementId, Hint)>,
+    /// The hovers of the mouse move being dispatched, innermost first.
+    batch: Option<Vec<(ElementId, Hint)>>,
 }
 
 impl Hint {
@@ -55,6 +62,11 @@ impl HoverHelp {
 
     /// The mouse entered `owner`. True if the hint changed.
     pub fn enter(&mut self, owner: ElementId, hint: Hint) -> bool {
+        if let Some(batch) = &mut self.batch {
+            batch.retain(|(id, _)| *id != owner);
+            batch.push((owner, hint));
+            return false;
+        }
         let before = self.hint().cloned();
         self.hovered.retain(|(id, _)| *id != owner);
         self.hovered.push((owner, hint));
@@ -63,8 +75,33 @@ impl HoverHelp {
 
     /// The mouse left `owner`. True if the hint changed.
     pub fn leave(&mut self, owner: &ElementId) -> bool {
+        if let Some(batch) = &mut self.batch {
+            batch.retain(|(id, _)| id != owner);
+        }
         let before = self.hint().cloned();
         self.hovered.retain(|(id, _)| id != owner);
+        self.hint() != before.as_ref()
+    }
+
+    /// A mouse move starts: hold its hovers until [`HoverHelp::end_batch`]. True if
+    /// an unfinished batch changed the hint.
+    pub fn begin_batch(&mut self) -> bool {
+        let changed = self.end_batch();
+        self.batch = Some(Vec::new());
+        changed
+    }
+
+    /// The mouse move ends: the controls it entered go on top, outermost first, so
+    /// the innermost one shows. True if the hint changed.
+    pub fn end_batch(&mut self) -> bool {
+        let Some(batch) = self.batch.take() else {
+            return false;
+        };
+        let before = self.hint().cloned();
+        for (owner, hint) in batch.into_iter().rev() {
+            self.hovered.retain(|(id, _)| *id != owner);
+            self.hovered.push((owner, hint));
+        }
         self.hint() != before.as_ref()
     }
 }
@@ -94,6 +131,9 @@ pub fn hover_help(cx: &App) -> Option<Entity<HoverHelp>> {
 pub fn clear(cx: &mut App) {
     if let Some(model) = hover_help(cx) {
         model.update(cx, |help, cx| {
+            if let Some(batch) = &mut help.batch {
+                batch.clear();
+            }
             if !help.hovered.is_empty() {
                 help.hovered.clear();
                 cx.notify();

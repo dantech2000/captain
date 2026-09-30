@@ -15,7 +15,7 @@ The main window opens on what the user works on: a project. The sidebar lists Co
   - The search button.
   - "Projects", with an "All containers" link on the same line. One entry per Compose project: a stack glyph in the project's label color, the name, "Compose · N services", a running summary with a state dot, and the published ports as chips.
   - One entry per Kubernetes namespace that has containers, only while "Show Kubernetes containers" is on: a cluster glyph and "Kubernetes · N pods".
-  - "Loose containers": the containers in no project and no namespace.
+  - "Loose containers": the containers in no project and no namespace. The Containers page uses the same name for their card.
   - A spacer, then a row of icon buttons for the pages of all resources: Images, Volumes, Networks, Snapshots, Extensions, Port Forwarding (while the cluster runs), Diagnostics (with the failure badge), and Settings. It replaces the list of pages.
   - The Disk card above the icon row (feature 0031).
   - The engine card at the bottom: CPU and memory gauges, and with Captain Engine a Start, Set up, or Stop button. It has no title, because the engine header names the engine and its state. It keeps its height when the engine stops or starts, so the entries above it and its button do not move.

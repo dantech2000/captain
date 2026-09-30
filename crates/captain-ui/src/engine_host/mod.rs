@@ -11,6 +11,7 @@ mod host_reload;
 mod host_screen;
 mod host_snapshot;
 mod host_summary;
+mod other_engines;
 mod progress_log;
 mod setup_screen;
 mod starting_screen;

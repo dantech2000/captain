@@ -62,6 +62,7 @@ pub fn render(
             container,
             title,
             detail: view.details.get(&container.id).map(|(_, detail)| detail),
+            oom_limit: view.oom_limit(&container.id),
             history: stats.get(&container.id),
             exits: view.recent_exits(&service_name(container)),
             staged: view.staged.has(&container.id),

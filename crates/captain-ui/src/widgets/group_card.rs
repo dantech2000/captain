@@ -20,7 +20,7 @@ pub fn group_card(
             CaptainIcon::Stack,
         ),
         None => (
-            "Standalone".to_string(),
+            "Not in a project".to_string(),
             palette.gray,
             CaptainIcon::Container,
         ),

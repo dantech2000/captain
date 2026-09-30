@@ -20,6 +20,8 @@ pub struct Node<'a> {
     pub container: &'a Container,
     pub title: &'a str,
     pub detail: Option<&'a ContainerDetail>,
+    /// The limit the last run ran out of, while a raise can still help.
+    pub oom_limit: Option<u64>,
     pub history: Option<&'a StatsHistory>,
     pub exits: usize,
     pub staged: bool,
@@ -39,10 +41,8 @@ pub fn render(
     let container = node.container;
     let color = palette.container_state(container.state);
     let oom_limit = node
-        .detail
-        .filter(|d| d.oom_killed && container.state != ContainerState::Running)
-        .map(|d| d.memory_limit)
-        .filter(|limit| *limit > 0);
+        .oom_limit
+        .filter(|_| container.state != ContainerState::Running);
     let failing = oom_limit.is_some()
         || matches!(
             container.state,

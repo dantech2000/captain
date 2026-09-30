@@ -24,3 +24,15 @@ fn other_events_do_not_change_the_list() {
     assert!(!event(EventKind::Image, "delete").changes_container_list());
     assert!(!event(EventKind::Network, "create").changes_container_list());
 }
+
+#[test]
+fn only_events_that_add_or_remove_data_change_the_disk_use() {
+    assert!(event(EventKind::Image, "pull").changes_disk_use());
+    assert!(event(EventKind::Image, "tag").changes_disk_use());
+    assert!(event(EventKind::Volume, "destroy").changes_disk_use());
+    assert!(event(EventKind::Container, "create").changes_disk_use());
+    assert!(event(EventKind::Other, "prune").changes_disk_use());
+    assert!(!event(EventKind::Container, "start").changes_disk_use());
+    assert!(!event(EventKind::Volume, "mount").changes_disk_use());
+    assert!(!event(EventKind::Image, "push").changes_disk_use());
+}

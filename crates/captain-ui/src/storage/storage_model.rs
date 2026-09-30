@@ -2,7 +2,7 @@ use std::sync::Arc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use captain_core::Engine;
-use captain_core::model::{DiskUsage, EngineInfo};
+use captain_core::model::{DiskUsage, EngineEvent, EngineInfo};
 use captain_core::snapshot::Snapshot;
 use captain_core::storage::{DiskBreakdown, ReclaimGroup, ReclaimPlan};
 use gpui_kit::*;
@@ -13,6 +13,10 @@ use crate::workspace::{Page, Workspace};
 
 /// Reads the disk use again this often while connected, for the status bar.
 const REFRESH: Duration = Duration::from_secs(10 * 60);
+
+/// Waits this long after the last pull, build, or removal before it reads the disk
+/// use again, so a pull of many layers reads it once.
+const EVENT_DEBOUNCE: Duration = Duration::from_secs(3);
 
 /// The engine's disk use, the cleanup plan, and the groups the user checked. One
 /// model serves every window, so the weekly cleanup runs once.
@@ -34,6 +38,8 @@ pub struct StorageModel {
     pub(super) step: Option<SharedString>,
     showing: bool,
     load: Option<Task<()>>,
+    /// The reload that waits for the engine events to settle.
+    pending: Option<Task<()>>,
     _refresh: Task<()>,
     pub(super) _weekly: Option<Task<()>>,
     _subscriptions: Vec<Subscription>,
@@ -70,6 +76,12 @@ impl StorageModel {
             }
             this.showing = showing;
         });
+        // Pulls, builds, and removals change the disk use; nothing runs at idle.
+        let events = cx.subscribe(workspace, |this: &mut Self, _, event: &EngineEvent, cx| {
+            if event.changes_disk_use() {
+                this.reload_soon(cx);
+            }
+        });
         let refresh = cx.spawn(async move |this, cx| {
             loop {
                 cx.background_executor().timer(REFRESH).await;
@@ -95,9 +107,10 @@ impl StorageModel {
             step: None,
             showing: false,
             load: None,
+            pending: None,
             _refresh: refresh,
             _weekly: None,
-            _subscriptions: vec![observe],
+            _subscriptions: vec![observe, events],
         };
         model.follow_engine(workspace.read(cx).engine(), cx);
         model.start_weekly(cx);
@@ -122,8 +135,18 @@ impl StorageModel {
         self.reload(cx);
     }
 
+    /// Reads the disk use again once no event came for [`EVENT_DEBOUNCE`]. Each call
+    /// replaces the waiting reload, so the wait starts over.
+    fn reload_soon(&mut self, cx: &mut Context<Self>) {
+        self.pending = Some(cx.spawn(async move |this, cx| {
+            cx.background_executor().timer(EVENT_DEBOUNCE).await;
+            this.update(cx, |model, cx| model.reload(cx)).ok();
+        }));
+    }
+
     /// Reads the disk use, and Captain Engine's snapshots, again.
     pub fn reload(&mut self, cx: &mut Context<Self>) {
+        self.pending = None;
         let Some(engine) = self.engine.clone() else {
             cx.notify();
             return;

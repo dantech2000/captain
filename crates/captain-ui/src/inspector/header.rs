@@ -49,7 +49,7 @@ pub fn render(
     let state_color = palette.container_state(container.state);
     let project = match &container.compose_project {
         Some(project) => format!("project {project}"),
-        None => "standalone".to_string(),
+        None => "loose container".to_string(),
     };
 
     div()

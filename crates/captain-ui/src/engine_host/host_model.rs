@@ -4,6 +4,7 @@ use captain_core::settings::EngineChoice;
 use captain_core::{EngineHost, HostResources, HostStatus};
 use gpui_kit::*;
 
+use super::other_engines::other_engines;
 use super::{HostEvent, ProgressLog};
 use crate::settings::{self, DetectedEndpoint};
 use crate::workspace::Workspace;
@@ -176,9 +177,10 @@ impl HostModel {
 
     /// Looks for other engines again.
     pub fn rescan(&mut self, cx: &mut Context<Self>) {
-        self.detected = settings::engine_source(cx)
+        let detected = settings::engine_source(cx)
             .map(|source| source.detected())
             .unwrap_or_default();
+        self.detected = other_engines(detected, self.host.endpoint().as_deref());
         cx.notify();
     }
 }

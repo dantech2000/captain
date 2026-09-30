@@ -99,6 +99,11 @@ impl AppShell {
             .extend(storage_model(cx).map(|model| cx.observe(&model, |_, _, cx| cx.notify())));
         let focus_handle = cx.focus_handle();
         focus_handle.focus(window, cx);
+        // Keys like ⌘K reach the shell only through focus, so when the focused
+        // element goes away the shell takes focus back.
+        subscriptions.push(cx.on_focus_lost(window, |this, window, cx| {
+            this.focus_handle.focus(window, cx);
+        }));
 
         Self {
             containers: cx.new(|cx| ContainersView::new(workspace.clone(), cx)),
@@ -243,6 +248,8 @@ impl Render for AppShell {
             }))
             // A click can remove the control under the mouse, so drop its hint.
             .capture_any_mouse_down(|_, _, cx| help::clear(cx))
+            // First, so it sees each mouse move before and after every hover listener.
+            .child(help::hover_batch())
             .child(
                 div()
                     .flex_1()

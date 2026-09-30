@@ -31,11 +31,7 @@ pub fn context(
     let container = card.container;
     let name = &card.title;
     let mut buttons = Vec::new();
-    let limit = card
-        .detail
-        .filter(|d| d.oom_killed)
-        .map(|d| d.memory_limit)
-        .filter(|limit| *limit > 0);
+    let limit = card.oom_limit;
     if let Some(limit) = limit {
         let raised = raised_limit(limit);
         let label = bytes_label(raised);

@@ -2,7 +2,9 @@
 //! sentence of the control under the mouse. See feature 0029.
 
 mod help_ext;
+mod hover_batch;
 mod hover_help;
 
 pub use help_ext::{CMD, HelpExt};
+pub use hover_batch::hover_batch;
 pub use hover_help::{Hint, clear, ensure, hover_help};

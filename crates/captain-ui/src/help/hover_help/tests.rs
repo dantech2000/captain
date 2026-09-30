@@ -32,3 +32,18 @@ fn leaving_an_inner_control_shows_the_outer_hint_again() {
     assert!(help.leave(&switch));
     assert_eq!(help.hint().map(|h| h.text.as_ref()), Some("Row"));
 }
+
+#[test]
+fn a_control_that_enters_with_its_card_in_one_move_shows_its_own_hint() {
+    let (card, button) = (ElementId::from("card"), ElementId::from("button"));
+    let mut help = HoverHelp::default();
+    help.begin_batch();
+    // GPUI reports the hovers of one move innermost first.
+    help.enter(button.clone(), hint("Button"));
+    help.enter(card.clone(), hint("Card"));
+
+    assert!(help.end_batch());
+    assert_eq!(help.hint().map(|h| h.text.as_ref()), Some("Button"));
+    assert!(help.leave(&button));
+    assert_eq!(help.hint().map(|h| h.text.as_ref()), Some("Card"));
+}

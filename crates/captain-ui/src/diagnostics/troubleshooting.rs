@@ -1,4 +1,6 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
+
+use captain_core::cli_tools::ToolPaths;
 
 use gpui_kit::component::switch::Switch;
 use gpui_kit::*;
@@ -55,12 +57,12 @@ fn folder_row(
     palette: &Palette,
 ) -> AnyElement {
     let note = match &dir {
-        Some(dir) => format!("{note} {}", dir.display()),
+        Some(dir) => format!("{note} {}", tilde(dir)),
         None => format!("{note} The folder does not exist yet."),
     };
     let enabled = dir.is_some();
     let help = match &dir {
-        Some(dir) => format!("Open {} in the file manager.", dir.display()),
+        Some(dir) => format!("Open {} in the file manager.", tilde(dir)),
         None => "The folder does not exist yet.".to_string(),
     };
     settings_row(
@@ -82,4 +84,12 @@ fn folder_row(
         palette,
     )
     .into_any_element()
+}
+
+/// `dir` with the home folder as `~`, as the rest of the app shows paths.
+fn tilde(dir: &Path) -> String {
+    match ToolPaths::user() {
+        Some(paths) => paths.tilde(dir),
+        None => dir.display().to_string(),
+    }
 }

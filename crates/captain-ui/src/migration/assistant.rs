@@ -30,6 +30,8 @@ pub struct MigrationAssistant {
     pub(super) backend: Option<Arc<dyn MigrationBackend>>,
     /// The connected engine, which receives the copies.
     pub(super) target: Option<String>,
+    /// True while the workspace connects, as it does right after the first setup.
+    pub(super) connecting: bool,
     pub(super) sources: Vec<SourceOption>,
     pub(super) custom: Entity<InputState>,
     pub(super) session: Option<Arc<dyn MigrationSession>>,
@@ -41,19 +43,20 @@ pub struct MigrationAssistant {
     pub(super) error: Option<String>,
     /// The connect, scan, or copy that runs now. Dropping it cancels it.
     pub(super) task: Option<Task<()>>,
+    _workspace: Subscription,
 }
 
 impl MigrationAssistant {
     pub fn new(workspace: &Entity<Workspace>, window: &mut Window, cx: &mut Context<Self>) -> Self {
-        let target = match workspace.read(cx).connection() {
-            Connection::Connected(info) => Some(info.endpoint.clone()),
-            _ => None,
-        };
         let backend = backend(cx);
-        let sources = match (&backend, &target) {
-            (Some(backend), Some(target)) => backend.sources(target),
-            _ => Vec::new(),
-        };
+        // The first setup opens the assistant while the workspace still connects to
+        // the new engine, so the target arrives later.
+        let follow = cx.observe(workspace, |this, workspace, cx| {
+            if this.target.is_none() {
+                this.follow(workspace.read(cx).connection());
+                cx.notify();
+            }
+        });
         let custom =
             cx.new(|cx| InputState::new(window, cx).placeholder("unix:///path/to/docker.sock"));
         // Helpers left in either engine go when the assistant closes.
@@ -63,10 +66,11 @@ impl MigrationAssistant {
             }
         })
         .detach();
-        Self {
+        let mut assistant = Self {
             backend,
-            target,
-            sources,
+            target: None,
+            connecting: false,
+            sources: Vec::new(),
             custom,
             session: None,
             plan: None,
@@ -75,6 +79,22 @@ impl MigrationAssistant {
             stage: Stage::Choose,
             error: None,
             task: None,
+            _workspace: follow,
+        };
+        assistant.follow(workspace.read(cx).connection());
+        assistant
+    }
+
+    /// Takes the target, and the engines to copy from, from the workspace's
+    /// connection.
+    fn follow(&mut self, connection: &Connection) {
+        self.connecting = matches!(connection, Connection::Connecting);
+        if let Connection::Connected(info) = connection {
+            self.sources = match &self.backend {
+                Some(backend) => backend.sources(&info.endpoint),
+                None => Vec::new(),
+            };
+            self.target = Some(info.endpoint.clone());
         }
     }
 

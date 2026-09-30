@@ -14,7 +14,7 @@ Replace the M1 table with the v2 design: a branded sidebar, live stat tiles, con
 - Sidebar: Captain brand and engine state, navigation with counts, Compose projects, and an engine card with CPU count and memory.
 - Header: title, running and stopped counts, and an All / Running / Stopped filter.
 - Stat tiles: running count, total CPU, total memory, and total network rate, each with a sparkline.
-- Project cards: containers grouped by the `com.docker.compose.project` label. Standalone containers go in their own card.
+- Project cards: containers grouped by the `com.docker.compose.project` label. Containers in no project go in their own "Loose containers" card.
 - Rows: status dot, name, health badge, image and tag, published ports as links, CPU sparkline, memory, and uptime.
 - Selection: a click on a row selects it and fills the inspector.
 - Inspector header and actions: Start or Stop, Restart, Open in browser, and Delete. Delete works only on stopped containers, so it needs no confirmation dialog yet.

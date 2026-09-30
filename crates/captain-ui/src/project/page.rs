@@ -110,6 +110,7 @@ pub fn render(view: &ProjectView, cx: &mut Context<ProjectView>) -> AnyElement {
             container,
             title,
             detail: view.details.get(&container.id).map(|(_, detail)| detail),
+            oom_limit: view.oom_limit(&container.id),
             history: stats.get(&container.id),
             exits: view.recent_exits(&service),
             selected: inspector && selected.as_ref() == Some(&container.id),

@@ -10,7 +10,7 @@ use crate::icons::{CaptainIcon, cap_icon};
 use crate::theme::Palette;
 use crate::workspace::Workspace;
 
-/// One Compose project, one Kubernetes namespace, or the standalone containers, as a
+/// One Compose project, one Kubernetes namespace, or the loose containers, as a
 /// rounded card. A click on the header folds the card. A Compose card also shows the
 /// project's folder and service count, and has project actions. `project` is the Compose model of the
 /// card's project, rebuilt from all its containers, not only the visible ones.
@@ -33,7 +33,7 @@ pub fn render(
             CaptainIcon::Cluster,
         ),
         GroupKey::Standalone => (
-            "Standalone".to_string(),
+            "Loose containers".to_string(),
             palette.gray,
             CaptainIcon::Container,
         ),

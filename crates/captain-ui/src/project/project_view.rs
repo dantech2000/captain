@@ -5,6 +5,7 @@ use captain_core::format::bytes_label;
 use captain_core::model::{
     ComposeProject, ContainerDetail, ContainerState, EngineEvent, EventKind,
 };
+use captain_core::problems::MemoryRaises;
 use captain_core::project_map::StagedChanges;
 use captain_core::store::{GroupKey, compose_project};
 use gpui_kit::*;
@@ -45,6 +46,9 @@ pub struct ProjectView {
     pub(super) staged: StagedChanges,
     /// The Files tab: the Dockerfile list and the open files.
     pub(super) files: FilesState,
+    /// The memory limits raised from a card, so the card does not offer a second
+    /// raise for the same out-of-memory kill.
+    raises: MemoryRaises,
     _subscriptions: Vec<Subscription>,
 }
 
@@ -81,6 +85,7 @@ impl ProjectView {
             map: MapState::default(),
             staged: StagedChanges::default(),
             files: FilesState::default(),
+            raises: MemoryRaises::default(),
             _subscriptions: subscriptions,
         };
         view.follow(cx);
@@ -92,6 +97,13 @@ impl ProjectView {
         self.exits.get(service).map_or(0, |times| {
             times.iter().filter(|at| at.elapsed() < EXIT_WINDOW).count()
         })
+    }
+
+    /// The limit container `id` ran out of, when its last run was killed at the
+    /// current limit.
+    pub(super) fn oom_limit(&self, id: &str) -> Option<u64> {
+        let (_, detail) = self.details.get(id)?;
+        self.raises.oom_limit(detail)
     }
 
     /// Starts over for a new entry, keeps the Compose project, and inspects each
@@ -192,6 +204,10 @@ impl ProjectView {
         let Some(engine) = self.workspace.read(cx).engine() else {
             return;
         };
+        // Recorded now, so a second click does not raise the limit again.
+        if let Some((_, detail)) = self.details.get(id) {
+            self.raises.record(detail);
+        }
         let update = engine.update_memory(id, bytes);
         let (id, name) = (id.to_string(), name.to_string());
         cx.spawn(async move |this, cx| {
@@ -206,10 +222,13 @@ impl ProjectView {
                             limit: bytes_label(bytes),
                         });
                     }
-                    Err(error) => cx.emit(ProjectNotice::Failed {
-                        title: format!("Cannot change the memory limit of {name}"),
-                        error: error.to_string(),
-                    }),
+                    Err(error) => {
+                        this.raises.forget(&id);
+                        cx.emit(ProjectNotice::Failed {
+                            title: format!("Cannot change the memory limit of {name}"),
+                            error: error.to_string(),
+                        })
+                    }
                 }
                 cx.notify();
             })

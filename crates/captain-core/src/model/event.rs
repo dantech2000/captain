@@ -37,6 +37,18 @@ impl EngineEvent {
     pub fn changes_container_list(&self) -> bool {
         self.kind == EventKind::Container && Self::LIST_ACTIONS.contains(&self.action.as_str())
     }
+
+    /// True if the engine's disk use may have changed: images pulled, built, or
+    /// removed, volumes created or removed, containers created or removed.
+    pub fn changes_disk_use(&self) -> bool {
+        let action = self.action.as_str();
+        match self.kind {
+            EventKind::Image => !matches!(action, "push" | "save"),
+            EventKind::Volume => matches!(action, "create" | "destroy" | "prune"),
+            EventKind::Container => matches!(action, "create" | "destroy" | "prune"),
+            EventKind::Network | EventKind::Other => action == "prune",
+        }
+    }
 }
 
 #[cfg(test)]

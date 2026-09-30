@@ -19,6 +19,8 @@ pub struct Card<'a> {
     /// The service, or the container name when it has none.
     pub title: String,
     pub detail: Option<&'a ContainerDetail>,
+    /// The limit the last run ran out of, while a raise can still help.
+    pub oom_limit: Option<u64>,
     pub history: Option<&'a StatsHistory>,
     /// Exits in the last two minutes.
     pub exits: usize,
