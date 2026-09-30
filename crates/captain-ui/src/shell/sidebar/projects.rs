@@ -37,7 +37,7 @@ pub fn render(
                 .gap(px(4.))
                 .children(groups.into_iter().map(|group| {
                     let selected = focus.as_ref() == Some(&group.key);
-                    entry(handle, group, selected, palette)
+                    entry(handle, workspace, group, selected, palette)
                 })),
         )
 }
@@ -85,11 +85,12 @@ fn heading(handle: &Entity<Workspace>, workspace: &Workspace, palette: &Palette)
 
 fn entry(
     handle: &Entity<Workspace>,
+    workspace: &Workspace,
     group: ContainerGroup,
     selected: bool,
     palette: &Palette,
 ) -> Stateful<Div> {
-    let info = GroupInfo::of(&group, palette);
+    let info = GroupInfo::of(&group, &|id| workspace.recent_crash(id).is_some(), palette);
     let handle = handle.clone();
     let key = group.key;
     let hover = palette.hover;

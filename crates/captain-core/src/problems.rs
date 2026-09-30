@@ -7,6 +7,7 @@ use std::collections::HashMap;
 use crate::diagnostics::{Check, CheckState, Fix};
 use crate::format::bytes_label;
 use crate::model::{Container, ContainerState, Health};
+use crate::store::Crash;
 
 /// Why a restarting container stopped, from `inspect`.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
@@ -102,16 +103,27 @@ impl Problem {
     }
 }
 
-/// True while a container is restarting or its health check fails.
-pub fn needs_attention(container: &Container) -> bool {
-    container.state == ContainerState::Restarting
+/// True while a container is restarting, crashed within the last minute (`crashed`,
+/// from the event stream: a crash loop spends most of its time running), or its
+/// health check fails.
+pub fn needs_attention(container: &Container, crashed: bool) -> bool {
+    crashed
+        || container.state == ContainerState::Restarting
         || (container.state == ContainerState::Running
             && container.health == Some(Health::Unhealthy))
 }
 
 /// The number for the Dock badge: failed checks, and containers that need attention.
-pub fn problem_count(failed_checks: usize, containers: &[Container]) -> usize {
-    failed_checks + containers.iter().filter(|c| needs_attention(c)).count()
+pub fn problem_count(
+    failed_checks: usize,
+    containers: &[Container],
+    crashed: impl Fn(&str) -> bool,
+) -> usize {
+    failed_checks
+        + containers
+            .iter()
+            .filter(|c| needs_attention(c, crashed(&c.id)))
+            .count()
 }
 
 /// The limit the popover offers when a container runs out of memory: twice the old one.
@@ -122,12 +134,14 @@ pub fn raised_memory(limit: i64) -> i64 {
 /// The problem that wins the warning card. A failed engine comes first, because
 /// nothing else works without it. Then containers, worst first: out of memory,
 /// restarting, unhealthy. Failed diagnostics checks come last. `facts` holds what
-/// `inspect` said about restarting containers.
+/// `inspect` said about restarting containers; `crash` gives a container's recent
+/// crash from the event stream, if any.
 pub fn first_problem(
     engine_failure: Option<&str>,
     checks: &[Check],
     containers: &[Container],
     facts: &HashMap<String, ExitFacts>,
+    crash: &dyn Fn(&str) -> Option<Crash>,
 ) -> Option<Problem> {
     let failed = || checks.iter().filter(|c| c.state == CheckState::Failed);
     if let Some(why) = engine_failure {
@@ -142,10 +156,14 @@ pub fn first_problem(
     let restarting = || {
         containers
             .iter()
-            .filter(|c| c.state == ContainerState::Restarting)
+            .filter(|c| c.state == ContainerState::Restarting || crash(&c.id).is_some())
     };
     let out_of_memory = restarting().find_map(|c| {
-        let facts = facts.get(&c.id).filter(|facts| facts.oom_killed)?;
+        // Docker clears OOMKilled at each start; the `oom` event does not go away.
+        let oom_event = crash(&c.id).is_some_and(|crash| crash.out_of_memory);
+        let facts = facts
+            .get(&c.id)
+            .filter(|facts| facts.oom_killed || oom_event)?;
         Some(Problem::OutOfMemory {
             id: c.id.clone(),
             name: c.name.clone(),
@@ -163,7 +181,7 @@ pub fn first_problem(
         .or_else(|| {
             containers
                 .iter()
-                .find(|c| needs_attention(c))
+                .find(|c| needs_attention(c, false))
                 .map(|c| Problem::Unhealthy {
                     id: c.id.clone(),
                     name: c.name.clone(),

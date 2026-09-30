@@ -80,7 +80,9 @@ impl PopoverView {
             .store()
             .containers()
             .iter()
-            .filter(|c| c.state == ContainerState::Restarting)
+            .filter(|c| {
+                c.state == ContainerState::Restarting || workspace.recent_crash(&c.id).is_some()
+            })
             .map(|c| c.id.clone())
             .collect();
         self.facts.retain(|id, _| now.contains(id));

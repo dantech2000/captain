@@ -44,5 +44,7 @@ fn count(workspace: &Workspace, cx: &App) -> usize {
         Connection::Connected(_) => workspace.store().containers(),
         _ => &[],
     };
-    problems::problem_count(failures(cx), containers)
+    problems::problem_count(failures(cx), containers, |id| {
+        workspace.recent_crash(id).is_some()
+    })
 }

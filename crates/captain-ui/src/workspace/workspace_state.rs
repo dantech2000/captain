@@ -1,10 +1,12 @@
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
+use std::time::Instant;
 
 use captain_core::extension::ExtensionManager;
 use captain_core::model::{Container, EngineInfo, ProjectAction};
 use captain_core::store::{
-    ContainerFilter, ContainerStore, GroupKey, MultiSelection, SelectMode, StatsBoard,
+    ContainerFilter, ContainerStore, Crash, CrashTracker, GroupKey, MultiSelection, SelectMode,
+    StatsBoard,
 };
 use captain_core::{Engine, EngineError, ImageBuilder, ProjectRunner};
 use gpui_kit::*;
@@ -63,6 +65,8 @@ pub struct Workspace {
     /// True after the user hid the details panel. Selecting a container shows it
     /// again.
     pub(super) details_hidden: bool,
+    /// Containers that exited on their own lately, from the event stream.
+    pub(super) crashes: CrashTracker,
     /// The inspector tab a card button asked for, until the inspector takes it.
     pub(super) inspector_tab: Option<InspectorTab>,
     /// The Logs tab filters a ⌘K command asked for, until the inspector takes them.
@@ -100,6 +104,7 @@ impl Workspace {
             focus: None,
             card_open: false,
             details_hidden: false,
+            crashes: CrashTracker::default(),
             inspector_tab: None,
             log_filter: None,
         }
@@ -174,6 +179,11 @@ impl Workspace {
     pub fn set_filter(&mut self, filter: ContainerFilter, cx: &mut Context<Self>) {
         self.filter = filter;
         cx.notify();
+    }
+
+    /// The last crash of `id` within the last minute, if any.
+    pub fn recent_crash(&self, id: &str) -> Option<Crash> {
+        self.crashes.recent(id, Instant::now())
     }
 
     pub fn selected(&self) -> Option<&Container> {

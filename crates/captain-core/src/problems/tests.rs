@@ -39,7 +39,7 @@ fn the_worst_problem_wins_the_warning_card() {
     )]);
     let all = [unhealthy.clone(), restarting.clone(), oom];
 
-    let engine = first_problem(Some("vz failed"), &checks, &all, &facts);
+    let engine = first_problem(Some("vz failed"), &checks, &all, &facts, &|_| None);
     assert_eq!(
         engine,
         Some(Problem::EngineFailed {
@@ -47,7 +47,7 @@ fn the_worst_problem_wins_the_warning_card() {
             fix: Fix::StartEngine
         })
     );
-    let memory = first_problem(None, &checks, &all, &facts);
+    let memory = first_problem(None, &checks, &all, &facts, &|_| None);
     assert_eq!(
         memory,
         Some(Problem::OutOfMemory {
@@ -58,16 +58,16 @@ fn the_worst_problem_wins_the_warning_card() {
         })
     );
     let two = [unhealthy.clone(), restarting];
-    let first = first_problem(None, &checks, &two, &facts);
+    let first = first_problem(None, &checks, &two, &facts, &|_| None);
     assert_eq!(
         first.and_then(|p| p.container().map(|(_, n)| n.to_string())),
         Some("cache".into())
     );
-    let first = first_problem(None, &checks, &[unhealthy], &facts);
+    let first = first_problem(None, &checks, &[unhealthy], &facts, &|_| None);
     assert!(matches!(first, Some(Problem::Unhealthy { .. })));
-    let first = first_problem(None, &checks, &[], &facts);
+    let first = first_problem(None, &checks, &[], &facts, &|_| None);
     assert!(matches!(first, Some(Problem::FailedCheck(check)) if check.id == CheckId::Compose));
-    assert_eq!(first_problem(None, &[], &[], &facts), None);
+    assert_eq!(first_problem(None, &[], &[], &facts, &|_| None), None);
 }
 
 #[test]

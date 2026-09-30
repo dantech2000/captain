@@ -25,11 +25,16 @@ pub struct GroupInfo {
 }
 
 impl GroupInfo {
-    pub fn of(group: &ContainerGroup, palette: &Palette) -> Self {
+    /// `crashed` says if a container crashed lately, so a crash loop shows red even
+    /// while the container runs between restarts.
+    pub fn of(group: &ContainerGroup, crashed: &dyn Fn(&str) -> bool, palette: &Palette) -> Self {
         let shown: Vec<&Container> = group.containers.iter().filter(|c| !is_sandbox(c)).collect();
         let total = shown.len();
         let running = shown.iter().filter(|c| c.state.is_active()).count();
-        let troubled = shown.iter().filter(|c| needs_attention(c)).count();
+        let troubled = shown
+            .iter()
+            .filter(|c| crashed(&c.id) || needs_attention(c))
+            .count();
         let (summary, dot) = match running {
             0 => ("Stopped".to_string(), palette.gray),
             _ if troubled > 0 => (format!("{running} of {total}"), palette.red),

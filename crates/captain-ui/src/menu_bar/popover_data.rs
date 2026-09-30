@@ -80,7 +80,9 @@ impl PopoverData {
             HostStatus::Failed(why) => Some(why.as_str()),
             _ => None,
         });
-        let problem = first_problem(failure, &checks, containers, facts);
+        let problem = first_problem(failure, &checks, containers, facts, &|id| {
+            workspace.recent_crash(id)
+        });
         let float = problem
             .as_ref()
             .and_then(Problem::container)

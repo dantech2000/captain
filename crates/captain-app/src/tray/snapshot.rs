@@ -106,7 +106,7 @@ impl TraySnapshot {
         // The popover also weighs diagnostics checks and why a container exited;
         // the menu has neither, so it names the container problem alone.
         let problem = (engine == EngineStatus::Running)
-            .then(|| first_problem(None, &[], containers, &HashMap::new()))
+            .then(|| first_problem(None, &[], containers, &HashMap::new(), &|_| None))
             .flatten()
             .as_ref()
             .map(Problem::line);

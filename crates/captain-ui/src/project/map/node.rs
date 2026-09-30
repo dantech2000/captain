@@ -104,14 +104,18 @@ pub fn render(
                 )
                 .children(edit_button(&node, z, view, palette)),
         )
-        .child(
-            div()
-                .text_size(z.px(11.))
-                .font_family(palette.mono())
-                .text_color(palette.text3)
-                .truncate()
-                .child(container.image.clone()),
-        )
+        // A node with a fix row has no room for the image; the exit reason matters
+        // more there.
+        .when(oom_limit.is_none(), |this| {
+            this.child(
+                div()
+                    .text_size(z.px(11.))
+                    .font_family(palette.mono())
+                    .text_color(palette.text3)
+                    .truncate()
+                    .child(container.image.clone()),
+            )
+        })
         .child(
             div()
                 .text_size(z.px(11.))

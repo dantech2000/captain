@@ -73,6 +73,7 @@ impl Workspace {
             while let Some(event) = events.next().await {
                 let updated = match event {
                     Ok(event) => this.update(cx, |this, cx| {
+                        this.crashes.record(&event);
                         if event.changes_container_list() {
                             this.reload(RELOAD_DEBOUNCE, cx);
                         }

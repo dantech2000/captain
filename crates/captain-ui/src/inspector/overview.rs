@@ -117,6 +117,9 @@ fn stats_grid(container: &Container, workspace: &Workspace, palette: &Palette) -
 }
 
 fn ports(container: &Container, palette: &Palette) -> Div {
+    // The engine lists a published port once for IPv4 and once for IPv6; both are
+    // the same localhost address.
+    let mut seen = std::collections::HashSet::new();
     let rows: Vec<(String, String, Hsla)> = container
         .ports
         .iter()
@@ -131,6 +134,7 @@ fn ports(container: &Container, palette: &Palette) -> Div {
                 palette.text,
             )
         })
+        .filter(|(host, target, _)| seen.insert((host.clone(), target.clone())))
         .collect();
     let list = if rows.is_empty() {
         div()
