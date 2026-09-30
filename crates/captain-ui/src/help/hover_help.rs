@@ -7,14 +7,17 @@ pub struct Hint {
     pub keys: &'static [&'static str],
 }
 
-/// The hint of the control under the mouse, and the element that set it.
+/// The hints of the controls under the mouse, innermost last, and the elements that
+/// set them.
 ///
 /// GPUI can report the new control's hover before the old control's hover-out, so
-/// a hover-out clears the hint only when the leaving element still owns it. That
-/// keeps the bar from flickering when the mouse moves between two controls.
+/// a hover-out removes only the leaving element's hint. That keeps the bar from
+/// flickering when the mouse moves between two controls. A control inside another,
+/// such as a switch in a Settings row, shows its own hint; leaving it shows the
+/// outer one again.
 #[derive(Debug, Default)]
 pub struct HoverHelp {
-    current: Option<(ElementId, Hint)>,
+    hovered: Vec<(ElementId, Hint)>,
 }
 
 impl Hint {
@@ -47,26 +50,22 @@ impl From<SharedString> for Hint {
 
 impl HoverHelp {
     pub fn hint(&self) -> Option<&Hint> {
-        self.current.as_ref().map(|(_, hint)| hint)
+        self.hovered.last().map(|(_, hint)| hint)
     }
 
     /// The mouse entered `owner`. True if the hint changed.
     pub fn enter(&mut self, owner: ElementId, hint: Hint) -> bool {
-        let next = Some((owner, hint));
-        if self.current == next {
-            return false;
-        }
-        self.current = next;
-        true
+        let before = self.hint().cloned();
+        self.hovered.retain(|(id, _)| *id != owner);
+        self.hovered.push((owner, hint));
+        self.hint() != before.as_ref()
     }
 
     /// The mouse left `owner`. True if the hint changed.
     pub fn leave(&mut self, owner: &ElementId) -> bool {
-        if self.current.as_ref().is_some_and(|(id, _)| id == owner) {
-            self.current = None;
-            return true;
-        }
-        false
+        let before = self.hint().cloned();
+        self.hovered.retain(|(id, _)| id != owner);
+        self.hint() != before.as_ref()
     }
 }
 
@@ -95,7 +94,8 @@ pub fn hover_help(cx: &App) -> Option<Entity<HoverHelp>> {
 pub fn clear(cx: &mut App) {
     if let Some(model) = hover_help(cx) {
         model.update(cx, |help, cx| {
-            if help.current.take().is_some() {
+            if !help.hovered.is_empty() {
+                help.hovered.clear();
                 cx.notify();
             }
         });

@@ -12,7 +12,6 @@ fn entry(name: &str, state: ContainerState, project: Option<&str>) -> ContainerE
         state,
         project: project.map(Into::into),
         ports: Vec::new(),
-        health: None,
     }
 }
 
@@ -22,6 +21,7 @@ fn snapshot(containers: Vec<ContainerEntry>) -> TraySnapshot {
         containers,
         host: None,
         contexts: Default::default(),
+        problem: None,
     }
 }
 
@@ -55,6 +55,7 @@ fn a_stopped_engine_shows_status_open_settings_and_quit() {
         containers: Vec::new(),
         host: None,
         contexts: Default::default(),
+        problem: None,
     });
     assert_eq!(
         labels(&menu),
@@ -186,6 +187,7 @@ fn with_host(engine: EngineStatus, status: HostStatus) -> TraySnapshot {
             can_control: true,
         }),
         contexts: Default::default(),
+        problem: None,
     }
 }
 

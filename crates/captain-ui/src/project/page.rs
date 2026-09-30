@@ -4,7 +4,8 @@ use gpui_kit::*;
 
 use super::group_info::{is_sandbox, service_name};
 use super::service_card::{self, Card};
-use super::{ProjectView, header, open_row, tasks_card};
+use super::view_tabs::{self, ProjectTab};
+use super::{ProjectView, header, map, open_row, tasks_card};
 use crate::engine_host::host_screen;
 use crate::theme::Palette;
 use crate::workspace::Connection;
@@ -47,6 +48,39 @@ pub fn render(view: &ProjectView, cx: &mut Context<ProjectView>) -> AnyElement {
         .project
         .as_ref()
         .filter(|_| matches!(key, GroupKey::Project(_)));
+
+    let staged = view
+        .staged
+        .changes()
+        .iter()
+        .filter(|c| containers.iter().any(|shown| shown.id == c.container_id))
+        .count();
+    let tabs = view_tabs::render(view.tab, staged, &weak, &palette);
+    let header = header::render(
+        (&key, project),
+        (active, containers.len()),
+        &handle,
+        workspace,
+        &weak,
+        tabs,
+        &palette,
+    );
+    if view.tab == ProjectTab::Map {
+        return div()
+            .size_full()
+            .flex()
+            .flex_col()
+            .child(header)
+            .child(map::render(
+                view,
+                &containers,
+                &handle,
+                workspace,
+                &weak,
+                &palette,
+            ))
+            .into_any_element();
+    }
 
     let doors = open_row::doors(&containers);
     let stats = workspace.stats();
@@ -91,15 +125,7 @@ pub fn render(view: &ProjectView, cx: &mut Context<ProjectView>) -> AnyElement {
         .size_full()
         .flex()
         .flex_col()
-        .child(header::render(
-            &key,
-            project,
-            (active, containers.len()),
-            &handle,
-            workspace,
-            &weak,
-            &palette,
-        ))
+        .child(header)
         .children((!doors.is_empty()).then(|| open_row::render(doors, &weak, &palette)))
         .child(
             div()

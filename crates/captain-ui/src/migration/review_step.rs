@@ -189,15 +189,24 @@ fn image_choice(
     cx: &mut Context<MigrationAssistant>,
 ) -> Div {
     let segments = [
-        (ImageChoice::All, "All images"),
-        (ImageChoice::InUse, "Only in use"),
+        (
+            ImageChoice::All,
+            "All images",
+            "Copy every image, also the ones no container uses.",
+        ),
+        (
+            ImageChoice::InUse,
+            "Only in use",
+            "Copy only the images that a container uses.",
+        ),
     ]
     .into_iter()
-    .map(|(value, label)| {
+    .map(|(value, label, help)| {
         let this = cx.entity().downgrade();
         Segment {
             label: label.into(),
             selected: choice == value,
+            help: help.into(),
             on_click: Box::new(move |_, cx| {
                 this.update(cx, |view, cx| view.set_image_choice(value, cx))
                     .ok();

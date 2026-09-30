@@ -1,8 +1,8 @@
 use captain_core::model::{Container, ContainerAction};
 use gpui_kit::component::WindowExt;
-use gpui_kit::component::button::ButtonVariant;
 use gpui_kit::*;
 
+use crate::widgets::danger_footer;
 use crate::workspace::Workspace;
 
 /// Asks before deleting `container`. A live container can only be deleted here, with
@@ -27,9 +27,7 @@ pub fn open(container: &Container, handle: Entity<Workspace>, window: &mut Windo
         alert
             .title(title.clone())
             .description(description.clone())
-            .show_cancel(true)
-            .ok_text(action.label())
-            .ok_variant(ButtonVariant::Danger)
+            .footer(danger_footer(action.label(), description.clone()))
             .on_ok(move |_, _, cx| {
                 handle.update(cx, |workspace, cx| {
                     if workspace.engine_generation() == generation {

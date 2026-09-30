@@ -1,9 +1,9 @@
 use captain_core::extension::InstalledExtension;
 use gpui_kit::component::WindowExt;
-use gpui_kit::component::button::ButtonVariant;
 use gpui_kit::*;
 
 use super::ExtensionsModel;
+use crate::widgets::danger_footer;
 
 /// Asks before removing an extension with its backend, files, and image.
 pub fn open(
@@ -20,9 +20,10 @@ pub fn open(
                 "Captain closes its window, stops its backend and deletes the backend's \
                  volumes, deletes its files, and removes its image.",
             )
-            .show_cancel(true)
-            .ok_text("Remove")
-            .ok_variant(ButtonVariant::Danger)
+            .footer(danger_footer(
+                "Remove",
+                "Remove the extension and stop its backend.",
+            ))
             .on_ok(move |_, _, cx| {
                 let extension = extension.clone();
                 model.update(cx, |model, cx| model.remove(extension, cx));

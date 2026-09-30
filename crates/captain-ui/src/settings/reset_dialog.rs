@@ -1,8 +1,8 @@
 use gpui_kit::component::WindowExt;
-use gpui_kit::component::button::ButtonVariant;
 use gpui_kit::*;
 
 use crate::engine_host::HostModel;
+use crate::widgets::danger_footer;
 
 /// Asks before Reset, which deletes the VM and everything in it.
 pub fn open(model: Entity<HostModel>, window: &mut Window, cx: &mut App) {
@@ -14,9 +14,10 @@ pub fn open(model: Entity<HostModel>, window: &mut Window, cx: &mut App) {
                 "This deletes the VM and all its containers, images, and volumes. \
                  It cannot be undone. The next start sets up a new, empty engine.",
             )
-            .show_cancel(true)
-            .ok_text("Reset")
-            .ok_variant(ButtonVariant::Danger)
+            .footer(danger_footer(
+                "Reset",
+                "Delete Captain Engine with all its containers, images, and volumes.",
+            ))
             .on_ok(move |_, _, cx| {
                 model.update(cx, |model, cx| model.reset(cx));
                 true

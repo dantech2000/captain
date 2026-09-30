@@ -147,7 +147,7 @@ fn usage_row(card: &Card, palette: &Palette) -> Div {
     };
     let series = card.history.map(|h| h.cpu_series()).unwrap_or_default();
     let line = if running {
-        palette.accent
+        palette.accent_fg
     } else {
         palette.gray
     };

@@ -11,6 +11,7 @@ use gpui_kit::*;
 use super::SettingsView;
 use super::daemon_form::DaemonForm;
 use crate::engine_host::HostModel;
+use crate::help::HelpExt;
 use crate::theme::Palette;
 use crate::widgets::{ButtonTone, inline_error, settings_card, settings_row, text_button};
 
@@ -32,18 +33,21 @@ pub fn render(
     }
     rows.push(area_row(
         "Registry mirrors",
+        "Registry servers that Docker tries before Docker Hub.",
         "One URL per line, with https:// or http://.",
         Textarea::new(&form.mirrors),
         palette,
     ));
     rows.push(area_row(
         "Insecure registries",
+        "Registries that Docker reaches over plain HTTP or with an untrusted certificate.",
         "One host:port or CIDR per line. Docker uses plain HTTP for them.",
         Textarea::new(&form.insecure),
         palette,
     ));
     rows.push(area_row(
         "Custom daemon.json",
+        "Other dockerd settings, as JSON. Save checks them.",
         "A JSON object with other dockerd keys. Captain manages hosts, containerd, and the two features Captain Engine needs.",
         Textarea::new(&form.custom),
         palette,
@@ -70,11 +74,14 @@ fn restart_row(model: &Entity<HostModel>, palette: &Palette) -> AnyElement {
         ),
         palette,
     )
+    .id("settings-daemon-restart")
+    .help("Restart Captain Engine to use the saved daemon settings.")
     .into_any_element()
 }
 
 fn area_row(
     label: &'static str,
+    help: &'static str,
     note: &'static str,
     area: Textarea,
     palette: &Palette,
@@ -85,6 +92,8 @@ fn area_row(
         div().w(px(320.)).child(area.small()),
         palette,
     )
+    .id(label)
+    .help(help)
     .into_any_element()
 }
 
@@ -121,6 +130,8 @@ fn tcp_row(
         control,
         palette,
     )
+    .id("settings-daemon-tcp")
+    .help("Let programs on this computer reach Docker on this TCP port, without TLS.")
     .into_any_element()
 }
 
@@ -144,5 +155,8 @@ fn save_row(form: &DaemonForm, palette: &Palette, cx: &mut Context<SettingsView>
                 .clone()
                 .map(|error| inline_error(error, palette).max_w(px(320.))),
         );
-    settings_row("Save", Some(note), control, palette).into_any_element()
+    settings_row("Save", Some(note), control, palette)
+        .id("settings-daemon-save")
+        .help("Save the daemon settings. They apply the next time Captain Engine starts.")
+        .into_any_element()
 }

@@ -21,6 +21,7 @@ mod port;
 mod port_link;
 mod process;
 mod project_task;
+mod resource_update;
 mod stats;
 mod volume;
 
@@ -52,6 +53,7 @@ pub use port::PortMapping;
 pub use port_link::PortLink;
 pub use process::ProcessTable;
 pub use project_task::{ProjectTask, ProjectTasks, TaskCommand, TaskOutput};
+pub use resource_update::ResourceUpdate;
 pub use stats::{StatsSample, cpu_percent};
 #[allow(unused_imports)]
 pub use volume::*;

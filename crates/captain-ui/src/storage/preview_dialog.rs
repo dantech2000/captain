@@ -6,6 +6,7 @@ use gpui_kit::component::WindowExt;
 use gpui_kit::*;
 
 use super::StorageModel;
+use crate::help::HelpExt;
 use crate::theme::Palette;
 use crate::widgets::{ButtonTone, text_button};
 
@@ -40,7 +41,8 @@ impl Render for PreviewDialog {
                 .ok();
                 window.close_dialog(cx);
             },
-        );
+        )
+        .help("Remove the listed items. Nothing a container uses is on the list.");
         let cancel = text_button(
             "storage-preview-cancel",
             "Cancel",
@@ -48,7 +50,8 @@ impl Render for PreviewDialog {
             true,
             &palette,
             |_, window, cx| window.close_dialog(cx),
-        );
+        )
+        .help("Close this dialog. Nothing is removed.");
         let note = if self.snapshot_first {
             "Captain Engine saves a snapshot first and restarts. Then these items are removed."
         } else {

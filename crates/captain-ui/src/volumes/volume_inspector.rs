@@ -22,7 +22,7 @@ pub fn render(
     let color = volume
         .compose_project
         .as_deref()
-        .map_or(palette.accent, |p| palette.project_color(p));
+        .map_or(palette.accent_fg, |p| palette.project_color(p));
     let header = DetailHeader {
         icon: CaptainIcon::Volume,
         color,

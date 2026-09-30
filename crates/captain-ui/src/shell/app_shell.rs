@@ -2,7 +2,7 @@ use gpui_kit::component::WindowExt;
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::*;
 
-use super::sidebar;
+use super::sidebar::{self, DiskSummary};
 use super::status_bar::StatusBar;
 use crate::containers::ContainersView;
 use crate::diagnostics::{DiagnosticsView, diagnostics_model, failures};
@@ -19,7 +19,7 @@ use crate::port_forwarding::PortForwardingView;
 use crate::project::{ProjectNotice, ProjectView};
 use crate::settings::{self, SettingsView};
 use crate::snapshots::SnapshotsView;
-use crate::storage::StorageView;
+use crate::storage::{StorageView, storage_model};
 use crate::theme::Palette;
 use crate::volumes::VolumesView;
 use crate::workspace::{Connection, Connector, Page, Workspace, WorkspaceEvent};
@@ -92,6 +92,9 @@ impl AppShell {
         // The sidebar badge counts failed checks.
         subscriptions
             .extend(diagnostics_model(cx).map(|model| cx.observe(&model, |_, _, cx| cx.notify())));
+        // The sidebar's Disk card.
+        subscriptions
+            .extend(storage_model(cx).map(|model| cx.observe(&model, |_, _, cx| cx.notify())));
         let focus_handle = cx.focus_handle();
         focus_handle.focus(window, cx);
 
@@ -197,6 +200,7 @@ impl Render for AppShell {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let palette = Palette::of(cx);
         let host = host_summary(cx);
+        let disk = disk_summary(cx);
         // The page shows only while the cluster runs. See feature 0024.
         let forwarding =
             kubernetes_model(cx).is_some_and(|model| model.read(cx).status().is_running());
@@ -234,6 +238,7 @@ impl Render for AppShell {
                         &self.workspace,
                         workspace,
                         host.as_ref(),
+                        disk.as_ref(),
                         failures(cx),
                         forwarding,
                         &palette,
@@ -253,4 +258,14 @@ impl Render for AppShell {
                     .child(command_palette)
             }))
     }
+}
+
+/// The Disk card's data, once the storage model has read the disk use.
+fn disk_summary(cx: &App) -> Option<DiskSummary> {
+    let model = storage_model(cx)?;
+    let model = model.read(cx);
+    Some(DiskSummary {
+        breakdown: model.breakdown(cx)?,
+        freeable: model.default_bytes(),
+    })
 }

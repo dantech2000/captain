@@ -17,7 +17,8 @@ The main window opens on what the user works on: a project. The sidebar lists Co
   - One entry per Kubernetes namespace that has containers, only while "Show Kubernetes containers" is on: a cluster glyph and "Kubernetes · N pods".
   - "Loose containers": the containers in no project and no namespace.
   - A spacer, then a row of icon buttons for the pages of all resources: Images, Volumes, Networks, Snapshots, Extensions, Port Forwarding (while the cluster runs), Diagnostics (with the failure badge), and Settings. It replaces the list of pages.
-  - The engine card at the bottom. It keeps its height when the engine stops or starts, so the entries above it and its Start button do not move.
+  - The Disk card above the icon row (feature 0031).
+  - The engine card at the bottom: CPU and memory gauges, and with Captain Engine a Start, Set up, or Stop button. It has no title, because the engine header names the engine and its state. It keeps its height when the engine stops or starts, so the entries above it and its button do not move.
 - **Project page** (`Page::Project`, for the sidebar entry in `Workspace::focus`). It works for all three kinds of entries. The header buttons, the Open row, and tasks need a Compose project.
   1. **Header.** The working folder and Compose file in mono, the name in large type, then Open folder, Terminal, Down, and a primary Restart project (Up while nothing runs).
   2. **Open row.** One pill per published port: the service and `localhost:PORT`. A click opens `http://localhost:PORT`. Well-known ports of databases and brokers (5432, 3306, 6379, 27017, 9092, and a few more) copy the address instead, and the help says so.
@@ -56,7 +57,6 @@ The main window opens on what the user works on: a project. The sidebar lists Co
 - `DOCKER_HOST` in the new Terminal window. `open -a Terminal DIR` cannot pass environment variables, so the shell uses the user's docker context. The help says so.
 - Output that streams while a task runs. The card shows the output when the task ends.
 - Shortcuts (⌘O, ⌘T, ⌘⇧R) from the design. They come with the command grammar (M27).
-- The Disk card in the sidebar (M25). The sidebar keeps a place for it above the icon row.
 
 ## Notes
 
@@ -75,4 +75,4 @@ The main window opens on what the user works on: a project. The sidebar lists Co
 5. Run `docker update --memory 64m --memory-swap 128m` on a service, then make it allocate more memory. Check the red divider in the log and the "Exit 137 · out of memory" note. Click "Raise memory to 512 MB"; check `docker inspect` shows the new limit.
 6. Restart the project. Check that the log keeps the old lines and adds new ones below a divider.
 7. Turn Kubernetes on and show its containers. Check the namespace entry and the `pod/container` names. Hide them; check that the Memory tile and the menu bar count drop.
-8. Stop and start the engine. Check that the sidebar entries and the Start button do not move.
+8. Stop and start the engine. Check that the sidebar entries and the Start button do not move, and that "Captain Engine" shows only in the header.

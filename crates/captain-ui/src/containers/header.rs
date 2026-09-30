@@ -33,6 +33,14 @@ pub fn render(
             Segment {
                 label: filter.label().into(),
                 selected: workspace.filter() == filter,
+                help: match filter {
+                    ContainerFilter::All => "Show all containers.",
+                    ContainerFilter::Running => {
+                        "Show only running, paused, and restarting containers."
+                    }
+                    ContainerFilter::Stopped => "Show only stopped and created containers.",
+                }
+                .into(),
                 on_click: Box::new(move |_, cx| {
                     handle.update(cx, |workspace, cx| workspace.set_filter(filter, cx));
                 }),
@@ -83,6 +91,7 @@ pub fn render(
 fn kubernetes_toggle(handle: &Entity<Workspace>, workspace: &Workspace) -> impl IntoElement {
     let handle = handle.clone();
     div()
+        .id("show-kubernetes-help")
         .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
         .child(
             Checkbox::new("show-kubernetes")
@@ -94,6 +103,7 @@ fn kubernetes_toggle(handle: &Entity<Workspace>, workspace: &Workspace) -> impl 
                     });
                 }),
         )
+        .help("Show the containers that Kubernetes runs for its pods, one card per namespace.")
 }
 
 /// "Project: shop ✕". A click clears the project filter.

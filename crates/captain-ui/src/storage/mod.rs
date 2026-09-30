@@ -12,6 +12,7 @@ mod storage_model;
 mod storage_view;
 mod weekly;
 
+pub use disk_header::category_color;
 pub use storage_event::StorageEvent;
 pub use storage_model::{StorageModel, init, storage_model};
 pub use storage_view::StorageView;

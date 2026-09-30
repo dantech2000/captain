@@ -6,6 +6,7 @@ use gpui_kit::component::checkbox::Checkbox;
 use gpui_kit::*;
 
 use super::SnapshotsModel;
+use crate::help::HelpExt;
 use crate::theme::Palette;
 use crate::widgets::{ButtonTone, text_button};
 
@@ -37,7 +38,8 @@ impl Render for RestoreDialog {
                 .ok();
                 window.close_dialog(cx);
             },
-        );
+        )
+        .help("Replace the engine's state with this snapshot. Captain Engine restarts.");
         let cancel = text_button(
             "snapshot-restore-cancel",
             "Cancel",
@@ -45,7 +47,8 @@ impl Render for RestoreDialog {
             true,
             &palette,
             |_, window, cx| window.close_dialog(cx),
-        );
+        )
+        .help("Close this dialog. Nothing changes.");
         div()
             .flex()
             .flex_col()
@@ -56,17 +59,22 @@ impl Render for RestoreDialog {
                  images, and volumes made since then are lost. Captain Engine restarts.",
             ))
             .child(
-                Checkbox::new("snapshot-save-first")
-                    .label("Save the current state as a snapshot first")
-                    .checked(self.save_first)
-                    .on_click(move |checked, _, cx| {
-                        toggle
-                            .update(cx, |dialog, cx| {
-                                dialog.save_first = *checked;
-                                cx.notify();
-                            })
-                            .ok();
-                    }),
+                div()
+                    .id("snapshot-save-first-row")
+                    .child(
+                        Checkbox::new("snapshot-save-first")
+                            .label("Save the current state as a snapshot first")
+                            .checked(self.save_first)
+                            .on_click(move |checked, _, cx| {
+                                toggle
+                                    .update(cx, |dialog, cx| {
+                                        dialog.save_first = *checked;
+                                        cx.notify();
+                                    })
+                                    .ok();
+                            }),
+                    )
+                    .help("Save the current state as a snapshot first, so you can go back to it."),
             )
             .child(
                 div()

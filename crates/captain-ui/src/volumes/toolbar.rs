@@ -53,6 +53,12 @@ fn filter(view: &VolumesView, cx: &mut Context<VolumesView>, palette: &Palette) 
             Segment {
                 label: filter.label().into(),
                 selected: view.filter == filter,
+                help: match filter {
+                    UsageFilter::All => "Show all volumes.",
+                    UsageFilter::InUse => "Show only the volumes that a container uses.",
+                    UsageFilter::Unused => "Show only the volumes that no container uses.",
+                }
+                .into(),
                 on_click: Box::new(move |_, cx| {
                     this.update(cx, |this, cx| {
                         this.filter = filter;

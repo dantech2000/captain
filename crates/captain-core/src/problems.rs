@@ -1,9 +1,11 @@
-//! The problems that the menu bar popover warns about and the Dock badge counts.
-//! See docs/features/0032-menu-bar-popover.md.
+//! The problems that the menu bar popover warns about and the Dock badge counts, and
+//! the one wording that the popover and the tray menu use for them. See
+//! docs/features/0032-menu-bar-popover.md.
 
 use std::collections::HashMap;
 
 use crate::diagnostics::{Check, CheckState, Fix};
+use crate::format::bytes_label;
 use crate::model::{Container, ContainerState, Health};
 
 /// Why a restarting container stopped, from `inspect`.
@@ -52,6 +54,51 @@ impl Problem {
             | Self::Unhealthy { id, name } => Some((id, name)),
             Self::EngineFailed { .. } | Self::FailedCheck(_) => None,
         }
+    }
+
+    /// The problem as a sentence: the container's name, if any, which the popover
+    /// shows in bold, and the rest of the sentence.
+    pub fn sentence(&self) -> (Option<&str>, String) {
+        match self {
+            Self::EngineFailed { why, .. } => {
+                (None, format!("Captain Engine did not start: {why}"))
+            }
+            Self::OutOfMemory {
+                name,
+                limit,
+                restarts,
+                ..
+            } => {
+                let times = match restarts {
+                    1 => "once".to_string(),
+                    n => format!("{n} times"),
+                };
+                let cause = if *limit > 0 {
+                    format!("out of memory at {}", bytes_label(*limit as u64))
+                } else {
+                    "the engine ran out of memory".to_string()
+                };
+                (
+                    Some(name),
+                    format!(" keeps restarting: {cause}, restarted {times}."),
+                )
+            }
+            Self::Restarting { name, .. } => (
+                Some(name),
+                " keeps restarting: its process exits with an error. The logs say why.".into(),
+            ),
+            Self::Unhealthy { name, .. } => (
+                Some(name),
+                " fails its health check. The logs say why; a restart often helps.".into(),
+            ),
+            Self::FailedCheck(check) => (None, format!("{}: {}", check.id.title(), check.detail)),
+        }
+    }
+
+    /// [`Problem::sentence`] as one plain line, for the tray menu.
+    pub fn line(&self) -> String {
+        let (name, rest) = self.sentence();
+        format!("{}{rest}", name.unwrap_or_default())
     }
 }
 

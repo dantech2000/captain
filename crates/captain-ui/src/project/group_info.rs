@@ -79,7 +79,7 @@ impl GroupInfo {
                     namespace.clone(),
                     kind,
                     CaptainIcon::Cluster,
-                    palette.accent,
+                    palette.accent_fg,
                     help,
                 )
             }

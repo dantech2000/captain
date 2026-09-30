@@ -74,7 +74,7 @@ pub fn render(
                         series,
                         scales::CPU,
                         if running {
-                            palette.accent
+                            palette.accent_fg
                         } else {
                             palette.text3
                         },

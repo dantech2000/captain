@@ -1,6 +1,7 @@
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::*;
 
+use crate::help::HelpExt;
 use crate::theme::Palette;
 
 /// Runs when a segment is clicked.
@@ -10,6 +11,8 @@ pub type SegmentHandler = Box<dyn Fn(&mut Window, &mut App)>;
 pub struct Segment {
     pub label: SharedString,
     pub selected: bool,
+    /// The status bar's sentence for this choice.
+    pub help: SharedString,
     pub on_click: SegmentHandler,
 }
 
@@ -49,5 +52,6 @@ pub fn segmented(id: &'static str, segments: Vec<Segment>, palette: &Palette) ->
                 })
                 .on_click(move |_, window, cx| on_click(window, cx))
                 .child(segment.label)
+                .help(segment.help)
         }))
 }

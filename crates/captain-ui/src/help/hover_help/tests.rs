@@ -21,3 +21,14 @@ fn leaving_a_control_keeps_the_hint_of_the_next_one() {
     assert!(help.leave(&b));
     assert_eq!(help.hint(), None);
 }
+
+#[test]
+fn leaving_an_inner_control_shows_the_outer_hint_again() {
+    let (row, switch) = (ElementId::from("row"), ElementId::from("switch"));
+    let mut help = HoverHelp::default();
+    help.enter(row.clone(), hint("Row"));
+    help.enter(switch.clone(), hint("Switch"));
+
+    assert!(help.leave(&switch));
+    assert_eq!(help.hint().map(|h| h.text.as_ref()), Some("Row"));
+}

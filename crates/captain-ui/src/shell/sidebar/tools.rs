@@ -85,7 +85,7 @@ fn tool(
             page.icon(),
             px(18.),
             if selected {
-                palette.accent
+                palette.accent_fg
             } else {
                 palette.text2
             },

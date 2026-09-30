@@ -7,14 +7,14 @@ use std::path::{Path, PathBuf};
 
 use std::pin::pin;
 
-use bollard::models::ContainerUpdateBody;
 use bollard::query_parameters::{
     ListContainersOptionsBuilder, LogsOptionsBuilder, RemoveContainerOptionsBuilder,
     StatsOptionsBuilder, TopOptions,
 };
 use captain_core::model::{
     Container, ContainerAction, ContainerDetail, DiskUsage, EngineEvent, EngineInfo, ExecSession,
-    ExecSpec, FileEntry, FilePreview, LogLine, LogOptions, ProcessTable, StatsSample,
+    ExecSpec, FileEntry, FilePreview, LogLine, LogOptions, ProcessTable, ResourceUpdate,
+    StatsSample,
 };
 use captain_core::{ContainerApi, EngineFuture, EngineStream};
 use futures::StreamExt;
@@ -184,26 +184,29 @@ impl ContainerApi for DockerEngine {
     }
 
     fn update_memory(&self, id: &str, bytes: u64) -> EngineFuture<()> {
-        let docker = self.docker.clone();
-        let id = id.to_string();
-        let memory = i64::try_from(bytes).unwrap_or(i64::MAX);
-        runtime::spawn(self.runtime.handle(), async move {
-            let body = ContainerUpdateBody {
-                memory: Some(memory),
-                memory_swap: Some(memory.saturating_mul(2)),
-                ..ContainerUpdateBody::default()
-            };
-            docker
-                .update_container(&id, body)
-                .await
-                .map_err(mapping::engine_error)
-        })
+        let update = ResourceUpdate {
+            memory: Some(bytes),
+            ..ResourceUpdate::default()
+        };
+        self.update_resources(id, update)
     }
 
     fn disk_usage(&self) -> EngineFuture<DiskUsage> {
         let docker = self.docker.clone();
         runtime::spawn(self.runtime.handle(), async move {
             super::disk::disk_usage(&docker).await
+        })
+    }
+
+    fn update_resources(&self, id: &str, update: ResourceUpdate) -> EngineFuture<()> {
+        let docker = self.docker.clone();
+        let id = id.to_string();
+        let body = mapping::update_body(update);
+        runtime::spawn(self.runtime.handle(), async move {
+            docker
+                .update_container(&id, body)
+                .await
+                .map_err(mapping::engine_error)
         })
     }
 }

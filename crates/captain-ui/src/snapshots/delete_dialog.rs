@@ -1,9 +1,9 @@
 use captain_core::snapshot::Snapshot;
 use gpui_kit::component::WindowExt;
-use gpui_kit::component::button::ButtonVariant;
 use gpui_kit::*;
 
 use super::SnapshotsModel;
+use crate::widgets::danger_footer;
 
 /// Asks before deleting a snapshot. The engine keeps running.
 pub fn open(model: Entity<SnapshotsModel>, snapshot: Snapshot, window: &mut Window, cx: &mut App) {
@@ -12,9 +12,10 @@ pub fn open(model: Entity<SnapshotsModel>, snapshot: Snapshot, window: &mut Wind
         alert
             .title(format!("Delete \"{}\"?", snapshot.metadata.name))
             .description("This deletes the snapshot. It cannot be undone.")
-            .show_cancel(true)
-            .ok_text("Delete")
-            .ok_variant(ButtonVariant::Danger)
+            .footer(danger_footer(
+                "Delete",
+                "Delete this snapshot from this computer.",
+            ))
             .on_ok(move |_, _, cx| {
                 let snapshot = snapshot.clone();
                 model.update(cx, |model, cx| model.delete(snapshot, cx));

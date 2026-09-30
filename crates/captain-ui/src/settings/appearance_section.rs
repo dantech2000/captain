@@ -3,6 +3,7 @@ use gpui_kit::*;
 
 use super::store;
 use super::theme_card::theme_card;
+use crate::help::HelpExt;
 use crate::theme::Palette;
 use crate::widgets::{Segment, segmented, settings_card, settings_row};
 
@@ -13,6 +14,12 @@ pub fn render(settings: &Settings, palette: &Palette) -> Div {
         .map(|appearance| Segment {
             label: appearance.label().into(),
             selected: settings.appearance == appearance,
+            help: match appearance {
+                Appearance::System => "Follow the light or dark mode of the system.",
+                Appearance::Light => "Always use the light colors.",
+                Appearance::Dark => "Always use the dark colors.",
+            }
+            .into(),
             on_click: Box::new(move |_, cx| {
                 store::update(cx, |settings| settings.appearance = appearance)
             }),
@@ -34,6 +41,8 @@ pub fn render(settings: &Settings, palette: &Palette) -> Div {
                 themes,
                 palette,
             )
+            .id("settings-theme")
+            .help("Choose Captain's colors.")
             .into_any_element(),
             settings_row(
                 "Appearance",
@@ -41,6 +50,8 @@ pub fn render(settings: &Settings, palette: &Palette) -> Div {
                 segmented("appearance-mode", modes, palette),
                 palette,
             )
+            .id("settings-appearance")
+            .help("Choose light or dark, or follow the system.")
             .into_any_element(),
         ],
         palette,

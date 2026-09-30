@@ -5,13 +5,13 @@ use std::path::{Path, PathBuf};
 
 use captain_core::behavior::docker_socket::{DEFAULT_SOCKET, LinkAction, SocketLink, socket_path};
 use gpui_kit::component::WindowExt;
-use gpui_kit::component::button::ButtonVariant;
 use gpui_kit::*;
 
 use super::{SettingsView, system};
 use crate::engine_host::captain_endpoint;
+use crate::help::HelpExt;
 use crate::theme::Palette;
-use crate::widgets::{ButtonTone, settings_card, settings_row, text_button};
+use crate::widgets::{ButtonTone, danger_footer, settings_card, settings_row, text_button};
 
 /// A link or unlink in progress, or the error of the last one.
 #[derive(Default)]
@@ -64,7 +64,7 @@ pub fn render(
     );
     Some(settings_card(
         "Administrative access",
-        [settings_row("Default Docker socket", Some(note), button, palette).into_any_element()],
+        [settings_row("Default Docker socket", Some(note), button, palette).id("settings-admin-socket").help("Link the default Docker socket to Captain Engine, so tools that do not read contexts find it.").into_any_element()],
         palette,
     ))
 }
@@ -90,9 +90,10 @@ fn confirm(
         alert
             .title("Replace the Docker socket?")
             .description(description.clone())
-            .show_cancel(true)
-            .ok_text("Replace")
-            .ok_variant(ButtonVariant::Danger)
+            .footer(danger_footer(
+                "Replace",
+                "Replace the file at the default Docker socket with a link to Captain Engine.",
+            ))
             .on_ok(move |_, _, cx| {
                 run(
                     view.clone(),

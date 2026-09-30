@@ -4,6 +4,7 @@ use gpui_kit::*;
 
 use super::engine_source::DetectedEndpoint;
 use super::{SettingsView, context_rows};
+use crate::help::HelpExt;
 use crate::theme::Palette;
 use crate::widgets::{ButtonTone, settings_card, settings_row, text_button};
 use crate::workspace::Connection;
@@ -73,6 +74,8 @@ fn detected_row(
         button,
         palette,
     )
+    .id(("settings-detected", ix))
+    .help(format!("Connect to the engine at {}.", detected.host))
     .into_any_element()
 }
 
@@ -90,6 +93,8 @@ fn rescan_row(palette: &Palette, cx: &mut Context<SettingsView>) -> AnyElement {
         ),
         palette,
     )
+    .id("settings-rescan")
+    .help("Look again for engines: DOCKER_HOST, the Docker contexts, and known sockets.")
     .into_any_element()
 }
 
@@ -129,5 +134,7 @@ fn custom_row(
         control,
         palette,
     )
+    .id("settings-custom-endpoint")
+    .help("Type the URL of an engine, then connect to it with Use this engine.")
     .into_any_element()
 }

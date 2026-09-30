@@ -151,8 +151,9 @@ pub fn render(
         )
 }
 
-/// Neutral colors: the bar shows amounts, not states.
-fn category_color(category: Category, palette: &Palette) -> Hsla {
+/// Neutral colors: the bar shows amounts, not states. The sidebar's Disk card uses
+/// them too.
+pub fn category_color(category: Category, palette: &Palette) -> Hsla {
     match category {
         Category::Images => palette.info,
         Category::Volumes => palette.info.opacity(0.6),

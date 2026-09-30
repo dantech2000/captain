@@ -40,6 +40,12 @@ fn filter(view: &NetworksView, cx: &mut Context<NetworksView>, palette: &Palette
             Segment {
                 label: filter.label().into(),
                 selected: view.filter == filter,
+                help: match filter {
+                    UsageFilter::All => "Show all networks.",
+                    UsageFilter::InUse => "Show only the networks that a container uses.",
+                    UsageFilter::Unused => "Show only the networks that no container uses.",
+                }
+                .into(),
                 on_click: Box::new(move |_, cx| {
                     this.update(cx, |this, cx| {
                         this.filter = filter;

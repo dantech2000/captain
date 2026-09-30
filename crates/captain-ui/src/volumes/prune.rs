@@ -1,10 +1,10 @@
 use std::time::Duration;
 
 use gpui_kit::component::WindowExt;
-use gpui_kit::component::button::ButtonVariant;
 use gpui_kit::*;
 
 use super::VolumesView;
+use crate::widgets::danger_footer;
 
 impl VolumesView {
     /// Removes unused volumes and shows what went as a notice. Without `all`, the
@@ -58,9 +58,10 @@ impl VolumesView {
                     "This removes every volume that no container uses, named volumes \
                      included. Their data cannot be recovered.",
                 )
-                .show_cancel(true)
-                .ok_text("Prune all")
-                .ok_variant(ButtonVariant::Danger)
+                .footer(danger_footer(
+                    "Prune all",
+                    "Delete every volume that no container uses, and its data.",
+                ))
                 .on_ok(move |_, _, cx| {
                     view.update(cx, |view, cx| view.prune(true, generation, cx))
                         .ok();

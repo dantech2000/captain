@@ -67,7 +67,7 @@ fn stats_grid(container: &Container, workspace: &Workspace, palette: &Palette) -
                 .map(|s| percent_label(s.cpu_percent))
                 .unwrap_or_else(dash),
             unit: String::new(),
-            color: palette.accent,
+            color: palette.accent_fg,
             series: history.map(|h| h.cpu_series()).unwrap_or_default(),
             scale: scales::CPU,
         },

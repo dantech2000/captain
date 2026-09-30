@@ -4,13 +4,12 @@ use gpui_kit::*;
 use crate::theme::Palette;
 use crate::widgets::pill;
 
-/// The color of a severity.
+/// The state color of a severity: failing, warning, info, or gray.
 pub fn severity_color(severity: Severity, palette: &Palette) -> Hsla {
     match severity {
-        Severity::Critical => palette.red,
-        Severity::High => palette.orange,
-        Severity::Medium => palette.indigo,
-        Severity::Low => palette.teal,
+        Severity::Critical | Severity::High => palette.red,
+        Severity::Medium => palette.orange,
+        Severity::Low => palette.info,
         Severity::Unknown => palette.gray,
     }
 }

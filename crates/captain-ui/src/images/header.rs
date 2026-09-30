@@ -35,6 +35,13 @@ pub fn render(
             Segment {
                 label: filter.label().into(),
                 selected: state.filter() == filter,
+                help: match filter {
+                    ImageFilter::All => "Show all images.",
+                    ImageFilter::InUse => "Show only the images that a container uses.",
+                    ImageFilter::Unused => "Show only the images that no container uses.",
+                    ImageFilter::Dangling => "Show only the images without a tag.",
+                }
+                .into(),
                 on_click: Box::new(move |_, cx| {
                     handle.update(cx, |state, cx| state.set_filter(filter, cx));
                 }),

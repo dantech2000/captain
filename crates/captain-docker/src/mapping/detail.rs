@@ -15,6 +15,7 @@ pub fn detail(response: ContainerInspectResponse) -> ContainerDetail {
         .unwrap_or_default()
         .into_iter()
         .map(|m| Mount {
+            volume: m.typ.as_deref() == Some("volume"),
             source: m.name.or(m.source).unwrap_or_default(),
             destination: m.destination.unwrap_or_default(),
         })
@@ -27,6 +28,7 @@ pub fn detail(response: ContainerInspectResponse) -> ContainerDetail {
     networks.sort();
     let host_config = response.host_config.unwrap_or_default();
     let memory_limit = host_config.memory.unwrap_or_default().max(0) as u64;
+    let nano_cpus = host_config.nano_cpus.unwrap_or_default().max(0) as u64;
     let restart_policy = host_config
         .restart_policy
         .and_then(|p| p.name)
@@ -60,6 +62,7 @@ pub fn detail(response: ContainerInspectResponse) -> ContainerDetail {
         exit_code,
         oom_killed,
         memory_limit,
+        nano_cpus,
         restart_count: response.restart_count.unwrap_or_default(),
     }
 }

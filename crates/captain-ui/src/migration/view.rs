@@ -78,11 +78,7 @@ fn steps(stage: Stage, palette: &Palette) -> Div {
                 .child(
                     div()
                         .font_weight(FontWeight::SEMIBOLD)
-                        .text_color(if current {
-                            palette.accent
-                        } else {
-                            palette.text3
-                        })
+                        .text_color(if current { palette.link } else { palette.text3 })
                         .child(format!("{}. {label}", ix + 1)),
                 )
         }))

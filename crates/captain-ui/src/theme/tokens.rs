@@ -168,6 +168,15 @@ impl Tokens {
             self.window
         }
     }
+
+    /// The action color for icons and thin lines, unless it is too faint on the
+    /// cards and the window (under 3:1). Then the link color.
+    pub fn action_fg(&self) -> u32 {
+        let faint = [self.card, self.window]
+            .into_iter()
+            .any(|bg| contrast(self.action, bg) < 3.0);
+        if faint { self.link } else { self.action }
+    }
 }
 
 #[cfg(test)]

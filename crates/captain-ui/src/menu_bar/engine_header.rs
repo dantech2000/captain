@@ -38,7 +38,7 @@ pub fn render(engine: &EngineLine, palette: &Palette) -> Div {
                 .justify_center()
                 .rounded(px(9.))
                 .bg(palette.tint(palette.accent))
-                .child(cap_icon(CaptainIcon::Engine, px(22.), palette.accent)),
+                .child(cap_icon(CaptainIcon::Engine, px(22.), palette.accent_fg)),
         )
         .child(
             div()

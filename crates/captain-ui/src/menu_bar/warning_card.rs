@@ -14,7 +14,7 @@ use crate::theme::Palette;
 use crate::workspace::Workspace;
 
 pub fn render(problem: &Problem, workspace: &Entity<Workspace>, palette: &Palette) -> Div {
-    let (name, text) = sentence(problem);
+    let (name, text) = problem.sentence();
     let buttons = div().flex().flex_wrap().gap(px(6.));
     let buttons = match problem {
         Problem::EngineFailed { fix, .. }
@@ -84,50 +84,14 @@ pub fn render(problem: &Problem, workspace: &Entity<Workspace>, palette: &Palett
 }
 
 /// The sentence, with the container's name in bold at its start.
-fn styled_sentence(name: Option<String>, rest: String) -> StyledText {
-    let bold = name.as_ref().map_or(0, String::len);
+fn styled_sentence(name: Option<&str>, rest: String) -> StyledText {
+    let bold = name.map_or(0, str::len);
     let text = format!("{}{rest}", name.unwrap_or_default());
     let style = HighlightStyle {
         font_weight: Some(FontWeight::BOLD),
         ..Default::default()
     };
     StyledText::new(text).with_highlights((bold > 0).then_some((0..bold, style)))
-}
-
-/// The container's name and the rest of the sentence.
-fn sentence(problem: &Problem) -> (Option<String>, String) {
-    match problem {
-        Problem::EngineFailed { why, .. } => (None, format!("Captain Engine did not start: {why}")),
-        Problem::OutOfMemory {
-            name,
-            limit,
-            restarts,
-            ..
-        } => {
-            let times = match restarts {
-                1 => "once".to_string(),
-                n => format!("{n} times"),
-            };
-            let cause = if *limit > 0 {
-                format!("out of memory at {}", bytes_label(*limit as u64))
-            } else {
-                "the engine ran out of memory".to_string()
-            };
-            (
-                Some(name.clone()),
-                format!(" keeps restarting: {cause}, restarted {times}."),
-            )
-        }
-        Problem::Restarting { name, .. } => (
-            Some(name.clone()),
-            " keeps restarting: its process exits with an error. The logs say why.".into(),
-        ),
-        Problem::Unhealthy { name, .. } => (
-            Some(name.clone()),
-            " fails its health check. The logs say why; a restart often helps.".into(),
-        ),
-        Problem::FailedCheck(check) => (None, format!("{}: {}", check.id.title(), check.detail)),
-    }
 }
 
 fn raise_button(

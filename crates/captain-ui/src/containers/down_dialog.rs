@@ -1,8 +1,8 @@
 use captain_core::model::ProjectAction;
 use gpui_kit::component::WindowExt;
-use gpui_kit::component::button::ButtonVariant;
 use gpui_kit::*;
 
+use crate::widgets::danger_footer;
 use crate::workspace::Workspace;
 
 /// Asks before `docker compose down`, which removes the project's containers. Does
@@ -19,9 +19,10 @@ pub fn open(project: String, handle: Entity<Workspace>, window: &mut Window, cx:
         alert
             .title(title.clone())
             .description(description.clone())
-            .show_cancel(true)
-            .ok_text("Down")
-            .ok_variant(ButtonVariant::Danger)
+            .footer(danger_footer(
+                "Down",
+                format!("Stop and remove the containers of {project}. Volumes stay."),
+            ))
             .on_ok(move |_, _, cx| {
                 handle.update(cx, |workspace, cx| {
                     if workspace.engine_generation() == generation {

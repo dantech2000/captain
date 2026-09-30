@@ -1,10 +1,10 @@
 use gpui_kit::component::WindowExt;
-use gpui_kit::component::button::ButtonVariant;
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::*;
 
 use super::assistant::MigrationAssistant;
 use crate::theme::Palette;
+use crate::widgets::danger_footer;
 
 /// An item that switches over and the containers it stops in the old engine.
 type Stop = (String, Vec<String>);
@@ -32,9 +32,10 @@ impl MigrationAssistant {
             alert
                 .title("Stop these in the old engine?")
                 .description(description(&stops, &source, &Palette::of(cx)))
-                .show_cancel(true)
-                .ok_text("Stop and switch over")
-                .ok_variant(ButtonVariant::Danger)
+                .footer(danger_footer(
+                    "Stop and switch over",
+                    "Stop the other engine and start using Captain Engine.",
+                ))
                 .on_ok(move |_, _, cx| {
                     view.update(cx, |view, cx| view.start(cx)).ok();
                     true

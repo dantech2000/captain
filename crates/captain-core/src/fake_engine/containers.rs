@@ -14,7 +14,7 @@ use super::FakeEngine;
 use crate::model::{
     Container, ContainerAction, ContainerDetail, ContainerState, DiskUsage, EngineEvent,
     EngineInfo, ExecSession, ExecSpec, FileEntry, FilePreview, LogLine, LogOptions, ProcessTable,
-    StatsSample,
+    ResourceUpdate, StatsSample,
 };
 use crate::{ContainerApi, EngineError, EngineFuture, EngineStream};
 
@@ -100,6 +100,10 @@ impl ContainerApi for FakeEngine {
 
     fn disk_usage(&self) -> EngineFuture<DiskUsage> {
         ready(Ok(self.disk.clone())).boxed()
+    }
+
+    fn update_resources(&self, id: &str, _update: ResourceUpdate) -> EngineFuture<()> {
+        self.update_memory(id, 0)
     }
 }
 

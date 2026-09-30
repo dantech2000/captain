@@ -1,6 +1,9 @@
+use std::collections::HashMap;
+
 use captain_core::HostStatus;
 use captain_core::kubernetes::KubeContexts;
-use captain_core::model::{Container, ContainerState, Health};
+use captain_core::model::{Container, ContainerState};
+use captain_core::problems::{Problem, first_problem};
 use captain_ui::{Connection, HostSummary, Workspace};
 
 /// The engine state that the icon and the first status line show.
@@ -52,16 +55,11 @@ pub struct ContainerEntry {
     pub state: ContainerState,
     pub project: Option<String>,
     pub ports: Vec<u16>,
-    pub health: Option<Health>,
 }
 
 impl ContainerEntry {
     pub fn is_active(&self) -> bool {
         self.state.is_active()
-    }
-
-    fn needs_attention(&self) -> bool {
-        self.state == ContainerState::Restarting || self.health == Some(Health::Unhealthy)
     }
 }
 
@@ -98,11 +96,20 @@ pub struct TraySnapshot {
     pub host: Option<HostEntry>,
     /// The contexts in the user's kubeconfig, for the Kubernetes Contexts submenu.
     pub contexts: KubeContexts,
+    /// The worst container problem, in the popover's words.
+    pub problem: Option<String>,
 }
 
 impl TraySnapshot {
     /// Containers count only while the engine runs; a failed engine keeps its old list.
     pub fn new(engine: EngineStatus, containers: &[Container]) -> Self {
+        // The popover also weighs diagnostics checks and why a container exited;
+        // the menu has neither, so it names the container problem alone.
+        let problem = (engine == EngineStatus::Running)
+            .then(|| first_problem(None, &[], containers, &HashMap::new()))
+            .flatten()
+            .as_ref()
+            .map(Problem::line);
         let containers = match engine {
             EngineStatus::Running => containers
                 .iter()
@@ -112,7 +119,6 @@ impl TraySnapshot {
                     state: container.state,
                     project: container.compose_project.clone(),
                     ports: container.published_ports(),
-                    health: container.health,
                 })
                 .collect(),
             _ => Vec::new(),
@@ -122,6 +128,7 @@ impl TraySnapshot {
             containers,
             host: None,
             contexts: KubeContexts::default(),
+            problem,
         }
     }
 
@@ -145,11 +152,7 @@ impl TraySnapshot {
     /// container is restarting or unhealthy.
     pub fn icon(&self) -> EngineStatus {
         match self.engine {
-            EngineStatus::Running
-                if self.containers.iter().any(ContainerEntry::needs_attention) =>
-            {
-                EngineStatus::NeedsAttention
-            }
+            EngineStatus::Running if self.problem.is_some() => EngineStatus::NeedsAttention,
             engine => engine,
         }
     }

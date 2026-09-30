@@ -5,6 +5,7 @@ use gpui_kit::*;
 
 use super::SettingsView;
 use super::engine_source;
+use crate::help::HelpExt;
 use crate::theme::Palette;
 use crate::widgets::{ButtonTone, pill, settings_card, settings_row, text_button};
 use crate::workspace::Connection;
@@ -45,6 +46,8 @@ pub fn render(
                 .child(reconnect),
             palette,
         )
+        .id("settings-connection")
+        .help("Connect to the engine again.")
         .into_any_element(),
     ];
     if let Connection::Connected(info) = &connection {
@@ -124,5 +127,7 @@ fn endpoint_row(
             .child(automatic),
         palette,
     )
+    .id("settings-endpoint")
+    .help("Go back to finding the engine automatically.")
     .into_any_element()
 }

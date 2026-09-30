@@ -11,6 +11,7 @@ mod info;
 mod log;
 mod network;
 mod stats;
+mod update;
 mod volume;
 
 pub use container::{container, is_active};
@@ -26,5 +27,6 @@ pub use log::log_lines;
 #[allow(unused_imports)]
 pub use network::*;
 pub use stats::stats;
+pub use update::update_body;
 #[allow(unused_imports)]
 pub use volume::*;

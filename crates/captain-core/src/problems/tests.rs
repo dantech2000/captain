@@ -69,3 +69,17 @@ fn the_worst_problem_wins_the_warning_card() {
     assert!(matches!(first, Some(Problem::FailedCheck(check)) if check.id == CheckId::Compose));
     assert_eq!(first_problem(None, &[], &[], &facts), None);
 }
+
+#[test]
+fn an_out_of_memory_line_names_the_limit_and_the_restarts() {
+    let problem = Problem::OutOfMemory {
+        id: "db-id".into(),
+        name: "db".into(),
+        limit: 512 * 1024 * 1024,
+        restarts: 3,
+    };
+    assert_eq!(
+        problem.line(),
+        "db keeps restarting: out of memory at 512 MB, restarted 3 times."
+    );
+}

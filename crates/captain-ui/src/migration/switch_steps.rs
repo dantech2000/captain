@@ -66,7 +66,7 @@ fn step_icon(status: SubStatus, color: Hsla, palette: &Palette) -> AnyElement {
         SubStatus::Running => {
             return Spinner::new()
                 .xsmall()
-                .color(palette.accent)
+                .color(palette.accent_fg)
                 .into_any_element();
         }
         SubStatus::Pending => IconName::Clock,

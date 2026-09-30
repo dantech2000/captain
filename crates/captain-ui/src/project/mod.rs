@@ -7,14 +7,17 @@ mod group_info;
 mod header;
 mod log_rows;
 mod log_view;
+mod map;
 mod notice;
 mod open_row;
 mod page;
 mod project_view;
 mod service_card;
+mod staging;
 mod system_open;
 mod tasks;
 mod tasks_card;
+mod view_tabs;
 
 pub use group_info::GroupInfo;
 pub use notice::ProjectNotice;

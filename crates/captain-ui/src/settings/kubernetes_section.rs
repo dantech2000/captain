@@ -15,6 +15,7 @@ use super::SettingsView;
 use super::kube_dialogs;
 use super::kube_form::KubeForm;
 use crate::engine_host::HostModel;
+use crate::help::HelpExt;
 use crate::kubernetes::KubernetesModel;
 use crate::theme::Palette;
 use crate::widgets::{ButtonTone, inline_error, pill, settings_card, settings_row, text_button};
@@ -92,7 +93,10 @@ fn switch_row(
                     model.update(cx, |model, cx| model.turn_on(on, cx));
                 }),
         );
-    settings_row("Enable Kubernetes", Some(note), control, palette).into_any_element()
+    settings_row("Enable Kubernetes", Some(note), control, palette)
+        .id("settings-kubernetes")
+        .help("Turn the k3s cluster in Captain Engine on or off.")
+        .into_any_element()
 }
 
 fn version_row(form: &KubeForm, palette: &Palette) -> AnyElement {
@@ -106,6 +110,8 @@ fn version_row(form: &KubeForm, palette: &Palette) -> AnyElement {
         ),
         palette,
     )
+    .id("settings-kubernetes-version")
+    .help("Choose the k3s version. Apply installs it.")
     .into_any_element()
 }
 
@@ -116,6 +122,8 @@ fn port_row(form: &KubeForm, palette: &Palette) -> AnyElement {
         div().w(px(90.)).child(Input::new(&form.port).small()),
         palette,
     )
+    .id("settings-kubernetes-port")
+    .help("The port of the Kubernetes API on this computer. Apply saves it.")
     .into_any_element()
 }
 
@@ -140,6 +148,8 @@ fn traefik_row(
             }),
         palette,
     )
+    .id("settings-traefik")
+    .help("Turn the Traefik ingress controller on ports 80 and 443 on or off.")
     .into_any_element()
 }
 
@@ -180,6 +190,8 @@ fn memory_row(
         ),
         palette,
     )
+    .id("settings-kubernetes-memory")
+    .help("Give Captain Engine the memory that Kubernetes needs. It applies on the next start.")
     .into_any_element()
 }
 
@@ -217,7 +229,10 @@ fn apply_row(
                 .clone()
                 .map(|error| inline_error(error, palette).max_w(px(320.))),
         );
-    settings_row("Apply", Some(note), control, palette).into_any_element()
+    settings_row("Apply", Some(note), control, palette)
+        .id("settings-kubernetes-apply")
+        .help("Apply the Kubernetes version and port now. The cluster restarts.")
+        .into_any_element()
 }
 
 fn reset_row(model: &Entity<KubernetesModel>, enabled: bool, palette: &Palette) -> AnyElement {
@@ -235,5 +250,7 @@ fn reset_row(model: &Entity<KubernetesModel>, enabled: bool, palette: &Palette) 
         ),
         palette,
     )
+    .id("settings-kubernetes-reset")
+    .help("Delete the Kubernetes workloads and the cluster state. Captain asks first.")
     .into_any_element()
 }

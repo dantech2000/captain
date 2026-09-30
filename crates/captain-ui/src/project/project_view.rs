@@ -5,12 +5,15 @@ use captain_core::format::bytes_label;
 use captain_core::model::{
     ComposeProject, ContainerDetail, ContainerState, EngineEvent, EventKind,
 };
+use captain_core::project_map::StagedChanges;
 use captain_core::store::{GroupKey, compose_project};
 use gpui_kit::*;
 
 use super::group_info::{is_sandbox, service_name};
 use super::log_view::ProjectLogView;
+use super::map::MapState;
 use super::tasks::{TaskList, TaskState};
+use super::view_tabs::ProjectTab;
 use super::{ProjectNotice, page};
 use crate::engine_host::{HostModel, host_model};
 use crate::workspace::Workspace;
@@ -34,6 +37,11 @@ pub struct ProjectView {
     exits: HashMap<String, Vec<Instant>>,
     pub(super) tasks: TaskState,
     pub(super) log: Entity<ProjectLogView>,
+    pub(super) tab: ProjectTab,
+    pub(super) map: MapState,
+    /// Changes that wait for Apply, for all entries. They stay when the page shows
+    /// another entry, and leave with their container.
+    pub(super) staged: StagedChanges,
     _subscriptions: Vec<Subscription>,
 }
 
@@ -66,6 +74,9 @@ impl ProjectView {
             exits: HashMap::new(),
             tasks: TaskState::default(),
             log,
+            tab: ProjectTab::default(),
+            map: MapState::default(),
+            staged: StagedChanges::default(),
             _subscriptions: subscriptions,
         };
         view.follow(cx);
@@ -81,7 +92,7 @@ impl ProjectView {
 
     /// Starts over for a new entry, keeps the Compose project, and inspects each
     /// container whose state changed.
-    fn follow(&mut self, cx: &mut Context<Self>) {
+    pub(super) fn follow(&mut self, cx: &mut Context<Self>) {
         let workspace = self.workspace.read(cx);
         let focus = workspace.focus().cloned();
         if focus != self.focus {
@@ -91,8 +102,16 @@ impl ProjectView {
             self.inspecting.clear();
             self.exits.clear();
             self.tasks = TaskState::default();
+            self.map.draft = None;
+            if self.tab == ProjectTab::Map {
+                self.load_volumes(cx);
+            }
         }
         let workspace = self.workspace.read(cx);
+        if workspace.is_loaded() {
+            let store = workspace.store();
+            self.staged.retain_containers(|id| store.find(id).is_some());
+        }
         if let Some(GroupKey::Project(name)) = &focus
             && let Some(project) = compose_project(workspace.store().containers(), name)
         {

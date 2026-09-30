@@ -73,6 +73,7 @@ pub fn build(snapshot: &TraySnapshot) -> Vec<TrayItem> {
         .as_ref()
         .map_or(snapshot.engine.label(), HostEntry::label);
     let mut items = vec![TrayItem::Label(status.into())];
+    items.extend(snapshot.problem.clone().map(TrayItem::Label));
     let running = snapshot.engine == EngineStatus::Running;
     if running {
         items.push(TrayItem::Label(count_label(snapshot)));

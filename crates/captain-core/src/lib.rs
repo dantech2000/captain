@@ -15,6 +15,7 @@ pub mod migration;
 pub mod model;
 pub mod problems;
 pub mod process_lock;
+pub mod project_map;
 pub mod registry;
 pub mod search;
 pub mod settings;

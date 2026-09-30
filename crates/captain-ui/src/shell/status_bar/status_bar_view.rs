@@ -100,7 +100,7 @@ impl StatusBar {
                 .child(
                     Icon::new(IconName::Info)
                         .size(px(13.))
-                        .text_color(palette.accent),
+                        .text_color(palette.accent_fg),
                 )
                 .child(
                     div()

@@ -33,7 +33,7 @@ pub fn render(history: Option<&StatsHistory>, palette: &Palette) -> impl IntoEle
             percent_label(latest.cpu_percent),
             history.cpu_series(),
             scales::CPU,
-            palette.accent,
+            palette.accent_fg,
             palette,
         ))
         .child(chart(

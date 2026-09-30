@@ -46,7 +46,7 @@ pub fn render(
         .gap(px(10.))
         .px(px(4.))
         .pb(px(12.))
-        .child(cap_icon(CaptainIcon::Engine, px(30.), palette.accent))
+        .child(cap_icon(CaptainIcon::Engine, px(30.), palette.accent_fg))
         .child(
             div()
                 .flex_1()

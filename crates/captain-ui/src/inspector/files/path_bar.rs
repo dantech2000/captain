@@ -58,7 +58,7 @@ pub fn render(pane: &FilesPane, palette: &Palette, cx: &mut Context<FilesPane>) 
                                 .text_color(if ix == last {
                                     palette.text
                                 } else {
-                                    palette.accent
+                                    palette.link
                                 })
                                 .when(ix != last && running, |this| {
                                     this.cursor_pointer().on_click(cx.listener(

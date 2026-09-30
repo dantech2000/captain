@@ -50,6 +50,14 @@ impl ScanDialog {
             Segment {
                 label: label.into(),
                 selected: self.filter == filter,
+                help: match filter {
+                    Some(severity) => format!(
+                        "Show only the findings with {} severity.",
+                        severity.label().to_lowercase()
+                    ),
+                    None => "Show all findings.".to_string(),
+                }
+                .into(),
                 on_click: Box::new(move |_, cx| {
                     this.update(cx, |this, cx| this.set_filter(filter, cx)).ok();
                 }),

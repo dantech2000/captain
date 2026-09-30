@@ -7,6 +7,7 @@ use gpui_kit::*;
 
 use super::{SettingsView, context_actions};
 use crate::engine_host::captain_socket;
+use crate::help::HelpExt;
 use crate::theme::Palette;
 use crate::widgets::{ButtonTone, settings_row, text_button};
 
@@ -95,6 +96,11 @@ fn context_row(
             .child(use_button),
         palette,
     )
+    .id(("settings-context", ix))
+    .help(format!(
+        "Use the {} context, or make it the docker CLI's default.",
+        context.name
+    ))
     .into_any_element()
 }
 
@@ -129,6 +135,6 @@ fn captain_row(
     let note = format!("A \"{CAPTAIN_CONTEXT}\" context lets the docker CLI use Captain Engine.");
     Some(
         settings_row("Captain Engine context", Some(note.into()), button, palette)
-            .into_any_element(),
+            .id("settings-captain-context").help(format!("Create or update the \"{CAPTAIN_CONTEXT}\" context, so the docker CLI uses Captain Engine.")).into_any_element(),
     )
 }

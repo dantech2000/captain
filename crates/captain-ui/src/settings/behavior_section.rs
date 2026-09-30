@@ -7,6 +7,7 @@ use gpui_kit::component::switch::Switch;
 use gpui_kit::*;
 
 use super::{SettingsView, store, system};
+use crate::help::HelpExt;
 use crate::theme::Palette;
 use crate::widgets::{settings_card, settings_row};
 
@@ -76,6 +77,8 @@ fn login_row(
             }),
         palette,
     )
+    .id("settings-login")
+    .help("Open Captain when you log in to this computer.")
     .into_any_element()
 }
 
@@ -97,6 +100,8 @@ fn background_row(settings: &Settings, palette: &Palette) -> AnyElement {
             }),
         palette,
     )
+    .id("settings-background")
+    .help("Start with only the menu bar icon, without the window.")
     .into_any_element()
 }
 
@@ -112,5 +117,7 @@ fn icon_row(settings: &Settings, palette: &Palette) -> AnyElement {
             }),
         palette,
     )
+    .id("settings-menu-bar-icon")
+    .help("Show Captain's icon in the menu bar. Without it, closing the window quits Captain.")
     .into_any_element()
 }

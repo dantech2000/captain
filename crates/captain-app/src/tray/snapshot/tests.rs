@@ -123,4 +123,8 @@ fn the_icon_needs_attention_for_a_failed_host_or_a_sick_container() {
     let sick = TraySnapshot::new(EngineStatus::Running, &[web]);
     assert_eq!(sick.engine, EngineStatus::Running);
     assert_eq!(sick.icon(), EngineStatus::NeedsAttention);
+    assert_eq!(
+        sick.problem.as_deref(),
+        Some("web fails its health check. The logs say why; a restart often helps.")
+    );
 }

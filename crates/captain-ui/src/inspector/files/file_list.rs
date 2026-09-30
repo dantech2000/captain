@@ -100,7 +100,7 @@ fn row(
                 .size(px(13.))
                 .flex_shrink_0()
                 .text_color(if entry.opens {
-                    colors.accent
+                    colors.accent_fg
                 } else {
                     colors.text3
                 }),

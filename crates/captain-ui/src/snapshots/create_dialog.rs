@@ -7,6 +7,7 @@ use gpui_kit::component::input::{Input, InputEvent, InputState};
 use gpui_kit::*;
 
 use super::SnapshotsModel;
+use crate::help::HelpExt;
 use crate::images::field;
 use crate::theme::Palette;
 use crate::widgets::{ButtonTone, inline_error, text_button};
@@ -89,7 +90,8 @@ impl Render for CreateDialog {
             move |_, window, cx| {
                 this.update(cx, |this, cx| this.submit(window, cx)).ok();
             },
-        );
+        )
+        .help("Save a snapshot of Captain Engine's disk with this name.");
         let cancel = text_button(
             "snapshot-create-cancel",
             "Cancel",
@@ -97,7 +99,8 @@ impl Render for CreateDialog {
             true,
             &palette,
             |_, window, cx| window.close_dialog(cx),
-        );
+        )
+        .help("Close this dialog. Nothing changes.");
         let note = if self.running {
             "Captain Engine stops while Captain saves the snapshot, then starts again."
         } else {

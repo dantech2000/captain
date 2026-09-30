@@ -49,6 +49,14 @@ impl RestartPolicy {
         RestartPolicy::OnFailure,
     ];
 
+    /// Parses the name `inspect` reports. Empty and unknown names mean `no`.
+    pub fn parse(name: &str) -> Self {
+        Self::ALL
+            .into_iter()
+            .find(|policy| policy.name() == name)
+            .unwrap_or_default()
+    }
+
     /// The name the engine and the CLI use, for example `unless-stopped`.
     pub fn name(self) -> &'static str {
         match self {

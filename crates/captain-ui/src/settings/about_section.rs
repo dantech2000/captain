@@ -1,5 +1,6 @@
 use gpui_kit::*;
 
+use crate::help::HelpExt;
 use crate::theme::Palette;
 use crate::widgets::{ButtonTone, settings_card, settings_row, text_button};
 
@@ -32,6 +33,8 @@ pub fn render(palette: &Palette) -> Div {
                 link("about-source", "Open", REPOSITORY.to_string()),
                 palette,
             )
+            .id("settings-source")
+            .help("Open Captain's source code in your browser.")
             .into_any_element(),
             settings_row(
                 "Feedback",
@@ -43,6 +46,8 @@ pub fn render(palette: &Palette) -> Div {
                 ),
                 palette,
             )
+            .id("settings-feedback")
+            .help("Open Captain's issues in your browser, to report a bug or ask for a feature.")
             .into_any_element(),
         ],
         palette,

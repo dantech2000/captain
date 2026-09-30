@@ -100,7 +100,7 @@ pub fn status_icon(status: &StepStatus, palette: &Palette) -> AnyElement {
         StepStatus::Pending => icon(IconName::Clock, palette.text3),
         StepStatus::Running { .. } => Spinner::new()
             .small()
-            .color(palette.accent)
+            .color(palette.accent_fg)
             .into_any_element(),
         StepStatus::Done => icon(IconName::CircleCheck, palette.green),
         StepStatus::Failed(_) => icon(IconName::CircleX, palette.red),

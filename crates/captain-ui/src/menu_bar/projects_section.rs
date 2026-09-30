@@ -163,7 +163,7 @@ fn kubernetes_row(status: &KubernetesStatus, on: bool, palette: &Palette) -> Div
     let content = row(
         "popover-kubernetes".into(),
         CaptainIcon::Cluster,
-        palette.accent,
+        palette.accent_fg,
         "Kubernetes".to_string(),
         state,
         palette,

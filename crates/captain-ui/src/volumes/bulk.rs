@@ -7,10 +7,10 @@ use captain_core::model::{BulkOutcome, count_label};
 use captain_core::store::SelectMode;
 use futures::future::join_all;
 use gpui_kit::component::WindowExt;
-use gpui_kit::component::button::ButtonVariant;
 use gpui_kit::*;
 
 use super::VolumesView;
+use crate::widgets::danger_footer;
 
 impl VolumesView {
     /// A click on a row, with the keys held. A plain click selects the volume alone,
@@ -68,9 +68,10 @@ impl VolumesView {
             alert
                 .title(title.clone())
                 .description(description.clone())
-                .show_cancel(true)
-                .ok_text("Delete")
-                .ok_variant(ButtonVariant::Danger)
+                .footer(danger_footer(
+                    "Delete",
+                    "Delete the selected volumes and their data.",
+                ))
                 .on_ok(move |_, _, cx| {
                     let names = names.clone();
                     view.update(cx, |view, cx| view.remove_many(names, generation, cx));

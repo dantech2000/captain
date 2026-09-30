@@ -47,7 +47,8 @@ pub fn run_body(spec: &RunSpec) -> ContainerCreateBody {
     }
 }
 
-fn restart_name(policy: RestartPolicy) -> RestartPolicyNameEnum {
+/// The engine's name for `policy`.
+pub fn restart_name(policy: RestartPolicy) -> RestartPolicyNameEnum {
     match policy {
         RestartPolicy::No => RestartPolicyNameEnum::NO,
         RestartPolicy::UnlessStopped => RestartPolicyNameEnum::UNLESS_STOPPED,

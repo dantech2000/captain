@@ -3,6 +3,7 @@ use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::*;
 
 use super::store;
+use crate::help::HelpExt;
 use crate::theme::Palette;
 
 /// A theme choice: a preview in the theme's own colors for the current mode, with
@@ -51,4 +52,8 @@ pub fn theme_card(family: ThemeFamily, selected: bool, palette: &Palette) -> Sta
                 .overflow_hidden()
                 .children(strip.map(|color| div().flex_1().h_full().bg(color))),
         )
+        .help(format!(
+            "Use the {} theme, in light and in dark.",
+            family.label()
+        ))
 }

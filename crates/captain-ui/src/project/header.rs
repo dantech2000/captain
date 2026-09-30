@@ -17,14 +17,15 @@ use crate::workspace::Workspace;
 
 /// The folder and Compose files in mono, the name in large type, and for a Compose
 /// project: Open folder, Terminal, Down, and Restart project (Up while nothing runs).
-/// `active` and `count` are the containers that run and all of them.
+/// `active` and `count` are the containers that run and all of them. `tabs` goes
+/// between the name and the buttons.
 pub fn render(
-    key: &GroupKey,
-    project: Option<&ComposeProject>,
+    (key, project): (&GroupKey, Option<&ComposeProject>),
     (active, count): (usize, usize),
     handle: &Entity<Workspace>,
     workspace: &Workspace,
     view: &WeakEntity<ProjectView>,
+    tabs: Div,
     palette: &Palette,
 ) -> Stateful<Div> {
     let (path, name) = match (key, project) {
@@ -75,6 +76,7 @@ pub fn render(
                         .child(name),
                 ),
         )
+        .child(tabs)
         .children(buttons)
 }
 

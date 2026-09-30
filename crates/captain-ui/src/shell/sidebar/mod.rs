@@ -1,3 +1,4 @@
+mod disk_card;
 mod engine_card;
 mod engine_header;
 mod page_help;
@@ -7,18 +8,22 @@ mod tools;
 
 use gpui_kit::*;
 
+pub use disk_card::DiskSummary;
+
 use crate::engine_host::HostSummary;
 use crate::theme::Palette;
 use crate::widgets::drag_region;
 use crate::workspace::Workspace;
 
-/// The engine header, search, the projects, the resource pages as icons, and the
-/// engine card. The projects list takes the free height, so the parts below it do
-/// not move when entries come and go.
+/// The engine header, search, the projects, the Disk card, the resource pages as
+/// icons, and the engine card. The projects list takes the free height, so the parts
+/// below it do not move when entries come and go. `disk` is `None` until the storage
+/// model has read the disk use.
 pub fn render(
     handle: &Entity<Workspace>,
     workspace: &Workspace,
     host: Option<&HostSummary>,
+    disk: Option<&DiskSummary>,
     failures: usize,
     forwarding: bool,
     palette: &Palette,
@@ -38,7 +43,7 @@ pub fn render(
         .child(engine_header::render(workspace, host, palette))
         .child(search_button::render(palette))
         .child(projects::render(handle, workspace, palette))
-        // Feature 0031 puts the Disk card here, above the resource icons.
+        .children(disk.map(|disk| disk_card::render(handle, disk, palette)))
         .child(tools::render(
             handle, workspace, failures, forwarding, palette,
         ))

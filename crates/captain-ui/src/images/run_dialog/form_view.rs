@@ -117,6 +117,19 @@ impl RunDialog {
                 Segment {
                     label: policy.name().into(),
                     selected: self.restart == policy,
+                    help: match policy {
+                        RestartPolicy::No => "Never restart the container.",
+                        RestartPolicy::UnlessStopped => {
+                            "Restart the container when it exits, unless you stopped it."
+                        }
+                        RestartPolicy::Always => {
+                            "Always restart the container, also after the engine starts."
+                        }
+                        RestartPolicy::OnFailure => {
+                            "Restart the container only when it exits with an error."
+                        }
+                    }
+                    .into(),
                     on_click: Box::new(move |_, cx| {
                         this.update(cx, |this, cx| this.set_restart(policy, cx))
                             .ok();

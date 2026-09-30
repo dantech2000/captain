@@ -35,6 +35,9 @@ pub struct Palette {
     pub on_accent: Hsla,
     /// Links, and the action color when it colors text.
     pub link: Hsla,
+    /// The action color for icons and thin lines: the link color where the action
+    /// color is too faint on the background, as in Harbor light.
+    pub accent_fg: Hsla,
     /// Running and healthy.
     pub green: Hsla,
     /// Warning, paused, and starting.
@@ -94,6 +97,7 @@ impl Palette {
             accent,
             on_accent: c(t.on_action),
             link: c(t.link),
+            accent_fg: c(t.action_fg()),
             green: c(t.running),
             orange: c(t.warning),
             warn_text: c(t.warning_text),

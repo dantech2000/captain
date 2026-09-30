@@ -8,6 +8,7 @@ use gpui_kit::*;
 
 use super::{engine_resources, reset_dialog, store};
 use crate::engine_host::HostModel;
+use crate::help::HelpExt;
 use crate::migration::OpenMigrationAssistant;
 use crate::theme::Palette;
 use crate::widgets::{
@@ -36,6 +37,15 @@ fn choice_row(model: &Entity<HostModel>, choice: EngineChoice, palette: &Palette
             Segment {
                 label: option.label().into(),
                 selected: option == choice,
+                help: match option {
+                    EngineChoice::Captain => {
+                        "Use Captain Engine, the virtual machine that Captain runs for you."
+                    }
+                    EngineChoice::External => {
+                        "Use another Docker engine. Captain connects to it but does not start or stop it."
+                    }
+                }
+                .into(),
                 on_click: Box::new(move |_, cx| {
                     model.update(cx, |model, cx| match option {
                         EngineChoice::Captain => model.use_captain(cx),
@@ -53,6 +63,8 @@ fn choice_row(model: &Entity<HostModel>, choice: EngineChoice, palette: &Palette
         segmented("engine-choice", segments, palette),
         palette,
     )
+    .id("settings-engine-choice")
+    .help("Choose the engine that Captain uses.")
     .into_any_element()
 }
 
@@ -106,7 +118,10 @@ fn status_row(model: &Entity<HostModel>, host: &HostModel, palette: &Palette) ->
             status.is_running(),
             |model, cx| model.restart(cx),
         ));
-    settings_row("Status", Some(note.into()), controls, palette).into_any_element()
+    settings_row("Status", Some(note.into()), controls, palette)
+        .id("settings-engine-status")
+        .help("Start, stop, or restart Captain Engine. Its containers stop and start with it.")
+        .into_any_element()
 }
 
 fn quit_row(settings: &Settings, palette: &Palette) -> AnyElement {
@@ -121,6 +136,8 @@ fn quit_row(settings: &Settings, palette: &Palette) -> AnyElement {
             }),
         palette,
     )
+    .id("settings-stop-on-quit")
+    .help("Stop Captain Engine when you quit Captain. Its containers stop with it.")
     .into_any_element()
 }
 
@@ -138,7 +155,7 @@ fn migrate_row(palette: &Palette) -> AnyElement {
         ),
         palette,
     )
-    .into_any_element()
+    .id("settings-migrate").help("Open the Migration Assistant, which copies volumes, images, and projects from another engine.").into_any_element()
 }
 
 fn reset_row(model: &Entity<HostModel>, host: &HostModel, palette: &Palette) -> AnyElement {
@@ -157,5 +174,7 @@ fn reset_row(model: &Entity<HostModel>, host: &HostModel, palette: &Palette) -> 
         ),
         palette,
     )
+    .id("settings-engine-reset")
+    .help("Delete Captain Engine with all its containers, images, and volumes. Captain asks first.")
     .into_any_element()
 }

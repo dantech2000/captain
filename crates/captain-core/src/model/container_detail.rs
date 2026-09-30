@@ -20,6 +20,8 @@ pub struct ContainerDetail {
     pub oom_killed: bool,
     /// The memory limit in bytes. 0 means no limit.
     pub memory_limit: u64,
+    /// The CPU limit in billionths of a CPU. 0 means no limit.
+    pub nano_cpus: u64,
     /// How many times the engine restarted the container.
     pub restart_count: i64,
 }
@@ -30,6 +32,8 @@ pub struct Mount {
     /// The volume name, or the host path for a bind mount.
     pub source: String,
     pub destination: String,
+    /// True for a volume, false for a bind mount or a tmpfs.
+    pub volume: bool,
 }
 
 /// One health-check run.

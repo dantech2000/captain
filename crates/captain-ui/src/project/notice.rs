@@ -4,10 +4,26 @@ use gpui_kit::component::notification::Notification;
 /// shows it, as it does for workspace events.
 #[derive(Debug, Clone)]
 pub enum ProjectNotice {
-    Copied { address: String },
-    MemoryRaised { name: String, limit: String },
-    Failed { title: String, error: String },
-    TaskDone { task: String, exit_code: i32 },
+    Copied {
+        address: String,
+    },
+    MemoryRaised {
+        name: String,
+        limit: String,
+    },
+    /// Staged changes applied to one container, for example `memory limit 512 MB`.
+    Updated {
+        name: String,
+        summary: String,
+    },
+    Failed {
+        title: String,
+        error: String,
+    },
+    TaskDone {
+        task: String,
+        exit_code: i32,
+    },
 }
 
 impl ProjectNotice {
@@ -16,6 +32,9 @@ impl ProjectNotice {
             Self::Copied { address } => Notification::success(format!("Copied {address}.")),
             Self::MemoryRaised { name, limit } => {
                 Notification::success(format!("Set the memory limit of {name} to {limit}."))
+            }
+            Self::Updated { name, summary } => {
+                Notification::success(format!("Updated {name}: {summary}."))
             }
             Self::Failed { title, error } => Notification::error(error.clone())
                 .title(title.clone())

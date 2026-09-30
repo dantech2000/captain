@@ -2,10 +2,10 @@
 
 use captain_core::kubernetes::KubernetesSettings;
 use gpui_kit::component::WindowExt;
-use gpui_kit::component::button::ButtonVariant;
 use gpui_kit::*;
 
 use crate::kubernetes::KubernetesModel;
+use crate::widgets::danger_footer;
 
 /// Asks before Reset Kubernetes, which deletes the workloads.
 pub fn reset(model: Entity<KubernetesModel>, window: &mut Window, cx: &mut App) {
@@ -17,9 +17,10 @@ pub fn reset(model: Entity<KubernetesModel>, window: &mut Window, cx: &mut App) 
                 "This deletes all workloads and the cluster state, then starts an empty \
                  cluster. Images and containers you started with Docker stay.",
             )
-            .show_cancel(true)
-            .ok_text("Reset")
-            .ok_variant(ButtonVariant::Danger)
+            .footer(danger_footer(
+                "Reset",
+                "Delete the Kubernetes workloads and the cluster state. Images stay.",
+            ))
             .on_ok(move |_, _, cx| {
                 model.update(cx, |model, cx| model.reset(cx));
                 true
@@ -44,9 +45,10 @@ pub fn downgrade(
                 "An older version needs an empty cluster, so Captain resets it. All \
                  workloads are deleted. Images stay.",
             )
-            .show_cancel(true)
-            .ok_text("Reset and downgrade")
-            .ok_variant(ButtonVariant::Danger)
+            .footer(danger_footer(
+                "Reset and downgrade",
+                "Reset the cluster and install the older Kubernetes version.",
+            ))
             .on_ok(move |_, _, cx| {
                 let wanted = wanted.clone();
                 model.update(cx, |model, cx| {

@@ -20,3 +20,16 @@ fn text_and_actions_meet_4_5_to_1_in_every_theme() {
         }
     }
 }
+
+#[test]
+fn action_fg_reaches_3_to_1_on_cards_and_window() {
+    for family in ThemeFamily::ALL {
+        for dark in [false, true] {
+            let t = Tokens::of(family, dark);
+            for bg in [t.card, t.window] {
+                let ratio = contrast(t.action_fg(), bg);
+                assert!(ratio >= 3.0, "{family:?} dark={dark}: {ratio:.2}");
+            }
+        }
+    }
+}

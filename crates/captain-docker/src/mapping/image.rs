@@ -13,7 +13,7 @@ use captain_core::model::{Image, PullProgress};
 
 pub use detail::{image_detail, image_history};
 pub use push::{credentials, push_progress};
-pub use run::run_body;
+pub use run::{restart_name, run_body};
 
 use super::engine_error;
 

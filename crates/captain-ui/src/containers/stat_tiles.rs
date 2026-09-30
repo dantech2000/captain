@@ -26,7 +26,7 @@ pub fn render(workspace: &Workspace, palette: &Palette) -> impl IntoElement {
                 .trim_end_matches('%')
                 .to_string(),
             unit: "%".into(),
-            color: palette.accent,
+            color: palette.accent_fg,
             series: stats.total_cpu_series(),
             scale: scales::CPU,
         },
