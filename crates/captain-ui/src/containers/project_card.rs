@@ -6,7 +6,7 @@ use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::*;
 
 use super::{container_row, project_actions};
-use crate::shell::project_badge;
+use crate::icons::{CaptainIcon, cap_icon};
 use crate::theme::Palette;
 use crate::workspace::Workspace;
 
@@ -21,10 +21,22 @@ pub fn render(
     workspace: &Workspace,
     palette: &Palette,
 ) -> impl IntoElement {
-    let (name, color) = match &group.key {
-        GroupKey::Project(name) => (name.clone(), palette.project_color(name)),
-        GroupKey::Namespace(name) => (name.clone(), palette.project_color(name)),
-        GroupKey::Standalone => ("Standalone".to_string(), palette.gray),
+    let (name, color, icon) = match &group.key {
+        GroupKey::Project(name) => (
+            name.clone(),
+            palette.project_color(name),
+            CaptainIcon::Stack,
+        ),
+        GroupKey::Namespace(name) => (
+            name.clone(),
+            palette.project_color(name),
+            CaptainIcon::Cluster,
+        ),
+        GroupKey::Standalone => (
+            "Standalone".to_string(),
+            palette.gray,
+            CaptainIcon::Container,
+        ),
     };
     let summary = match (&group.key, project) {
         (GroupKey::Project(_), Some(project)) => format!(
@@ -76,7 +88,7 @@ pub fn render(
             .size(px(12.))
             .text_color(palette.text3),
         )
-        .child(project_badge(&name, color, px(20.), palette))
+        .child(cap_icon(icon, px(20.), color))
         .child(
             div()
                 .flex_shrink_0()

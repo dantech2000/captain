@@ -5,6 +5,7 @@ use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::*;
 
 use super::delete_dialog;
+use crate::help::HelpExt;
 use crate::theme::Palette;
 use crate::workspace::Workspace;
 
@@ -22,12 +23,21 @@ pub fn render(
     let toggle = ContainerAction::toggle_for(container.state);
     let pause = ContainerAction::pause_toggle_for(container.state);
 
+    let name = &container.name;
     let action = |action: ContainerAction, icon: IconName, enabled: bool| {
         let handle = handle.clone();
         let id = container.id.clone();
+        let help = match action {
+            ContainerAction::Start => format!("Start {name}."),
+            ContainerAction::Stop => format!("Stop {name}. Its files and volumes stay."),
+            ContainerAction::Pause => format!("Pause {name}. Its processes freeze, not stop."),
+            ContainerAction::Unpause => format!("Resume the frozen processes of {name}."),
+            _ => format!("Stop and start {name} again."),
+        };
         button(
             action.label(),
             icon,
+            help,
             palette.text,
             enabled && !pending,
             palette,
@@ -41,6 +51,10 @@ pub fn render(
     let browser = button(
         "Browser",
         IconName::ArrowUpRight,
+        match port {
+            Some(port) => format!("Open http://localhost:{port} in your browser."),
+            None => format!("{name} publishes no port to open."),
+        },
         palette.accent,
         port.is_some(),
         palette,
@@ -56,6 +70,7 @@ pub fn render(
         button(
             ContainerAction::Remove.label(),
             IconName::Trash,
+            format!("Delete {name}. Captain asks first."),
             palette.red,
             !pending,
             palette,
@@ -93,6 +108,7 @@ pub fn render(
 fn button(
     label: &'static str,
     icon: IconName,
+    help: String,
     color: Hsla,
     enabled: bool,
     palette: &Palette,
@@ -124,4 +140,5 @@ fn button(
         })
         .child(Icon::new(icon).size(px(16.)))
         .child(label)
+        .help(help)
 }

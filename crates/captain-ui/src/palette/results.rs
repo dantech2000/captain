@@ -1,10 +1,10 @@
-use gpui_kit::component::Icon;
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::*;
 
 use super::CommandPalette;
 use super::key_hint;
 use super::ranking::Ranked;
+use crate::icons::glyph;
 use crate::theme::Palette;
 
 /// The result list: a header for each section, then its rows. The list scrolls
@@ -103,11 +103,7 @@ fn row(
                 .flex()
                 .items_center()
                 .justify_center()
-                .child(
-                    Icon::new(command.icon)
-                        .size(px(15.))
-                        .text_color(command.color),
-                ),
+                .child(glyph(command.icon, px(15.), command.color)),
         )
         .child(
             div()

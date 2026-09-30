@@ -47,7 +47,7 @@ fn row(vuln: &Vulnerability, palette: &Palette) -> Div {
         .text_size(px(12.))
         .child(div().w(px(64.)).flex().child(pill(
             vuln.severity.label(),
-            color,
+            palette.readable(color),
             palette.tint(color),
         )))
         .child(

@@ -1,11 +1,11 @@
 use captain_core::model::{Network, NetworkDetail, NetworkEndpoint};
-use gpui_kit::assets::IconName;
 use gpui_kit::*;
 
+use crate::icons::CaptainIcon;
 use crate::theme::Palette;
 use crate::widgets::{
     DetailHeader, container_link, detail_note, detail_panel, detail_section, key_values,
-    map_or_note, state_color,
+    map_or_note,
 };
 use crate::workspace::{Page, Workspace};
 
@@ -24,7 +24,7 @@ pub fn render(
         .as_deref()
         .map_or(palette.teal, |p| palette.project_color(p));
     let header = DetailHeader {
-        icon: IconName::Network,
+        icon: CaptainIcon::Network,
         color,
         title: network.name.clone().into(),
         badge: network
@@ -90,7 +90,7 @@ fn endpoints(
             let dot = workspace
                 .store()
                 .find(&endpoint.container_id)
-                .map_or(palette.gray, |c| state_color(c.state, palette));
+                .map_or(palette.gray, |c| palette.container_state(c.state));
             let address = endpoint.address().unwrap_or("no address");
             let line = match &endpoint.mac {
                 Some(mac) => format!("{address} · {mac}"),

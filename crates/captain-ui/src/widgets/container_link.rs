@@ -1,19 +1,8 @@
-use captain_core::model::ContainerState;
 use gpui_kit::assets::IconName;
 use gpui_kit::component::Icon;
 use gpui_kit::*;
 
 use crate::theme::Palette;
-
-/// The dot color for a container state, as the container list shows it.
-pub fn state_color(state: ContainerState, palette: &Palette) -> Hsla {
-    match state {
-        ContainerState::Running => palette.green,
-        ContainerState::Paused | ContainerState::Restarting => palette.orange,
-        ContainerState::Dead => palette.red,
-        _ => palette.gray,
-    }
-}
 
 /// A clickable container in a detail panel: a state dot, the name, and a monospace
 /// line below it, such as a mount path or an address.
@@ -25,7 +14,7 @@ pub fn container_link(
     palette: &Palette,
     on_click: impl Fn(&ClickEvent, &mut Window, &mut App) + 'static,
 ) -> Stateful<Div> {
-    let hover = palette.group;
+    let hover = palette.hover;
     div()
         .id(id)
         .flex()

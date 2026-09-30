@@ -61,7 +61,7 @@ The palette tables from the canvas. `dusk` is Harbor's neutrals with Periwinkle'
 | Text | #EEE9DF | #1B2632 | #EDEEFF | #0C0C16 | #EEE9DF | #1B2632 |
 | Text 2 | #C9C1B1 | #3E4B5B | #A9ABD6 | #474868 | #C9C1B1 | #3E4B5B |
 | Text 3 | #9A9486 | #56606B | #7E80AE | #5D5F85 | #9A9486 | #56606B |
-| Action | #5F5FF0 | #5C5CF7 | #6666FF | #5C5CF7 | #FFB162 | #FFB162 |
+| Action | #5F5FF0 | #5C5CF7 | #6060FF | #5C5CF7 | #FFB162 | #FFB162 |
 | On action | #FFFFFF | #FFFFFF | #FFFFFF | #FFFFFF | #1B2632 | #1B2632 |
 | Link | #B8BAFF | #4747DE | #B8BAFF | #4747DE | #FFB162 | #A35139 |
 | Running | #B9F0D7 | #2F7A4D | #B9F0D7 | #1E8A5C | #8CCB9B | #2F7A4D |

@@ -1,11 +1,12 @@
-use captain_core::settings::{Accent, Appearance, Settings};
+use captain_core::settings::{Appearance, Settings, ThemeFamily};
 use gpui_kit::*;
 
 use super::store;
-use crate::theme::{Palette, accent_color};
-use crate::widgets::{Segment, segmented, settings_card, settings_row, swatch};
+use super::theme_card::theme_card;
+use crate::theme::Palette;
+use crate::widgets::{Segment, segmented, settings_card, settings_row};
 
-/// The Appearance card: light or dark mode, and the accent color.
+/// The Appearance card: the color theme, and light or dark mode.
 pub fn render(settings: &Settings, palette: &Palette) -> Div {
     let modes = Appearance::ALL
         .into_iter()
@@ -18,34 +19,26 @@ pub fn render(settings: &Settings, palette: &Palette) -> Div {
         })
         .collect();
 
-    let swatches =
-        div()
-            .flex()
-            .items_center()
-            .gap(px(6.))
-            .children(Accent::ALL.into_iter().enumerate().map(|(ix, accent)| {
-                swatch(
-                    ("accent-swatch", ix),
-                    accent_color(accent, palette.dark),
-                    settings.accent == accent,
-                    move |_, _, cx| store::update(cx, |settings| settings.accent = accent),
-                )
-            }));
+    let themes = div().flex().items_center().gap(px(8.)).children(
+        ThemeFamily::ALL
+            .into_iter()
+            .map(|family| theme_card(family, settings.theme == family, palette)),
+    );
 
     settings_card(
         "Appearance",
         [
             settings_row(
-                "Appearance",
-                Some("System follows the light or dark mode of your computer.".into()),
-                segmented("appearance-mode", modes, palette),
+                "Theme",
+                Some("Each theme has a light and a dark version.".into()),
+                themes,
                 palette,
             )
             .into_any_element(),
             settings_row(
-                "Accent color",
-                Some(settings.accent.label().into()),
-                swatches,
+                "Appearance",
+                Some("System follows the light or dark mode of your computer.".into()),
+                segmented("appearance-mode", modes, palette),
                 palette,
             )
             .into_any_element(),

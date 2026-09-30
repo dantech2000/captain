@@ -5,6 +5,7 @@ use captain_core::store::ContainerFilter;
 use gpui_kit::assets::IconName;
 
 use super::command::{Command, CommandKind, Section};
+use crate::icons::CaptainIcon;
 use crate::theme::Palette;
 use crate::workspace::{Page, Workspace};
 
@@ -51,7 +52,7 @@ fn bring_data(palette: &Palette) -> Command {
         section: Section::Actions,
         title: "Bring data from another engine…".into(),
         meta: "Migration Assistant".into(),
-        icon: IconName::Download,
+        icon: IconName::Download.into(),
         color: palette.teal,
         suggested: false,
         kind: CommandKind::BringData,
@@ -76,7 +77,7 @@ fn filters(workspace: &Workspace, palette: &Palette) -> Vec<Command> {
                     _ => format!("Show {} containers", filter.label().to_lowercase()),
                 },
                 meta: format!("{}{current}", count_label(count)),
-                icon: IconName::ListFilter,
+                icon: IconName::ListFilter.into(),
                 color: palette.indigo,
                 suggested: false,
                 kind: CommandKind::SetFilter(filter),
@@ -96,7 +97,7 @@ fn container_actions(container: &Container, palette: &Palette) -> Vec<Command> {
         section: Section::Actions,
         title: format!("{} {name}", action.label()),
         meta: meta.clone(),
-        icon,
+        icon: icon.into(),
         color,
         suggested: false,
         kind: CommandKind::Run {
@@ -117,7 +118,7 @@ fn container_actions(container: &Container, palette: &Palette) -> Vec<Command> {
         section: Section::Actions,
         title: format!("Open {name} in browser"),
         meta: format!("localhost:{port}"),
-        icon: IconName::ExternalLink,
+        icon: IconName::ExternalLink.into(),
         color: palette.teal,
         suggested: false,
         kind: CommandKind::OpenPort(port),
@@ -142,7 +143,7 @@ fn project_actions(project: &ComposeProject, palette: &Palette) -> Vec<Command> 
         section: Section::Actions,
         title: format!("{} project {}", action.label(), project.name),
         meta: meta.clone(),
-        icon,
+        icon: icon.into(),
         color,
         suggested: false,
         kind: CommandKind::RunProject {
@@ -155,17 +156,12 @@ fn project_actions(project: &ComposeProject, palette: &Palette) -> Vec<Command> 
 
 /// Selects the container. Running containers are suggested before the user types.
 fn show(container: &Container, palette: &Palette) -> Command {
-    let color = match container.state {
-        ContainerState::Running => palette.green,
-        ContainerState::Paused | ContainerState::Restarting => palette.orange,
-        ContainerState::Dead => palette.red,
-        _ => palette.gray,
-    };
+    let color = palette.container_state(container.state);
     Command {
         section: Section::Containers,
         title: container.name.clone(),
         meta: format!("{} · {}", container_meta(container), container.image),
-        icon: IconName::Box,
+        icon: CaptainIcon::Container.into(),
         color,
         suggested: container.state == ContainerState::Running,
         kind: CommandKind::Show(container.id.clone()),

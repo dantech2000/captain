@@ -80,6 +80,7 @@ impl RunDialog {
                 .child(icon_button(
                     ("remove-env", ix),
                     IconName::Minus,
+                    "Remove this environment variable.",
                     palette,
                     move |_, _, cx| {
                         this.update(cx, |this, cx| this.remove_env(ix, cx)).ok();

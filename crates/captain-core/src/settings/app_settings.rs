@@ -1,6 +1,6 @@
 use serde::{Deserialize, Deserializer, Serialize};
 
-use super::{Accent, Appearance, EngineChoice};
+use super::{Appearance, EngineChoice, ThemeFamily};
 use crate::HostResources;
 use crate::daemon::DaemonSettings;
 use crate::kubernetes::KubernetesSettings;
@@ -11,7 +11,7 @@ pub const SETTINGS_VERSION: u32 = 1;
 /// Everything the user can change on the Settings page.
 ///
 /// Reading is lenient: a missing field gets its default, an unknown field is ignored,
-/// and a field with a value this build does not know (for example a new accent from a
+/// and a field with a value this build does not know (for example a new theme from a
 /// later version) falls back to its default instead of failing the whole file.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default)]
@@ -21,8 +21,10 @@ pub struct Settings {
     pub version: u32,
     #[serde(deserialize_with = "lenient")]
     pub appearance: Appearance,
+    /// The color theme. Files from before themes have an `accent` key instead;
+    /// it is ignored.
     #[serde(deserialize_with = "lenient")]
-    pub accent: Accent,
+    pub theme: ThemeFamily,
     /// A `DOCKER_HOST`-style URL that wins over discovery, for example
     /// `unix:///var/run/docker.sock` or `tcp://10.0.0.5:2375`.
     #[serde(deserialize_with = "lenient")]
@@ -61,7 +63,7 @@ impl Default for Settings {
         Self {
             version: SETTINGS_VERSION,
             appearance: Appearance::default(),
-            accent: Accent::default(),
+            theme: ThemeFamily::default(),
             engine_endpoint: None,
             engine: None,
             stop_engine_on_quit: true,

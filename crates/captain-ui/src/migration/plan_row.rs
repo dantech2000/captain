@@ -74,7 +74,7 @@ pub fn plan_row(
     if entry.item.loses_changes() {
         row = row.child(pill(
             "Changes inside",
-            palette.orange,
+            palette.warn_text,
             palette.tint(palette.orange),
         ));
     }

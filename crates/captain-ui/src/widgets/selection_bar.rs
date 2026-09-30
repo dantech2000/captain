@@ -28,7 +28,7 @@ pub fn selection_bar(
             div()
                 .flex_1()
                 .font_weight(FontWeight::SEMIBOLD)
-                .text_color(palette.accent)
+                .text_color(palette.link)
                 .child(format!("{count} selected")),
         )
         .children(actions)

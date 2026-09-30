@@ -1,7 +1,6 @@
-use gpui_kit::assets::IconName;
-use gpui_kit::component::Icon;
 use gpui_kit::*;
 
+use crate::icons::{CaptainIcon, cap_icon};
 use crate::theme::Palette;
 
 /// Shown when no image passes the filter, or the engine has no images.
@@ -24,11 +23,7 @@ pub fn render(filtered: bool, palette: &Palette) -> impl IntoElement {
         .items_center()
         .gap(px(8.))
         .text_color(palette.text2)
-        .child(
-            Icon::new(IconName::Layers)
-                .size(px(32.))
-                .text_color(palette.text3),
-        )
+        .child(cap_icon(CaptainIcon::Image, px(32.), palette.text3))
         .child(
             div()
                 .text_color(palette.text)

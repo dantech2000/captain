@@ -82,7 +82,7 @@ fn intro(target: &str, palette: &Palette) -> Div {
             ),
         );
     if !is_captain_engine(target) {
-        intro = intro.child(div().text_color(palette.orange).child(
+        intro = intro.child(div().text_color(palette.warn_text).child(
             "This engine is not Captain Engine. The copy works, but it goes into the engine above.",
         ));
     }

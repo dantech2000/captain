@@ -1,5 +1,5 @@
 use captain_core::EngineError;
-use captain_core::model::{Container, ContainerState, PortMapping};
+use captain_core::model::{Container, ContainerState, Health, PortMapping};
 use captain_ui::Connection;
 
 use captain_core::HostStatus;
@@ -108,4 +108,19 @@ fn captain_engine_status_comes_from_the_host() {
         EngineStatus::of_host(&HostStatus::Running, &connected),
         EngineStatus::Running
     );
+}
+
+#[test]
+fn the_icon_needs_attention_for_a_failed_host_or_a_sick_container() {
+    let failed = HostStatus::Failed("no VM".into());
+    let status = EngineStatus::of_host(&failed, &Connection::Connecting);
+    assert_eq!(status, EngineStatus::NeedsAttention);
+
+    let mut web = container("web", ContainerState::Running, None);
+    let healthy = TraySnapshot::new(EngineStatus::Running, std::slice::from_ref(&web));
+    assert_eq!(healthy.icon(), EngineStatus::Running);
+    web.health = Some(Health::Unhealthy);
+    let sick = TraySnapshot::new(EngineStatus::Running, &[web]);
+    assert_eq!(sick.engine, EngineStatus::Running);
+    assert_eq!(sick.icon(), EngineStatus::NeedsAttention);
 }

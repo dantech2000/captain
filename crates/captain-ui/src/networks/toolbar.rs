@@ -2,6 +2,7 @@ use captain_core::store::UsageFilter;
 use gpui_kit::*;
 
 use super::NetworksView;
+use crate::help::HelpExt;
 use crate::theme::Palette;
 use crate::widgets::{ButtonTone, Segment, segmented, text_button};
 
@@ -19,7 +20,8 @@ pub fn render(view: &NetworksView, cx: &mut Context<NetworksView>, palette: &Pal
         view.engine.is_some() && !view.pruning,
         palette,
         cx.listener(move |this, _, _, cx| this.prune(generation, cx)),
-    );
+    )
+    .help("Remove the networks that no container uses. Built-in networks stay.");
 
     div()
         .flex()

@@ -79,7 +79,11 @@ fn switch_row(
         .flex()
         .items_center()
         .gap(px(8.))
-        .child(pill(status.label(), color, palette.tint(color)))
+        .child(pill(
+            status.label(),
+            palette.readable(color),
+            palette.tint(color),
+        ))
         .child(
             Switch::new("kubernetes-enabled")
                 .checked(settings.enabled)
@@ -149,7 +153,7 @@ fn memory_row(
     let host = host.clone();
     settings_row(
         div()
-            .text_color(palette.orange)
+            .text_color(palette.warn_text)
             .child("More memory recommended"),
         Some(
             format!(

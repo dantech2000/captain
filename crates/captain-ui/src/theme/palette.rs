@@ -1,10 +1,10 @@
-//! Captain's colors for dark and light mode. See the v2 design canvas.
+//! Captain's colors for the current theme and mode. See feature 0028.
 
-use captain_core::settings::Accent;
+use captain_core::settings::ThemeFamily;
 use gpui_kit::component::ActiveTheme;
 use gpui_kit::*;
 
-use super::accent_color;
+use super::Tokens;
 use crate::settings;
 
 /// Every color the Captain views use. Build it with [`Palette::of`].
@@ -20,94 +20,90 @@ pub struct Palette {
     pub text2: Hsla,
     pub text3: Hsla,
     pub sep: Hsla,
+    pub border_strong: Hsla,
     pub field: Hsla,
     pub segment: Hsla,
     pub track: Hsla,
     pub button: Hsla,
+    /// The background of a row under the mouse.
+    pub hover: Hsla,
     pub nav_selected: Hsla,
     pub terminal: Hsla,
+    /// The action color: buttons, focus, and selection. Never a state.
     pub accent: Hsla,
+    /// Text on [`Palette::accent`].
+    pub on_accent: Hsla,
+    /// Links, and the action color when it colors text.
+    pub link: Hsla,
+    /// Running and healthy.
     pub green: Hsla,
+    /// Warning, paused, and starting.
     pub orange: Hsla,
+    /// [`Palette::orange`] for text.
+    pub warn_text: Hsla,
+    /// Failing and delete.
     pub red: Hsla,
+    /// Text on [`Palette::red`].
+    pub on_red: Hsla,
+    /// Notes and neutral facts.
+    pub info: Hsla,
+    /// A label color, for charts and tiles that show no state.
     pub indigo: Hsla,
+    /// The info color, under its old name.
     pub teal: Hsla,
+    /// Stopped, created, and other quiet states.
     pub gray: Hsla,
+    /// Colors that tell projects apart, and nothing else.
+    pub labels: [Hsla; 5],
 }
 
 fn c(hex: u32) -> Hsla {
     rgb(hex).into()
 }
 
-fn ca(hex: u32) -> Hsla {
-    rgba(hex).into()
-}
-
 impl Palette {
-    /// The palette for the current appearance, with the accent from the settings.
+    /// The palette for the current appearance and the theme from the settings.
     pub fn of(cx: &App) -> Self {
-        let mut palette = if cx.theme().is_dark() {
-            Self::dark_mode()
-        } else {
-            Self::light_mode()
-        };
-        palette.accent = accent_color(settings::accent(cx), palette.dark);
-        palette
+        Self::new(settings::theme_family(cx), cx.theme().is_dark())
     }
 
-    fn dark_mode() -> Self {
+    pub fn new(family: ThemeFamily, dark: bool) -> Self {
+        let t = Tokens::of(family, dark);
+        let text = c(t.text);
+        let accent = c(t.action);
+        let info = c(t.info);
         Self {
-            dark: true,
-            bg: c(0x161618),
-            side: c(0x1b1b1e),
-            panel: c(0x19191c),
-            group: ca(0xffffff06),
-            card: ca(0xffffff09),
-            text: c(0xf5f5f7),
-            text2: c(0xa1a1a8),
-            text3: c(0x6e6e76),
-            sep: ca(0xffffff13),
-            field: ca(0xffffff0f),
-            segment: c(0x3a3a3f),
-            track: ca(0xffffff14),
-            button: ca(0xffffff0f),
-            nav_selected: ca(0xffffff14),
-            terminal: c(0x111113),
-            accent: c(0x0a84ff),
-            green: c(0x32d74b),
-            orange: c(0xff9f0a),
-            red: c(0xff6961),
-            indigo: c(0x7d7aff),
-            teal: c(0x40c8e0),
-            gray: c(0x8e8e93),
-        }
-    }
-
-    fn light_mode() -> Self {
-        Self {
-            dark: false,
-            bg: c(0xffffff),
-            side: c(0xf5f5f7),
-            panel: c(0xfbfbfc),
-            group: c(0xfbfbfc),
-            card: c(0xffffff),
-            text: c(0x1d1d1f),
-            text2: c(0x5f5f66),
-            text3: c(0x8e8e93),
-            sep: ca(0x00000016),
-            field: ca(0x0000000b),
-            segment: c(0xffffff),
-            track: ca(0x00000012),
-            button: c(0xffffff),
-            nav_selected: ca(0x0000000f),
-            terminal: c(0xf6f6f8),
-            accent: c(0x007aff),
-            green: c(0x1f8a3a),
-            orange: c(0xb86200),
-            red: c(0xd70015),
-            indigo: c(0x4f4cd6),
-            teal: c(0x0a7f96),
-            gray: c(0x6e6e73),
+            dark,
+            bg: c(t.window),
+            side: c(t.sidebar),
+            panel: c(t.sidebar),
+            group: c(t.card),
+            card: c(t.card),
+            text,
+            text2: c(t.text2),
+            text3: c(t.text3),
+            sep: c(t.border),
+            border_strong: c(t.border_strong),
+            field: c(t.field),
+            segment: c(if dark { t.button } else { t.card }),
+            track: c(t.border),
+            button: c(t.button),
+            hover: text.alpha(if dark { 0.06 } else { 0.05 }),
+            nav_selected: accent.alpha(if dark { 0.22 } else { 0.14 }),
+            terminal: c(t.log_panel),
+            accent,
+            on_accent: c(t.on_action),
+            link: c(t.link),
+            green: c(t.running),
+            orange: c(t.warning),
+            warn_text: c(t.warning_text),
+            red: c(t.failing),
+            on_red: c(t.on(t.failing)),
+            info,
+            indigo: c(t.labels[0]),
+            teal: info,
+            gray: c(t.text3),
+            labels: t.labels.map(c),
         }
     }
 
@@ -116,13 +112,22 @@ impl Palette {
         color.alpha(if self.dark { 0.16 } else { 0.11 })
     }
 
-    /// A stable color for a Compose project, picked from its name. It uses the default
-    /// blue, not the accent, so a project keeps its color when the accent changes.
+    /// The text version of a fill color: the link color for the action color, and the
+    /// warning text color for the warning color. Other colors stay as they are.
+    pub fn readable(&self, color: Hsla) -> Hsla {
+        if color == self.accent {
+            self.link
+        } else if color == self.orange {
+            self.warn_text
+        } else {
+            color
+        }
+    }
+
+    /// A stable label color for a Compose project, picked from its name.
     pub fn project_color(&self, name: &str) -> Hsla {
-        let blue = accent_color(Accent::Blue, self.dark);
-        let choices = [self.indigo, self.teal, self.orange, self.green, blue];
         let sum: usize = name.bytes().map(usize::from).sum();
-        choices[sum % choices.len()]
+        self.labels[sum % self.labels.len()]
     }
 
     pub fn mono(&self) -> SharedString {

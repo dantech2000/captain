@@ -103,7 +103,7 @@ fn name_cell(network: &Network, palette: &Palette) -> Div {
                 .when(network.internal, |this| {
                     this.child(pill(
                         "internal",
-                        palette.orange,
+                        palette.warn_text,
                         palette.tint(palette.orange),
                     ))
                 }),

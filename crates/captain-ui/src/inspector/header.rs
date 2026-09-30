@@ -1,8 +1,7 @@
-use captain_core::model::{Container, ContainerState};
-use gpui_kit::assets::IconName;
-use gpui_kit::component::Icon;
+use captain_core::model::Container;
 use gpui_kit::*;
 
+use crate::icons::{CaptainIcon, cap_icon};
 use crate::theme::Palette;
 use crate::widgets::pill;
 
@@ -12,12 +11,7 @@ pub fn render(container: &Container, palette: &Palette) -> impl IntoElement {
         .compose_project
         .as_deref()
         .map_or(palette.gray, |p| palette.project_color(p));
-    let state_color = match container.state {
-        ContainerState::Running => palette.green,
-        ContainerState::Paused | ContainerState::Restarting => palette.orange,
-        ContainerState::Dead => palette.red,
-        _ => palette.gray,
-    };
+    let state_color = palette.container_state(container.state);
     let project = match &container.compose_project {
         Some(project) => format!("project {project}"),
         None => "standalone".to_string(),
@@ -36,11 +30,7 @@ pub fn render(container: &Container, palette: &Palette) -> impl IntoElement {
                 .flex()
                 .items_center()
                 .justify_center()
-                .child(
-                    Icon::new(IconName::Container)
-                        .size(px(22.))
-                        .text_color(color),
-                ),
+                .child(cap_icon(CaptainIcon::Container, px(22.), color)),
         )
         .child(
             div()
@@ -63,7 +53,7 @@ pub fn render(container: &Container, palette: &Palette) -> impl IntoElement {
                         )
                         .child(pill(
                             container.state.label(),
-                            state_color,
+                            palette.readable(state_color),
                             palette.tint(state_color),
                         )),
                 )

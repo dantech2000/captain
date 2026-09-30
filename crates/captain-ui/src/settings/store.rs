@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use captain_core::process_lock::{ProcessLock, settings_lock_path};
-use captain_core::settings::{Accent, Appearance, Settings};
+use captain_core::settings::{Appearance, Settings, ThemeFamily};
 use gpui_kit::component::{Theme, ThemeMode};
 use gpui_kit::*;
 
@@ -35,11 +35,11 @@ pub fn current(cx: &App) -> Settings {
         .unwrap_or_default()
 }
 
-/// The accent preset. [`crate::theme::Palette::of`] reads it on every render, so it
+/// The color theme. [`crate::theme::Palette::of`] reads it on every render, so it
 /// skips the copy that [`current`] makes.
-pub fn accent(cx: &App) -> Accent {
+pub fn theme_family(cx: &App) -> ThemeFamily {
     cx.try_global::<SettingsStore>()
-        .map(|store| store.settings.accent)
+        .map(|store| store.settings.theme)
         .unwrap_or_default()
 }
 
@@ -56,7 +56,7 @@ pub fn save_error(cx: &App) -> Option<SharedString> {
 }
 
 /// Changes the settings, saves them, and applies the appearance. Every window
-/// redraws, so a new accent shows at once.
+/// redraws, so a new theme shows at once.
 pub fn update(cx: &mut App, change: impl FnOnce(&mut Settings)) {
     let store = cx.default_global::<SettingsStore>();
     let before = store.settings.clone();
@@ -76,15 +76,18 @@ pub fn update(cx: &mut App, change: impl FnOnce(&mut Settings)) {
             }
         };
     }
-    if store.settings.appearance != before.appearance {
+    let settings = &store.settings;
+    if settings.appearance != before.appearance || settings.theme != before.theme {
         apply_appearance(None, cx);
     }
     cx.refresh_windows();
 }
 
-/// Sets light or dark mode from the settings. `System` follows the window, or the
-/// OS when there is no window.
+/// Sets the theme and light or dark mode from the settings, for Captain's views and
+/// gpui-kit's components. `System` follows the window, or the OS when there is no
+/// window.
 pub fn apply_appearance(window: Option<&mut Window>, cx: &mut App) {
+    crate::theme::install_kit_themes(theme_family(cx), cx);
     match current(cx).appearance {
         Appearance::System => Theme::sync_system_appearance(window, cx),
         Appearance::Light => Theme::change(ThemeMode::Light, window, cx),

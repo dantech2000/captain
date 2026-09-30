@@ -2,6 +2,7 @@ use captain_core::extension::InstalledExtension;
 use gpui_kit::*;
 
 use super::{ExtensionsModel, remove_dialog, update_dialog};
+use crate::help::HelpExt;
 use crate::theme::Palette;
 use crate::widgets::{ButtonTone, text_button};
 
@@ -15,6 +16,7 @@ pub fn render(
 ) -> AnyElement {
     let details = format!("{} · {}", extension.image, extension.labels.publisher());
     let can_open = enabled && super::CAN_OPEN && extension.page_url().is_some();
+    let title = extension.title().to_string();
     let open = {
         let (model, extension) = (model.clone(), extension.clone());
         text_button(
@@ -29,6 +31,7 @@ pub fn render(
                 }
             },
         )
+        .help(format!("Open {title} in its own window."))
     };
     let update = {
         let (model, extension) = (model.clone(), extension.clone());
@@ -40,6 +43,9 @@ pub fn render(
             palette,
             move |_, window, cx| update_dialog::open(model.clone(), extension.clone(), window, cx),
         )
+        .help(format!(
+            "Check for a newer image of {title} and install it. Its data stays."
+        ))
     };
     let remove = {
         let (model, extension) = (model.clone(), extension.clone());
@@ -51,6 +57,9 @@ pub fn render(
             palette,
             move |_, window, cx| remove_dialog::open(model.clone(), extension.clone(), window, cx),
         )
+        .help(format!(
+            "Remove {title} and its backend. Captain asks first."
+        ))
     };
     div()
         .min_h(px(52.))

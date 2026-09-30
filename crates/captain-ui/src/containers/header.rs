@@ -4,6 +4,7 @@ use gpui_kit::component::Icon;
 use gpui_kit::component::checkbox::Checkbox;
 use gpui_kit::*;
 
+use crate::help::HelpExt;
 use crate::theme::Palette;
 use crate::widgets::{Segment, drag_region, segmented};
 use crate::workspace::Workspace;
@@ -108,7 +109,7 @@ fn project_chip(project: &str, handle: &Entity<Workspace>, palette: &Palette) ->
         .gap(px(6.))
         .rounded(px(7.))
         .bg(palette.tint(palette.accent))
-        .text_color(palette.accent)
+        .text_color(palette.link)
         .text_size(px(12.))
         .font_weight(FontWeight::MEDIUM)
         .cursor_pointer()
@@ -119,4 +120,7 @@ fn project_chip(project: &str, handle: &Entity<Workspace>, palette: &Palette) ->
         })
         .child(format!("Project: {project}"))
         .child(Icon::new(IconName::Close).size(px(11.)))
+        .help(format!(
+            "Show all containers again, not only those of {project}."
+        ))
 }

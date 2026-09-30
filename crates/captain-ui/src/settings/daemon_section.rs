@@ -56,7 +56,9 @@ pub fn render(
 fn restart_row(model: &Entity<HostModel>, palette: &Palette) -> AnyElement {
     let model = model.clone();
     settings_row(
-        div().text_color(palette.orange).child("Restart to apply"),
+        div()
+            .text_color(palette.warn_text)
+            .child("Restart to apply"),
         Some("Captain Engine runs with the previous daemon settings.".into()),
         text_button(
             "daemon-restart",

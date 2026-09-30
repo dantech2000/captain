@@ -39,7 +39,7 @@ pub fn render(
                 .border_1()
                 .border_color(palette.accent.alpha(0.35))
         })
-        .when(!selected, |row| row.hover(|style| style.bg(palette.group)))
+        .when(!selected, |row| row.hover(|style| style.bg(palette.hover)))
         .on_click(move |_, _, cx| {
             select.update(cx, |state, cx| state.select(id.clone(), cx));
         })
@@ -90,7 +90,7 @@ fn name_cell(image: &Image, palette: &Palette) -> Div {
     } else if image.dangling {
         Some(pill(
             "dangling",
-            palette.orange,
+            palette.warn_text,
             palette.tint(palette.orange),
         ))
     } else {

@@ -1,9 +1,9 @@
 use captain_core::format::bytes_label;
 use captain_core::model::{ImageLayer, largest_layer_size};
-use gpui_kit::component::tooltip::Tooltip;
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::*;
 
+use crate::help::HelpExt;
 use crate::theme::Palette;
 use crate::widgets::{section_note, titled_section};
 
@@ -44,7 +44,6 @@ fn row(ix: usize, layer: &ImageLayer, largest: u64, palette: &Palette) -> Statef
         command
     });
     let size = bytes_label(layer.size);
-    let tooltip = full.clone();
 
     div()
         .id(("image-layer", ix))
@@ -54,7 +53,7 @@ fn row(ix: usize, layer: &ImageLayer, largest: u64, palette: &Palette) -> Statef
         .px(px(10.))
         .py(px(7.))
         .when(ix > 0, |row| row.border_t_1().border_color(palette.sep))
-        .tooltip(move |window, cx| Tooltip::new(tooltip.clone()).build(window, cx))
+        .help(full.clone())
         .child(
             div()
                 .flex()

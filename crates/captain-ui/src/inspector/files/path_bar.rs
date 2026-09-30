@@ -1,10 +1,10 @@
 use captain_core::model::{breadcrumbs, parent_path};
 use gpui_kit::assets::IconName;
-use gpui_kit::component::tooltip::Tooltip;
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::*;
 
 use super::files_pane::FilesPane;
+use crate::help::Hint;
 use crate::theme::Palette;
 use crate::widgets::icon_button;
 
@@ -21,16 +21,14 @@ pub fn render(pane: &FilesPane, palette: &Palette, cx: &mut Context<FilesPane>) 
         .flex()
         .items_center()
         .gap(px(6.))
-        .child(
-            tool(
-                "files-up",
-                IconName::ArrowUp,
-                can_up,
-                palette,
-                cx.listener(|this, _, _, cx| this.go_up(cx)),
-            )
-            .tooltip(|window, cx| Tooltip::new("Parent folder").build(window, cx)),
-        )
+        .child(tool(
+            "files-up",
+            IconName::ArrowUp,
+            Hint::with_keys("Go to the parent folder.", &["⌫"]),
+            can_up,
+            palette,
+            cx.listener(|this, _, _, cx| this.go_up(cx)),
+        ))
         .child(
             div()
                 .id("files-crumbs")
@@ -71,40 +69,37 @@ pub fn render(pane: &FilesPane, palette: &Palette, cx: &mut Context<FilesPane>) 
                         )
                 })),
         )
-        .child(
-            tool(
-                "files-refresh",
-                IconName::RotateCw,
-                running,
-                palette,
-                cx.listener(|this, _, _, cx| {
-                    this.preview = None;
-                    this.load(None, cx);
-                }),
-            )
-            .tooltip(|window, cx| Tooltip::new("Refresh").build(window, cx)),
-        )
-        .child(
-            tool(
-                "files-save",
-                IconName::Download,
-                can_save,
-                palette,
-                cx.listener(|this, _, window, cx| this.save(window, cx)),
-            )
-            .tooltip(|window, cx| Tooltip::new("Save to Downloads").build(window, cx)),
-        )
+        .child(tool(
+            "files-refresh",
+            IconName::RotateCw,
+            "Read this folder again from the container.",
+            running,
+            palette,
+            cx.listener(|this, _, _, cx| {
+                this.preview = None;
+                this.load(None, cx);
+            }),
+        ))
+        .child(tool(
+            "files-save",
+            IconName::Download,
+            "Save the selected file or folder to your Downloads folder.",
+            can_save,
+            palette,
+            cx.listener(|this, _, window, cx| this.save(window, cx)),
+        ))
 }
 
 /// An icon button that is dimmed and ignores clicks when it does not apply.
 fn tool(
     id: &'static str,
     icon: IconName,
+    help: impl Into<Hint>,
     enabled: bool,
     palette: &Palette,
     on_click: impl Fn(&ClickEvent, &mut Window, &mut App) + 'static,
 ) -> Stateful<Div> {
-    icon_button(id, icon, palette, move |event, window, cx| {
+    icon_button(id, icon, help, palette, move |event, window, cx| {
         if enabled {
             on_click(event, window, cx);
         }

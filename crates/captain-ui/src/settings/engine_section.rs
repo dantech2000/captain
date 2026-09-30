@@ -41,7 +41,7 @@ pub fn render(
                 .flex()
                 .items_center()
                 .gap(px(8.))
-                .child(pill(state, color, palette.tint(color)))
+                .child(pill(state, palette.readable(color), palette.tint(color)))
                 .child(reconnect),
             palette,
         )

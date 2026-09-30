@@ -26,7 +26,7 @@ pub fn render(palette: &Palette) -> impl IntoElement {
                 .child(
                     Icon::new(IconName::ShipWheel)
                         .size(px(14.))
-                        .text_color(palette.accent),
+                        .text_color(palette.link),
                 )
                 .child("Captain"),
         )

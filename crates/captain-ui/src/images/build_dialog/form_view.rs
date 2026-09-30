@@ -89,6 +89,7 @@ impl BuildDialog {
                 .child(icon_button(
                     ("remove-build-arg", ix),
                     IconName::Minus,
+                    "Remove this build argument.",
                     palette,
                     move |_, _, cx| {
                         this.update(cx, |this, cx| this.remove_arg(ix, cx)).ok();

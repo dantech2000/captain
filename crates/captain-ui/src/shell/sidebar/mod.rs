@@ -1,11 +1,10 @@
 mod brand;
 mod engine_card;
 mod nav;
+mod page_help;
 mod page_link;
 mod projects;
 mod search_button;
-
-pub use projects::project_badge;
 
 use gpui_kit::*;
 

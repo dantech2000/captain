@@ -22,7 +22,7 @@ pub fn jump_pill(
         .gap(px(5.))
         .rounded(px(13.))
         .bg(palette.accent)
-        .text_color(white())
+        .text_color(palette.on_accent)
         .text_size(px(11.))
         .font_weight(FontWeight::SEMIBOLD)
         .shadow(vec![BoxShadow {

@@ -12,6 +12,7 @@ fn entry(name: &str, state: ContainerState, project: Option<&str>) -> ContainerE
         state,
         project: project.map(Into::into),
         ports: Vec::new(),
+        health: None,
     }
 }
 

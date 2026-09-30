@@ -60,7 +60,7 @@ pub fn start(cx: &mut App) {
     let host = captain_ui::host_model(cx);
     let icon = TrayIconBuilder::new()
         .with_tooltip("Captain")
-        .with_icon(status_icon(snapshot.engine))
+        .with_icon(status_icon(snapshot.icon()))
         .with_icon_as_template(true)
         .build();
     let icon = match icon {
@@ -175,11 +175,11 @@ impl Tray {
         if self.shown.as_ref() == Some(&snapshot) {
             return;
         }
-        let engine_changed = self.shown.as_ref().map(|shown| shown.engine) != Some(snapshot.engine);
-        if engine_changed
+        let icon_changed = self.shown.as_ref().map(TraySnapshot::icon) != Some(snapshot.icon());
+        if icon_changed
             && let Err(error) = self
                 .icon
-                .set_icon_with_as_template(Some(status_icon(snapshot.engine)), true)
+                .set_icon_with_as_template(Some(status_icon(snapshot.icon())), true)
         {
             tracing::warn!(%error, "cannot update the menu bar icon");
         }

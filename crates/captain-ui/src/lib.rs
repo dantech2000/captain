@@ -4,6 +4,8 @@ mod containers;
 mod diagnostics;
 mod engine_host;
 mod extensions;
+mod help;
+mod icons;
 mod images;
 mod inspector;
 mod kubernetes;
@@ -24,6 +26,7 @@ pub use engine_host::{
     HostEvent, HostModel, HostSummary, host_model, init as engine_host_init,
     summary as host_summary, uses_captain,
 };
+pub use icons::{CaptainAssets, CaptainIcon, cap_icon};
 pub use kubernetes::init as kubernetes_init;
 pub use migration::OpenMigrationAssistant;
 pub use palette::{ToggleCommandPalette, init as palette_init};

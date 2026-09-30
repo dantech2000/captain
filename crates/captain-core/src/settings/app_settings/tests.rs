@@ -1,12 +1,12 @@
 use super::{SETTINGS_VERSION, Settings};
 use crate::daemon::DaemonSettings;
-use crate::settings::{Accent, Appearance, EngineChoice};
+use crate::settings::{Appearance, EngineChoice, ThemeFamily};
 use crate::{GIB, HostResources};
 
 #[test]
 fn missing_fields_get_defaults() {
-    let settings = Settings::from_json(r#"{"version": 1, "accent": "purple"}"#).unwrap();
-    assert_eq!(settings.accent, Accent::Purple);
+    let settings = Settings::from_json(r#"{"version": 1, "theme": "harbor"}"#).unwrap();
+    assert_eq!(settings.theme, ThemeFamily::Harbor);
     assert_eq!(settings.appearance, Appearance::System);
     assert_eq!(settings.engine_endpoint, None);
 }
@@ -20,11 +20,20 @@ fn unknown_fields_are_ignored() {
 
 #[test]
 fn unknown_values_fall_back_to_defaults() {
-    let json = r#"{"appearance": "sepia", "accent": 7, "engine_endpoint": false}"#;
+    let json = r#"{"appearance": "sepia", "theme": 7, "engine_endpoint": false}"#;
     let settings = Settings::from_json(json).unwrap();
     assert_eq!(settings.appearance, Appearance::System);
-    assert_eq!(settings.accent, Accent::Blue);
+    assert_eq!(settings.theme, ThemeFamily::Dusk);
     assert_eq!(settings.engine_endpoint, None);
+}
+
+#[test]
+fn a_file_with_the_old_accent_gets_the_default_theme() {
+    let json = r#"{"version": 1, "appearance": "dark", "accent": "purple"}"#;
+    let settings = Settings::from_json(json).unwrap();
+    assert_eq!(settings.appearance, Appearance::Dark);
+    assert_eq!(settings.theme, ThemeFamily::Dusk);
+    assert!(!settings.to_json().contains("accent"));
 }
 
 #[test]
@@ -51,11 +60,11 @@ fn writes_the_current_version() {
 #[test]
 fn writes_lowercase_names() {
     let json = Settings {
-        accent: Accent::Graphite,
+        theme: ThemeFamily::Periwinkle,
         ..Settings::default()
     }
     .to_json();
-    assert!(json.contains(r#""accent": "graphite""#), "{json}");
+    assert!(json.contains(r#""theme": "periwinkle""#), "{json}");
     assert!(json.contains(r#""appearance": "system""#), "{json}");
 }
 
@@ -63,7 +72,7 @@ fn writes_lowercase_names() {
 fn round_trips() {
     let settings = Settings {
         appearance: Appearance::Dark,
-        accent: Accent::Teal,
+        theme: ThemeFamily::Harbor,
         debug_logging: true,
         engine: Some(EngineChoice::External),
         stop_engine_on_quit: false,

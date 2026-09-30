@@ -22,7 +22,7 @@ pub fn render(
         div()
             .id("show-started")
             .cursor_pointer()
-            .text_color(palette.accent)
+            .text_color(palette.link)
             .font_weight(FontWeight::MEDIUM)
             .hover(|style| style.underline())
             .on_click(move |_, _, cx| {
@@ -39,6 +39,7 @@ pub fn render(
         icon_button(
             "dismiss-started",
             IconName::Close,
+            "Hide this notice.",
             palette,
             move |_, _, cx| {
                 handle.update(cx, |state, cx| state.dismiss_started(cx));

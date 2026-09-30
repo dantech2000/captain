@@ -3,13 +3,15 @@ use gpui_kit::component::Icon;
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::*;
 
+use crate::help::{HelpExt, Hint};
 use crate::theme::Palette;
 
 /// A tall inspector button: an icon over a label. Buttons in a row share the width.
-/// A disabled button is dimmed and ignores clicks.
+/// A disabled button is dimmed and ignores clicks. `help` is its status bar sentence.
 pub fn action_button(
     label: &'static str,
     icon: IconName,
+    help: impl Into<Hint>,
     color: Hsla,
     enabled: bool,
     palette: &Palette,
@@ -31,7 +33,7 @@ pub fn action_button(
         .border_color(palette.sep)
         .bg(palette.button)
         .text_size(px(11.))
-        .text_color(color)
+        .text_color(palette.readable(color))
         .when(!enabled, |this| this.opacity(0.4))
         .when(enabled, |this| {
             this.cursor_pointer()
@@ -41,4 +43,5 @@ pub fn action_button(
         })
         .child(Icon::new(icon).size(px(16.)))
         .child(label)
+        .help(help)
 }

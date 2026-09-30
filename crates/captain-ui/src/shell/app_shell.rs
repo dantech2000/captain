@@ -3,10 +3,12 @@ use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::*;
 
 use super::sidebar;
+use super::status_bar::StatusBar;
 use crate::containers::ContainersView;
 use crate::diagnostics::{DiagnosticsView, diagnostics_model, failures};
 use crate::engine_host::{HostEvent, host_model, summary as host_summary};
 use crate::extensions::ExtensionsView;
+use crate::help;
 use crate::images::ImagesView;
 use crate::inspector::InspectorView;
 use crate::kubernetes::{KubeEvent, kubernetes_model};
@@ -20,7 +22,8 @@ use crate::theme::Palette;
 use crate::volumes::VolumesView;
 use crate::workspace::{Connection, Connector, Page, Workspace, WorkspaceEvent};
 
-/// The root view: sidebar, the current page, and the command palette overlay.
+/// The root view: sidebar, the current page, the status bar, and the command palette
+/// overlay.
 pub struct AppShell {
     workspace: Entity<Workspace>,
     containers: Entity<ContainersView>,
@@ -33,6 +36,7 @@ pub struct AppShell {
     forwarding: Entity<PortForwardingView>,
     diagnostics: Entity<DiagnosticsView>,
     settings: Entity<SettingsView>,
+    status_bar: Entity<StatusBar>,
     palette: Option<Entity<CommandPalette>>,
     focus_handle: FocusHandle,
     _subscriptions: Vec<Subscription>,
@@ -90,6 +94,7 @@ impl AppShell {
             forwarding: cx.new(|cx| PortForwardingView::new(workspace.clone(), window, cx)),
             diagnostics: cx.new(DiagnosticsView::new),
             settings: cx.new(|cx| SettingsView::new(workspace.clone(), cx)),
+            status_bar: cx.new(|cx| StatusBar::new(workspace.clone(), cx)),
             workspace,
             palette: None,
             focus_handle,
@@ -185,6 +190,7 @@ impl Render for AppShell {
             .size_full()
             .relative()
             .flex()
+            .flex_col()
             .bg(palette.bg)
             .text_color(palette.text)
             .text_size(px(13.))
@@ -193,15 +199,24 @@ impl Render for AppShell {
             .on_action(cx.listener(|this, _: &OpenMigrationAssistant, window, cx| {
                 crate::migration::open(this.workspace.clone(), window, cx);
             }))
-            .child(sidebar::render(
-                &self.workspace,
-                workspace,
-                host.as_ref(),
-                failures(cx),
-                forwarding,
-                &palette,
-            ))
-            .child(self.page(workspace.page(), show_inspector))
+            // A click can remove the control under the mouse, so drop its hint.
+            .capture_any_mouse_down(|_, _, cx| help::clear(cx))
+            .child(
+                div()
+                    .flex_1()
+                    .min_h_0()
+                    .flex()
+                    .child(sidebar::render(
+                        &self.workspace,
+                        workspace,
+                        host.as_ref(),
+                        failures(cx),
+                        forwarding,
+                        &palette,
+                    ))
+                    .child(self.page(workspace.page(), show_inspector)),
+            )
+            .child(self.status_bar.clone())
             .children(self.palette.clone().map(|command_palette| {
                 div()
                     .absolute()

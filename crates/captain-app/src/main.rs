@@ -37,7 +37,7 @@ fn main() {
     let endpoint = settings.engine_endpoint.clone();
     let engine = engine::EngineSetup::new(&settings);
 
-    let app = gpui_kit::application().with_assets(gpui_kit::assets::AllAssets);
+    let app = gpui_kit::application().with_assets(captain_ui::CaptainAssets);
     // Clicking the Dock icon with no window open brings the window back.
     app.on_reopen(window::show);
     app.run(move |cx| {

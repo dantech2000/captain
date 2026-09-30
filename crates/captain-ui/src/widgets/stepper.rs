@@ -8,8 +8,10 @@ use crate::theme::Palette;
 pub type StepHandler = Box<dyn Fn(i32, &mut App)>;
 
 /// A value between minus and plus buttons, for settings such as the CPU count.
+/// `label` names the setting in the buttons' help.
 pub fn stepper(
     id: &'static str,
+    label: &str,
     value: impl Into<SharedString>,
     palette: &Palette,
     on_step: StepHandler,
@@ -23,6 +25,7 @@ pub fn stepper(
         .child(icon_button(
             (id, 0usize),
             IconName::Minus,
+            format!("Decrease {label} by one step."),
             palette,
             move |_, _, cx| down(-1, cx),
         ))
@@ -37,6 +40,7 @@ pub fn stepper(
         .child(icon_button(
             (id, 1usize),
             IconName::Plus,
+            format!("Increase {label} by one step."),
             palette,
             move |_, _, cx| on_step(1, cx),
         ))

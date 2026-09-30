@@ -20,11 +20,12 @@ mod reset_dialog;
 mod settings_view;
 mod store;
 mod system;
+mod theme_card;
 
 pub use engine_source::{
     ContextJob, DetectedEndpoint, EngineSource, engine_source, init_engine_source, reconnect_to,
     retry,
 };
 pub use settings_view::SettingsView;
-pub use store::{SettingsStore, accent, apply_appearance, current, init, observe, update};
+pub use store::{SettingsStore, apply_appearance, current, init, observe, theme_family, update};
 pub use system::{SystemIntegration, init as init_system};

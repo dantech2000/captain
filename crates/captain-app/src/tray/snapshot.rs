@@ -1,6 +1,6 @@
 use captain_core::HostStatus;
 use captain_core::kubernetes::KubeContexts;
-use captain_core::model::{Container, ContainerState};
+use captain_core::model::{Container, ContainerState, Health};
 use captain_ui::{Connection, HostSummary, Workspace};
 
 /// The engine state that the icon and the first status line show.
@@ -9,6 +9,8 @@ pub enum EngineStatus {
     Starting,
     Running,
     Stopped,
+    /// Captain Engine did not start, or a container is restarting or unhealthy.
+    NeedsAttention,
 }
 
 impl EngineStatus {
@@ -27,6 +29,7 @@ impl EngineStatus {
             (HostStatus::Running, Connection::Connected(_)) => Self::Running,
             (HostStatus::Running, Connection::Connecting) => Self::Starting,
             (HostStatus::Starting | HostStatus::Stopping, _) => Self::Starting,
+            (HostStatus::Failed(_), _) => Self::NeedsAttention,
             _ => Self::Stopped,
         }
     }
@@ -36,6 +39,7 @@ impl EngineStatus {
             Self::Starting => "Captain Engine is starting",
             Self::Running => "Captain Engine is running",
             Self::Stopped => "Captain Engine is stopped",
+            Self::NeedsAttention => "Captain Engine needs attention",
         }
     }
 }
@@ -48,11 +52,16 @@ pub struct ContainerEntry {
     pub state: ContainerState,
     pub project: Option<String>,
     pub ports: Vec<u16>,
+    pub health: Option<Health>,
 }
 
 impl ContainerEntry {
     pub fn is_active(&self) -> bool {
         self.state.is_active()
+    }
+
+    fn needs_attention(&self) -> bool {
+        self.state == ContainerState::Restarting || self.health == Some(Health::Unhealthy)
     }
 }
 
@@ -103,6 +112,7 @@ impl TraySnapshot {
                     state: container.state,
                     project: container.compose_project.clone(),
                     ports: container.published_ports(),
+                    health: container.health,
                 })
                 .collect(),
             _ => Vec::new(),
@@ -127,6 +137,19 @@ impl TraySnapshot {
                 can_control: host.can_control,
             }),
             ..Self::new(engine, workspace.store().containers())
+        }
+    }
+
+    /// The state the menu bar icon shows: a running engine needs attention while a
+    /// container is restarting or unhealthy.
+    pub fn icon(&self) -> EngineStatus {
+        match self.engine {
+            EngineStatus::Running
+                if self.containers.iter().any(ContainerEntry::needs_attention) =>
+            {
+                EngineStatus::NeedsAttention
+            }
+            engine => engine,
         }
     }
 

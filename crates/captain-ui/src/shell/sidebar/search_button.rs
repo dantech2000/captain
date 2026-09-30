@@ -2,6 +2,7 @@ use gpui_kit::assets::IconName;
 use gpui_kit::component::Icon;
 use gpui_kit::*;
 
+use crate::help::{CMD, HelpExt};
 use crate::palette::{ToggleCommandPalette, key_hint};
 use crate::theme::Palette;
 
@@ -36,4 +37,5 @@ pub fn render(palette: &Palette) -> impl IntoElement {
         .child(Icon::new(IconName::Search).size(px(14.)))
         .child(div().flex_1().child("Search or run a command"))
         .child(key_hint(SHORTCUT, palette))
+        .help_keys("Find a container, image, page, or command.", &[CMD, "K"])
 }

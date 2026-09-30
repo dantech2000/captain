@@ -1,12 +1,12 @@
 use captain_core::format::bytes_label;
 use captain_core::model::{Volume, VolumeUser};
-use gpui_kit::assets::IconName;
 use gpui_kit::*;
 
+use crate::icons::CaptainIcon;
 use crate::theme::Palette;
 use crate::widgets::{
     DetailHeader, container_link, detail_note, detail_panel, detail_section, key_values,
-    map_or_note, state_color,
+    map_or_note,
 };
 use crate::workspace::{Page, Workspace};
 
@@ -24,7 +24,7 @@ pub fn render(
         .as_deref()
         .map_or(palette.accent, |p| palette.project_color(p));
     let header = DetailHeader {
-        icon: IconName::HardDrive,
+        icon: CaptainIcon::Volume,
         color,
         title: volume.display_name().to_string().into(),
         badge: volume
@@ -107,7 +107,7 @@ fn used_by(
                 SharedString::from(format!("volume-user-{}", user.container_id)),
                 user.name.clone(),
                 user.destination_label(),
-                state_color(state, palette),
+                palette.container_state(state),
                 palette,
                 move |_, _, cx| {
                     handle.update(cx, |workspace, cx| {

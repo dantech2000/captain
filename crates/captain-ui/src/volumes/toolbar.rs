@@ -2,6 +2,7 @@ use captain_core::store::UsageFilter;
 use gpui_kit::*;
 
 use super::VolumesView;
+use crate::help::HelpExt;
 use crate::theme::Palette;
 use crate::widgets::{ButtonTone, Segment, segmented, text_button};
 
@@ -22,7 +23,8 @@ pub fn render(view: &VolumesView, cx: &mut Context<VolumesView>, palette: &Palet
         enabled,
         palette,
         cx.listener(move |this, _, _, cx| this.prune(false, generation, cx)),
-    );
+    )
+    .help("Remove the anonymous volumes that no container uses. Named volumes stay.");
     let prune_all = text_button(
         "prune-all-volumes",
         "Prune all",
@@ -30,7 +32,8 @@ pub fn render(view: &VolumesView, cx: &mut Context<VolumesView>, palette: &Palet
         enabled,
         palette,
         cx.listener(|this, _, window, cx| this.confirm_prune_all(window, cx)),
-    );
+    )
+    .help("Remove every volume that no container uses, named ones too. Captain asks first.");
 
     div()
         .flex()

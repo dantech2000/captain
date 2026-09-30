@@ -39,7 +39,7 @@ pub fn text_button(
         .when(enabled, |button| {
             button
                 .bg(palette.tint(color))
-                .text_color(color)
+                .text_color(palette.readable(color))
                 .cursor_pointer()
                 .hover(move |style| style.bg(hover))
                 .on_click(on_click)

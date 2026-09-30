@@ -1,10 +1,9 @@
 //! What the Terminal tab shows when there is no live shell.
 
-use gpui_kit::assets::IconName;
-use gpui_kit::component::Icon;
 use gpui_kit::*;
 
 use super::terminal_pane::Phase;
+use crate::icons::{CaptainIcon, cap_icon};
 use crate::theme::Palette;
 
 /// The body for a stopped container.
@@ -17,11 +16,7 @@ pub fn not_running(palette: &Palette) -> Div {
         .justify_center()
         .gap(px(8.))
         .p(px(24.))
-        .child(
-            Icon::new(IconName::SquareTerminal)
-                .size(px(28.))
-                .text_color(palette.text3),
-        )
+        .child(cap_icon(CaptainIcon::Exec, px(28.), palette.text3))
         .child(
             div()
                 .font_weight(FontWeight::SEMIBOLD)

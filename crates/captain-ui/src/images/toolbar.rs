@@ -1,12 +1,13 @@
 use captain_core::format::bytes_label;
+use captain_core::model::Image;
 use gpui_kit::assets::IconName;
 use gpui_kit::component::Sizable;
 use gpui_kit::component::input::{Input, InputState};
-use gpui_kit::component::tooltip::Tooltip;
 use gpui_kit::*;
 
 use super::toolbar_button::toolbar_button;
 use super::{ImagesState, build_dialog};
+use crate::help::HelpExt;
 use crate::theme::Palette;
 
 /// The pull field and button, Build, then Remove for the selected image and Prune
@@ -30,11 +31,17 @@ pub fn render(
             palette,
             move |window, cx| start_pull(&handle, &input, window, cx),
         )
+        .help("Pull the image named in the field, for example nginx:latest.")
     };
 
     let can_build = state.builder().is_some();
     let build = {
         let handle = handle.clone();
+        let help = if can_build {
+            "Build an image from a Dockerfile."
+        } else {
+            "Install Docker Buildx to build images."
+        };
         toolbar_button(
             "build-image",
             "Build",
@@ -44,16 +51,19 @@ pub fn render(
             palette,
             move |window, cx| build_dialog::open(handle.clone(), window, cx),
         )
+        .help(help)
     };
-    let build = if can_build {
-        build
-    } else {
-        build.tooltip(|window, cx| {
-            Tooltip::new("Install Docker Buildx to build images.").build(window, cx)
-        })
-    };
-
     let selected = state.selected();
+    let remove_help = match selected {
+        None => "Select an image to remove it.".to_string(),
+        Some(image) if image.in_use() => {
+            format!(
+                "{} is in use by a container, so it stays.",
+                image_name(image)
+            )
+        }
+        Some(image) => format!("Remove the image {}.", image_name(image)),
+    };
     let removable = selected.is_some_and(|image| !image.in_use() && !state.is_removing(&image.id));
     let remove = {
         let handle = handle.clone();
@@ -72,6 +82,7 @@ pub fn render(
                 }
             },
         )
+        .help(remove_help)
     };
 
     let reclaimable = state.store().dangling_size();
@@ -91,6 +102,7 @@ pub fn render(
             palette,
             move |_, cx| handle.update(cx, |state, cx| state.prune_dangling(cx)),
         )
+        .help("Remove the untagged images that no container uses.")
     };
 
     div()
@@ -111,6 +123,15 @@ pub fn render(
         .child(div().flex_1())
         .child(remove)
         .child(prune)
+}
+
+/// The image's first tag, else its short ID.
+fn image_name(image: &Image) -> String {
+    image
+        .repo_tags
+        .first()
+        .cloned()
+        .unwrap_or_else(|| image.short_id().to_string())
 }
 
 /// Starts a pull of what the field holds, then clears the field if the pull started.

@@ -30,6 +30,7 @@ pub fn render(model: &Entity<HostModel>, host: &HostModel, palette: &Palette) ->
                 .child(primary_button(
                     "host-setup",
                     "Set up Captain Engine",
+                    "Download and create the Captain Engine virtual machine.",
                     true,
                     palette,
                     move |_, _, cx| start.update(cx, |model, cx| model.start(cx)),

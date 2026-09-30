@@ -1,12 +1,12 @@
 use captain_core::store::LevelFilter;
 use gpui_kit::assets::IconName;
 use gpui_kit::component::input::{Input, InputState};
-use gpui_kit::component::tooltip::Tooltip;
 use gpui_kit::component::{Icon, Sizable};
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::*;
 
 use super::LogsPane;
+use crate::help::HelpExt;
 use crate::theme::Palette;
 use crate::widgets::icon_button;
 
@@ -17,13 +17,16 @@ pub fn search_row(
     palette: &Palette,
     cx: &mut Context<LogsPane>,
 ) -> Div {
-    let (copy_icon, copy_tip) = if pane.copied() {
+    let (copy_icon, copy_help) = if pane.copied() {
         (
             Icon::new(IconName::Check).text_color(palette.green),
-            "Copied",
+            "Copied the lines shown to the clipboard.",
         )
     } else {
-        (Icon::new(IconName::Copy), "Copy the lines shown")
+        (
+            Icon::new(IconName::Copy),
+            "Copy the lines shown, with the search and level filter applied.",
+        )
     };
     div()
         .flex()
@@ -58,24 +61,20 @@ pub fn search_row(
                 ),
         )
         .child(follow_toggle(pane.following(), palette, cx))
-        .child(
-            icon_button(
-                "logs-copy",
-                copy_icon,
-                palette,
-                cx.listener(|this, _, _, cx| this.copy_visible(cx)),
-            )
-            .tooltip(move |window, cx| Tooltip::new(copy_tip).build(window, cx)),
-        )
-        .child(
-            icon_button(
-                "logs-clear",
-                IconName::Eraser,
-                palette,
-                cx.listener(|this, _, _, cx| this.clear(cx)),
-            )
-            .tooltip(|window, cx| Tooltip::new("Clear the view").build(window, cx)),
-        )
+        .child(icon_button(
+            "logs-copy",
+            copy_icon,
+            copy_help,
+            palette,
+            cx.listener(|this, _, _, cx| this.copy_visible(cx)),
+        ))
+        .child(icon_button(
+            "logs-clear",
+            IconName::Eraser,
+            "Clear the lines in this view. The container keeps its logs.",
+            palette,
+            cx.listener(|this, _, _, cx| this.clear(cx)),
+        ))
 }
 
 /// The second row: level chips, the time column toggle, and the line count.
@@ -90,12 +89,17 @@ pub fn filter_row(
         chip(filter.label(), filter == level, palette)
             .child(filter.label())
             .on_click(cx.listener(move |this, _, _, cx| this.set_level(filter, cx)))
+            .help(match filter {
+                LevelFilter::All => "Show lines of every level.".to_string(),
+                _ => format!("Show only {} lines.", filter.label().to_lowercase()),
+            })
     });
     let time = chip("logs-time", pane.show_time(), palette)
         .gap(px(4.))
         .child(Icon::new(IconName::Clock).size(px(11.)))
         .child("Time")
-        .on_click(cx.listener(|this, _, _, cx| this.toggle_time(cx)));
+        .on_click(cx.listener(|this, _, _, cx| this.toggle_time(cx)))
+        .help("Show or hide the time of each line.");
 
     div()
         .flex()
@@ -166,6 +170,11 @@ fn follow_toggle(following: bool, palette: &Palette, cx: &mut Context<LogsPane>)
         .cursor_pointer()
         .hover(move |style| style.bg(hover))
         .on_click(cx.listener(move |this, _, _, cx| this.set_following(!following, cx)))
+        .help(if following {
+            "New lines scroll into view. Click to pause at the current line."
+        } else {
+            "Paused at the current line. Click to follow new lines."
+        })
         .child(if following {
             div()
                 .size(px(6.))

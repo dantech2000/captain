@@ -1,11 +1,12 @@
 use captain_core::format::bytes_label;
-use gpui_kit::assets::IconName;
 use gpui_kit::component::WindowExt;
 use gpui_kit::component::spinner::Spinner;
 use gpui_kit::*;
 
 use super::{SnapshotEvent, SnapshotsModel, create_dialog, snapshot_row};
 use crate::engine_host::host_model;
+use crate::help::HelpExt;
+use crate::icons::CaptainIcon;
 use crate::theme::Palette;
 use crate::widgets::{
     ButtonTone, empty_note, inline_error, page_header, settings_card, text_button,
@@ -78,6 +79,7 @@ impl Render for SnapshotsView {
             &palette,
             move |_, window, cx| create_dialog::open(handle.clone(), running, window, cx),
         )
+        .help("Save the state of Captain Engine: its disk, images, containers, and volumes.")
         .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation());
         let trailing = div()
             .flex()
@@ -90,7 +92,7 @@ impl Render for SnapshotsView {
             inline_error("Snapshots need Captain Engine on macOS.", &palette).into_any_element()
         } else if model.is_loaded() && model.list().snapshots.is_empty() {
             empty_note(
-                IconName::Camera,
+                CaptainIcon::Snapshot,
                 "No snapshots",
                 "Save the engine's state to go back to it later.",
                 &palette,

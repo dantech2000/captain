@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use std::sync::atomic::{AtomicU32, Ordering};
 
 use super::{Settings, SettingsError};
-use crate::settings::{Accent, Appearance};
+use crate::settings::{Appearance, ThemeFamily};
 
 /// A fresh directory under the system temp dir, removed when dropped.
 struct TempDir(PathBuf);
@@ -41,7 +41,7 @@ fn save_then_load() {
     let path = dir.0.join("Captain").join("settings.json");
     let settings = Settings {
         appearance: Appearance::Light,
-        accent: Accent::Orange,
+        theme: ThemeFamily::Periwinkle,
         engine_endpoint: Some("unix:///tmp/engine.sock".into()),
         ..Settings::default()
     };

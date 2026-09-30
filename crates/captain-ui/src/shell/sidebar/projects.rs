@@ -2,6 +2,8 @@ use captain_core::store::ContainerStore;
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::*;
 
+use crate::help::HelpExt;
+use crate::icons::{CaptainIcon, cap_icon};
 use crate::theme::Palette;
 use crate::workspace::{Page, active_workspace};
 
@@ -36,6 +38,12 @@ pub fn render(store: &ContainerStore, palette: &Palette) -> impl IntoElement {
             };
             let hover = palette.nav_selected;
             let project = name.clone();
+            let total = group.containers.len();
+            let help = if running == 0 {
+                format!("Show {name}. All {total} of its containers are stopped.")
+            } else {
+                format!("Show {name}: {running} of its {total} containers run.")
+            };
             div()
                 .id(SharedString::from(format!("sidebar-project-{name}")))
                 .h(px(30.))
@@ -55,7 +63,7 @@ pub fn render(store: &ContainerStore, palette: &Palette) -> impl IntoElement {
                         });
                     }
                 })
-                .child(project_badge(&name, color, px(16.), palette))
+                .child(cap_icon(CaptainIcon::Stack, px(16.), color))
                 .child(div().flex_1().truncate().child(name))
                 .child(
                     div()
@@ -63,27 +71,6 @@ pub fn render(store: &ContainerStore, palette: &Palette) -> impl IntoElement {
                         .text_color(palette.text3)
                         .child(state),
                 )
+                .help(help)
         }))
-}
-
-/// A rounded tile with the project's first letter in its color.
-pub fn project_badge(name: &str, color: Hsla, size: Pixels, palette: &Palette) -> Div {
-    let initial = name
-        .chars()
-        .next()
-        .unwrap_or('·')
-        .to_uppercase()
-        .to_string();
-    div()
-        .size(size)
-        .flex_shrink_0()
-        .rounded(size * 0.3)
-        .bg(palette.tint(color))
-        .text_color(color)
-        .text_size(size * 0.55)
-        .font_weight(FontWeight::BOLD)
-        .flex()
-        .items_center()
-        .justify_center()
-        .child(initial)
 }

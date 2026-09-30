@@ -1,13 +1,15 @@
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::*;
 
+use crate::help::{HelpExt, Hint};
 use crate::theme::Palette;
 
 /// A large button filled with the accent color, for the main action of a screen.
-/// A disabled button is gray and ignores clicks.
+/// A disabled button is gray and ignores clicks. `help` is its status bar sentence.
 pub fn primary_button(
     id: impl Into<ElementId>,
     label: impl Into<SharedString>,
+    help: impl Into<Hint>,
     enabled: bool,
     palette: &Palette,
     on_click: impl Fn(&ClickEvent, &mut Window, &mut App) + 'static,
@@ -27,7 +29,7 @@ pub fn primary_button(
         .when(enabled, |button| {
             button
                 .bg(palette.accent)
-                .text_color(white())
+                .text_color(palette.on_accent)
                 .cursor_pointer()
                 .hover(move |style| style.bg(hover))
                 .on_click(on_click)
@@ -36,4 +38,5 @@ pub fn primary_button(
             button.bg(palette.field).text_color(palette.text3)
         })
         .child(label.into())
+        .help(help)
 }

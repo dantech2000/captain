@@ -1,11 +1,12 @@
 use captain_core::format::{bytes_label, percent_label};
-use captain_core::model::{Container, ContainerAction, ContainerState, Health};
+use captain_core::model::{Container, ContainerAction, ContainerState};
 use gpui_kit::assets::IconName;
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::*;
 
+use crate::help::HelpExt;
 use crate::theme::Palette;
-use crate::widgets::{icon_button, pill, scales, select_mode, sparkline, status_dot};
+use crate::widgets::{icon_button, pill, scales, select_mode, sparkline, state_glyph};
 use crate::workspace::Workspace;
 
 pub const PORTS_WIDTH: f32 = 150.;
@@ -51,7 +52,7 @@ pub fn render(
                 .border_color(palette.accent.alpha(0.35))
         })
         .when(!highlighted, |row| {
-            row.hover(|style| style.bg(palette.group))
+            row.hover(|style| style.bg(palette.hover))
         })
         .on_click(move |event, _, cx| {
             let mode = select_mode(event);
@@ -104,20 +105,12 @@ pub fn render(
 }
 
 fn name_cell(container: &Container, palette: &Palette) -> Div {
-    let (color, glow) = match container.state {
-        ContainerState::Running => (palette.green, true),
-        ContainerState::Paused | ContainerState::Restarting => (palette.orange, false),
-        ContainerState::Dead => (palette.red, false),
-        _ => (palette.gray, false),
-    };
+    let color = palette.container_state(container.state);
+    let glow = container.state == ContainerState::Running;
     let (image, tag) = container.image_name_and_tag();
     let health = container.health.map(|health| {
-        let color = match health {
-            Health::Healthy => palette.green,
-            Health::Starting => palette.orange,
-            Health::Unhealthy => palette.red,
-        };
-        pill(health.label(), color, palette.tint(color))
+        let color = palette.health(health);
+        pill(health.label(), palette.readable(color), palette.tint(color))
     });
     // The Compose service, when the container name does not already say it.
     let service = container
@@ -132,7 +125,7 @@ fn name_cell(container: &Container, palette: &Palette) -> Div {
         .flex()
         .items_center()
         .gap(px(12.))
-        .child(status_dot(color, glow, palette))
+        .child(state_glyph(color, glow))
         .child(
             div()
                 .min_w_0()
@@ -205,7 +198,7 @@ fn ports_cell(container: &Container, palette: &Palette) -> Div {
                 .gap(px(4.))
                 .rounded(px(6.))
                 .bg(palette.accent.alpha(if palette.dark { 0.12 } else { 0.08 }))
-                .text_color(palette.accent)
+                .text_color(palette.link)
                 .font_family(palette.mono())
                 .text_size(px(11.))
                 .cursor_pointer()
@@ -215,6 +208,10 @@ fn ports_cell(container: &Container, palette: &Palette) -> Div {
                 })
                 .child(format!(":{port}"))
                 .child(gpui_kit::component::Icon::new(IconName::ArrowUpRight).size(px(10.)))
+                .help(format!(
+                    "Open http://localhost:{port} in your browser ({}).",
+                    container.name
+                ))
         }))
 }
 
@@ -262,6 +259,7 @@ fn trailing_cell(
         icon_button(
             SharedString::from(format!("{}-{}", action.label(), container.id)),
             icon,
+            action_help(action, &container.name),
             palette,
             move |_, _, cx| {
                 cx.stop_propagation();
@@ -274,4 +272,14 @@ fn trailing_cell(
     cell.child(action_button(toggle, toggle_icon))
         .children(pause.map(|(action, icon)| action_button(action, icon)))
         .child(action_button(ContainerAction::Restart, IconName::RotateCw))
+}
+
+/// The status bar sentence for a row button.
+fn action_help(action: ContainerAction, name: &str) -> String {
+    match action {
+        ContainerAction::Stop => format!("Stop {name}. Its files and volumes stay."),
+        ContainerAction::Pause => format!("Pause {name}. Its processes freeze, not stop."),
+        ContainerAction::Unpause => format!("Resume the frozen processes of {name}."),
+        other => format!("{} {name}.", other.label()),
+    }
 }

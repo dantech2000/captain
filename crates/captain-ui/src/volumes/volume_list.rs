@@ -1,11 +1,11 @@
 use captain_core::format::bytes_label;
 use captain_core::model::Volume;
 use captain_core::store::{ResourceGroup, UsageFilter};
-use gpui_kit::assets::IconName;
 use gpui_kit::*;
 
 use super::VolumesView;
 use super::volume_row::{self, CREATED_WIDTH, SIZE_WIDTH, USAGE_WIDTH};
+use crate::icons::CaptainIcon;
 use crate::theme::Palette;
 use crate::widgets::{Column, column_header, empty_note, group_card};
 
@@ -34,7 +34,7 @@ pub fn render(view: &VolumesView, cx: &mut Context<VolumesView>, palette: &Palet
                 "Choose All to see every volume.",
             )
         };
-        return empty_note(IconName::HardDrive, title, hint, palette).into_any_element();
+        return empty_note(CaptainIcon::Volume, title, hint, palette).into_any_element();
     }
 
     let handle = cx.entity();

@@ -1,5 +1,7 @@
 use gpui_kit::assets::IconName;
 
+use crate::icons::{CaptainIcon, Glyph};
+
 /// A top-level page in the sidebar.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
 pub enum Page {
@@ -39,17 +41,18 @@ impl Page {
         }
     }
 
-    pub fn icon(self) -> IconName {
+    /// Captain's glyph for a resource page; Diagnostics and Settings keep Lucide's.
+    pub fn icon(self) -> Glyph {
         match self {
-            Page::Containers => IconName::Container,
-            Page::Images => IconName::Layers,
-            Page::Volumes => IconName::HardDrive,
-            Page::Networks => IconName::Network,
-            Page::Extensions => IconName::Puzzle,
-            Page::Snapshots => IconName::Camera,
-            Page::PortForwarding => IconName::ArrowRightLeft,
-            Page::Diagnostics => IconName::Stethoscope,
-            Page::Settings => IconName::Settings,
+            Page::Containers => CaptainIcon::Container.into(),
+            Page::Images => CaptainIcon::Image.into(),
+            Page::Volumes => CaptainIcon::Volume.into(),
+            Page::Networks => CaptainIcon::Network.into(),
+            Page::Extensions => CaptainIcon::Extension.into(),
+            Page::Snapshots => CaptainIcon::Snapshot.into(),
+            Page::PortForwarding => CaptainIcon::Forward.into(),
+            Page::Diagnostics => IconName::Stethoscope.into(),
+            Page::Settings => IconName::Settings.into(),
         }
     }
 }

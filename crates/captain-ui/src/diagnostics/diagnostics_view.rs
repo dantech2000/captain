@@ -2,6 +2,7 @@ use captain_core::diagnostics::CheckState;
 use gpui_kit::*;
 
 use super::{DiagnosticsModel, check_row, diagnostics_model, troubleshooting};
+use crate::help::HelpExt;
 use crate::settings;
 use crate::theme::Palette;
 use crate::widgets::{ButtonTone, inline_notice, page_header, settings_card, text_button};
@@ -86,6 +87,7 @@ impl Render for DiagnosticsView {
             &palette,
             move |_, _, cx| handle.update(cx, |model, cx| model.run(true, cx)),
         )
+        .help("Run every check again: the engine, its socket, and the tools.")
         .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation());
 
         div()

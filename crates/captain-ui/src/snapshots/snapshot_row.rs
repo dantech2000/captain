@@ -4,6 +4,7 @@ use chrono::TimeZone;
 use gpui_kit::*;
 
 use super::{SnapshotsModel, delete_dialog, edit_dialog, restore_dialog};
+use crate::help::HelpExt;
 use crate::theme::Palette;
 use crate::widgets::{ButtonTone, text_button};
 
@@ -20,6 +21,7 @@ pub fn render(
         date(metadata.created),
         bytes_label(metadata.disk_allocated)
     );
+    let name = &metadata.name;
     let restore = {
         let (model, snapshot) = (model.clone(), snapshot.clone());
         text_button(
@@ -30,6 +32,9 @@ pub fn render(
             palette,
             move |_, window, cx| restore_dialog::open(model.clone(), snapshot.clone(), window, cx),
         )
+        .help(format!(
+            "Put Captain Engine back to the state of {name}. Captain asks first."
+        ))
     };
     let edit = {
         let (model, snapshot) = (model.clone(), snapshot.clone());
@@ -41,6 +46,7 @@ pub fn render(
             palette,
             move |_, window, cx| edit_dialog::open(model.clone(), snapshot.clone(), window, cx),
         )
+        .help(format!("Change the name and description of {name}."))
     };
     let delete = {
         let (model, snapshot) = (model.clone(), snapshot.clone());
@@ -52,6 +58,7 @@ pub fn render(
             palette,
             move |_, window, cx| delete_dialog::open(model.clone(), snapshot.clone(), window, cx),
         )
+        .help(format!("Delete the snapshot {name}. Captain asks first."))
     };
     div()
         .min_h(px(52.))

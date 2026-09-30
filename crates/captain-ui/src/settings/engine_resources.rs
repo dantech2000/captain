@@ -29,6 +29,7 @@ pub fn rows(model: &Entity<HostModel>, host: &HostModel, palette: &Palette) -> V
             note,
             stepper(
                 id,
+                label,
                 value,
                 palette,
                 Box::new(move |delta, cx| {

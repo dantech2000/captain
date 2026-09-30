@@ -1,14 +1,13 @@
-use gpui_kit::assets::IconName;
-use gpui_kit::component::Icon;
 use gpui_kit::*;
 
 use super::{drag_region, pill};
+use crate::icons::{CaptainIcon, cap_icon};
 use crate::theme::Palette;
 
 /// The top of a detail panel: a tinted icon, the title with an optional badge, and a
 /// line below it.
 pub struct DetailHeader {
-    pub icon: IconName,
+    pub icon: CaptainIcon,
     pub color: Hsla,
     pub title: SharedString,
     pub badge: Option<(SharedString, Hsla)>,
@@ -70,7 +69,7 @@ fn header_row(header: DetailHeader, palette: &Palette) -> Div {
         .children(
             header
                 .badge
-                .map(|(label, color)| pill(label, color, palette.tint(color))),
+                .map(|(label, color)| pill(label, palette.readable(color), palette.tint(color))),
         );
     div()
         .flex()
@@ -85,11 +84,7 @@ fn header_row(header: DetailHeader, palette: &Palette) -> Div {
                 .flex()
                 .items_center()
                 .justify_center()
-                .child(
-                    Icon::new(header.icon)
-                        .size(px(22.))
-                        .text_color(header.color),
-                ),
+                .child(cap_icon(header.icon, px(22.), header.color)),
         )
         .child(
             div()

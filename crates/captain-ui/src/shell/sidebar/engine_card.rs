@@ -4,6 +4,8 @@ use captain_core::model::EngineInfo;
 use gpui_kit::*;
 
 use crate::engine_host::HostSummary;
+use crate::help::HelpExt;
+use crate::icons::{CaptainIcon, cap_icon};
 use crate::theme::Palette;
 use crate::widgets::{ButtonTone, pill, text_button};
 use crate::workspace::{Connection, Workspace};
@@ -42,8 +44,12 @@ pub fn render(
                 .justify_between()
                 .child(
                     div()
+                        .flex()
+                        .items_center()
+                        .gap(px(6.))
                         .text_size(px(12.))
                         .font_weight(FontWeight::SEMIBOLD)
+                        .child(cap_icon(CaptainIcon::Engine, px(16.), palette.text2))
                         .child(title),
                 )
                 .children(info.map(|info| {
@@ -66,12 +72,7 @@ pub fn render(
 
 /// The host state and a Start or Stop button.
 fn controls(host: &HostSummary, palette: &Palette) -> Div {
-    let color = match host.status {
-        HostStatus::Running => palette.green,
-        HostStatus::Starting | HostStatus::Stopping => palette.orange,
-        HostStatus::NotCreated => palette.gray,
-        _ => palette.red,
-    };
+    let color = palette.host_status(&host.status);
     let model = host.model.clone();
     let button = if host.status.can_stop() {
         text_button(
@@ -82,6 +83,7 @@ fn controls(host: &HostSummary, palette: &Palette) -> Div {
             palette,
             move |_, _, cx| model.update(cx, |model, cx| model.stop(cx)).detach(),
         )
+        .help("Stop Captain Engine. Running containers stop with it.")
     } else {
         let label = if host.status == HostStatus::NotCreated {
             "Set up"
@@ -96,12 +98,21 @@ fn controls(host: &HostSummary, palette: &Palette) -> Div {
             palette,
             move |_, _, cx| model.update(cx, |model, cx| model.start(cx)),
         )
+        .help(if host.status == HostStatus::NotCreated {
+            "Download and create the Captain Engine virtual machine."
+        } else {
+            "Start Captain Engine."
+        })
     };
     div()
         .flex()
         .items_center()
         .justify_between()
-        .child(pill(host.status.label(), color, palette.tint(color)))
+        .child(pill(
+            host.status.label(),
+            palette.readable(color),
+            palette.tint(color),
+        ))
         .child(button)
 }
 

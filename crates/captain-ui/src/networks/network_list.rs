@@ -1,10 +1,10 @@
 use captain_core::model::Network;
 use captain_core::store::{ResourceGroup, UsageFilter};
-use gpui_kit::assets::IconName;
 use gpui_kit::*;
 
 use super::NetworksView;
 use super::network_row::{self, CONTAINERS_WIDTH, SCOPE_WIDTH, SUBNET_WIDTH};
+use crate::icons::CaptainIcon;
 use crate::theme::Palette;
 use crate::widgets::{Column, column_header, empty_note, group_card};
 
@@ -37,7 +37,7 @@ pub fn render(
                 "Choose All to see every network.",
             )
         };
-        return empty_note(IconName::Network, title, hint, palette).into_any_element();
+        return empty_note(CaptainIcon::Network, title, hint, palette).into_any_element();
     }
 
     let handle = cx.entity();

@@ -30,7 +30,7 @@ pub fn toolbar_button(
         .bg(palette.button)
         .text_size(px(12.))
         .font_weight(FontWeight::MEDIUM)
-        .text_color(color)
+        .text_color(palette.readable(color))
         .when(!enabled, |this| this.opacity(0.4))
         .when(enabled, |this| {
             this.cursor_pointer()

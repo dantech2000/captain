@@ -15,6 +15,11 @@ pub fn render(
     state: &ImagesState,
     palette: &Palette,
 ) -> impl IntoElement {
+    let name = image
+        .repo_tags
+        .first()
+        .cloned()
+        .unwrap_or_else(|| image.short_id().to_string());
     let run = {
         let handle = handle.clone();
         let reference = image
@@ -26,6 +31,7 @@ pub fn render(
         action_button(
             "Run",
             IconName::Play,
+            format!("Run a new container from {name}."),
             palette.accent,
             detail.is_some(),
             palette,
@@ -43,6 +49,11 @@ pub fn render(
         action_button(
             "Remove",
             IconName::Trash,
+            if image.in_use() {
+                format!("{name} is in use by a container, so it stays.")
+            } else {
+                format!("Remove the image {name}.")
+            },
             palette.red,
             !image.in_use() && !state.is_removing(&image.id),
             palette,
@@ -56,6 +67,7 @@ pub fn render(
         action_button(
             "Tag",
             IconName::Tag,
+            format!("Add a tag to {name}."),
             palette.accent,
             true,
             palette,
@@ -70,6 +82,11 @@ pub fn render(
         action_button(
             "Push",
             IconName::Upload,
+            if tags.is_empty() {
+                "Tag the image first. Push needs a repository name.".to_string()
+            } else {
+                format!("Push {name} to its registry.")
+            },
             palette.accent,
             !tags.is_empty() && !state.is_pushing(),
             palette,
@@ -86,6 +103,7 @@ pub fn render(
         action_button(
             "Scan",
             IconName::ShieldCheck,
+            format!("Scan {name} for known vulnerabilities."),
             palette.accent,
             engine.is_some(),
             palette,
@@ -101,6 +119,7 @@ pub fn render(
         action_button(
             "Copy ID",
             IconName::Copy,
+            "Copy the full image ID.",
             palette.text,
             true,
             palette,

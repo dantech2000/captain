@@ -51,9 +51,14 @@ fn buttons(model: &Entity<HostModel>, start: Option<&'static str>, palette: &Pal
         .items_center()
         .gap(px(12.))
         .children(start.map(|label| {
-            primary_button("host-start", label, true, palette, move |_, _, cx| {
-                starter.update(cx, |model, cx| model.start(cx));
-            })
+            primary_button(
+                "host-start",
+                label,
+                "Start the Captain Engine virtual machine.",
+                true,
+                palette,
+                move |_, _, cx| starter.update(cx, |model, cx| model.start(cx)),
+            )
         }))
         .child(text_button(
             "host-use-other",

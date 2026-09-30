@@ -1,4 +1,3 @@
-use gpui_kit::assets::IconName;
 use gpui_kit::component::Sizable;
 use gpui_kit::component::WindowExt;
 use gpui_kit::component::input::{Input, InputEvent, InputState};
@@ -6,6 +5,8 @@ use gpui_kit::component::spinner::Spinner;
 use gpui_kit::*;
 
 use super::{ExtensionEvent, ExtensionsModel, extension_row, install_dialog};
+use crate::help::HelpExt;
+use crate::icons::CaptainIcon;
 use crate::theme::Palette;
 use crate::widgets::{
     ButtonTone, empty_note, inline_error, page_header, settings_card, text_button,
@@ -107,16 +108,19 @@ impl Render for ExtensionsView {
             .items_center()
             .gap(px(8.))
             .child(div().flex_1().child(Input::new(&self.reference).small()))
-            .child(text_button(
-                "extension-install",
-                "Install",
-                ButtonTone::Accent,
-                enabled,
-                &palette,
-                move |_, _, cx| {
-                    this.update(cx, |view, cx| view.install(cx)).ok();
-                },
-            ));
+            .child(
+                text_button(
+                    "extension-install",
+                    "Install",
+                    ButtonTone::Accent,
+                    enabled,
+                    &palette,
+                    move |_, _, cx| {
+                        this.update(cx, |view, cx| view.install(cx)).ok();
+                    },
+                )
+                .help("Install the extension image named in the field. Captain asks first."),
+            );
         let install = div()
             .flex()
             .flex_col()
@@ -127,7 +131,7 @@ impl Render for ExtensionsView {
             .child(
                 div()
                     .text_size(px(12.))
-                    .text_color(palette.orange)
+                    .text_color(palette.warn_text)
                     .child(install_dialog::TRUST_NOTE),
             )
             .children((!super::CAN_OPEN).then(|| {
@@ -139,7 +143,7 @@ impl Render for ExtensionsView {
             inline_error("Extensions need a connected engine.", &palette).into_any_element()
         } else if model.is_loaded() && model.list().is_empty() {
             empty_note(
-                IconName::Puzzle,
+                CaptainIcon::Extension,
                 "No extensions",
                 "Install a Docker Desktop extension by its image reference.",
                 &palette,

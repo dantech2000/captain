@@ -6,7 +6,7 @@ use crate::theme::Palette;
 /// The frame of one selectable row in a list card, styled like a container row.
 /// The caller adds the cells and the click handler.
 pub fn list_row(id: impl Into<ElementId>, selected: bool, palette: &Palette) -> Stateful<Div> {
-    let hover = palette.group;
+    let hover = palette.hover;
     div()
         .id(id)
         .h(px(50.))

@@ -1,10 +1,9 @@
 use captain_core::format::bytes_label;
 use captain_core::model::Image;
 use gpui_kit::assets::IconName;
-use gpui_kit::component::Icon;
-use gpui_kit::component::tooltip::Tooltip;
 use gpui_kit::*;
 
+use crate::icons::{CaptainIcon, cap_icon};
 use crate::images::ImagesState;
 use crate::theme::Palette;
 use crate::widgets::{icon_button, pill};
@@ -18,7 +17,7 @@ pub fn render(image: &Image, handle: &Entity<ImagesState>, palette: &Palette) ->
         palette.indigo
     };
     let usage = match image.containers {
-        0 if image.dangling => pill("dangling", palette.orange, palette.tint(palette.orange)),
+        0 if image.dangling => pill("dangling", palette.warn_text, palette.tint(palette.orange)),
         0 => pill("unused", palette.gray, palette.tint(palette.gray)),
         1 => pill("in use by 1", palette.green, palette.tint(palette.green)),
         n => pill(
@@ -37,13 +36,13 @@ pub fn render(image: &Image, handle: &Entity<ImagesState>, palette: &Palette) ->
         icon_button(
             "close-image-inspector",
             IconName::Close,
+            "Close the image details.",
             palette,
             move |_, _, cx| {
                 handle.update(cx, |state, cx| state.deselect(cx));
             },
         )
         .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
-        .tooltip(|window, cx| Tooltip::new("Close").build(window, cx))
     };
 
     div()
@@ -59,7 +58,7 @@ pub fn render(image: &Image, handle: &Entity<ImagesState>, palette: &Palette) ->
                 .flex()
                 .items_center()
                 .justify_center()
-                .child(Icon::new(IconName::Layers).size(px(22.)).text_color(color)),
+                .child(cap_icon(CaptainIcon::Image, px(22.), color)),
         )
         .child(
             div()

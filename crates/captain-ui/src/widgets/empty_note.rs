@@ -1,12 +1,11 @@
-use gpui_kit::assets::IconName;
-use gpui_kit::component::Icon;
 use gpui_kit::*;
 
+use crate::icons::{CaptainIcon, cap_icon};
 use crate::theme::Palette;
 
 /// A centered icon, title, and hint for an empty list.
 pub fn empty_note(
-    icon: IconName,
+    icon: CaptainIcon,
     title: impl Into<SharedString>,
     hint: impl Into<SharedString>,
     palette: &Palette,
@@ -18,7 +17,7 @@ pub fn empty_note(
         .items_center()
         .gap(px(8.))
         .text_color(palette.text2)
-        .child(Icon::new(icon).size(px(32.)).text_color(palette.text3))
+        .child(cap_icon(icon, px(32.), palette.text3))
         .child(
             div()
                 .text_color(palette.text)

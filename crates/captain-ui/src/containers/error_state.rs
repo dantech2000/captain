@@ -1,9 +1,8 @@
 use captain_core::EngineError;
-use gpui_kit::assets::IconName;
-use gpui_kit::component::Icon;
 use gpui_kit::*;
 
 use crate::engine_host::HostModel;
+use crate::icons::{CaptainIcon, cap_icon};
 use crate::settings;
 use crate::theme::Palette;
 use crate::widgets::{ButtonTone, text_button};
@@ -55,11 +54,7 @@ pub fn render(
                         .flex()
                         .items_center()
                         .justify_center()
-                        .child(
-                            Icon::new(IconName::Container)
-                                .size(px(30.))
-                                .text_color(palette.red),
-                        ),
+                        .child(cap_icon(CaptainIcon::Engine, px(30.), palette.red)),
                 )
                 .child(
                     div()

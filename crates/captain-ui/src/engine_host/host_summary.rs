@@ -36,14 +36,15 @@ pub fn summary(cx: &App) -> Option<HostSummary> {
 impl HostSummary {
     /// The color and short text for the brand line.
     pub fn brand_line(&self, palette: &Palette) -> (Hsla, &'static str) {
-        match self.status {
-            HostStatus::Running => (palette.green, "Engine running"),
-            HostStatus::Starting => (palette.orange, "Engine starting..."),
-            HostStatus::Stopping => (palette.orange, "Engine stopping..."),
-            HostStatus::NotCreated => (palette.gray, "Engine not set up"),
-            HostStatus::Stopped => (palette.red, "Engine stopped"),
-            HostStatus::Failed(_) => (palette.red, "Engine failed"),
-            HostStatus::NotInstalled(_) => (palette.red, "Lima not installed"),
-        }
+        let text = match self.status {
+            HostStatus::Running => "Engine running",
+            HostStatus::Starting => "Engine starting...",
+            HostStatus::Stopping => "Engine stopping...",
+            HostStatus::NotCreated => "Engine not set up",
+            HostStatus::Stopped => "Engine stopped",
+            HostStatus::Failed(_) => "Engine failed",
+            HostStatus::NotInstalled(_) => "Lima not installed",
+        };
+        (palette.host_status(&self.status), text)
     }
 }

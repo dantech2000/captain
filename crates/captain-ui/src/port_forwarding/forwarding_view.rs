@@ -1,8 +1,8 @@
-use gpui_kit::assets::IconName;
 use gpui_kit::component::WindowExt;
 use gpui_kit::*;
 
 use super::{ForwardingModel, service_card};
+use crate::icons::CaptainIcon;
 use crate::kubernetes::KubeEvent;
 use crate::theme::Palette;
 use crate::widgets::{empty_note, inline_error, page_header};
@@ -52,7 +52,7 @@ impl Render for PortForwardingView {
         } else if model.is_loaded() && model.services().is_empty() {
             body.push(
                 empty_note(
-                    IconName::ArrowRightLeft,
+                    CaptainIcon::Forward,
                     "No services",
                     "Services with TCP ports show here once you create them.",
                     &palette,

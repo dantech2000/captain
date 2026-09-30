@@ -1,7 +1,9 @@
-use gpui_kit::component::Icon;
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::*;
 
+use super::page_help::page_help;
+use crate::help::HelpExt;
+use crate::icons::glyph;
 use crate::theme::Palette;
 use crate::workspace::{Page, Workspace};
 
@@ -39,16 +41,17 @@ pub fn render(
                 .on_click(move |_, _, cx| {
                     handle.update(cx, |workspace, cx| workspace.set_page(page, cx))
                 })
-                .child(
-                    Icon::new(page.icon())
-                        .size(px(16.))
-                        .text_color(if selected {
-                            palette.accent
-                        } else {
-                            palette.text2
-                        }),
-                )
+                .child(glyph(
+                    page.icon(),
+                    px(16.),
+                    if selected {
+                        palette.accent
+                    } else {
+                        palette.text2
+                    },
+                ))
                 .child(div().flex_1().child(page.label()))
+                .help(page_help(page, count))
                 .children(count.map(|count| {
                     div()
                         .text_size(px(11.))

@@ -1,9 +1,9 @@
 use captain_core::model::{ContainerAction, ProjectAction};
 use captain_core::store::ContainerFilter;
-use gpui_kit::assets::IconName;
 use gpui_kit::*;
 
 use crate::containers::down_dialog;
+use crate::icons::Glyph;
 use crate::migration::OpenMigrationAssistant;
 use crate::workspace::{Page, Workspace};
 
@@ -132,7 +132,7 @@ pub struct Command {
     pub title: String,
     /// A secondary line, such as the project and state of a container.
     pub meta: String,
-    pub icon: IconName,
+    pub icon: Glyph,
     /// The color of the icon and its tile.
     pub color: Hsla,
     /// True if the palette lists this command before the user types.

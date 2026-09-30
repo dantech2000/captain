@@ -4,6 +4,7 @@ use gpui_kit::component::switch::Switch;
 use gpui_kit::*;
 
 use super::DiagnosticsModel;
+use crate::help::HelpExt;
 use crate::settings;
 use crate::theme::Palette;
 use crate::widgets::{ButtonTone, settings_card, settings_row, text_button};
@@ -58,6 +59,10 @@ fn folder_row(
         None => format!("{note} The folder does not exist yet."),
     };
     let enabled = dir.is_some();
+    let help = match &dir {
+        Some(dir) => format!("Open {} in the file manager.", dir.display()),
+        None => "The folder does not exist yet.".to_string(),
+    };
     settings_row(
         label,
         Some(note.into()),
@@ -72,7 +77,8 @@ fn folder_row(
                     cx.open_with_system(dir);
                 }
             },
-        ),
+        )
+        .help(help),
         palette,
     )
     .into_any_element()

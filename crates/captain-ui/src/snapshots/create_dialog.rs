@@ -127,7 +127,7 @@ impl Render for CreateDialog {
             .children(self.warning.clone().map(|warning| {
                 div()
                     .text_size(px(12.))
-                    .text_color(palette.orange)
+                    .text_color(palette.warn_text)
                     .child(warning)
             }))
             .children(self.error.clone().map(|e| inline_error(e, &palette)))

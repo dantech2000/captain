@@ -58,12 +58,7 @@ fn choice_row(model: &Entity<HostModel>, choice: EngineChoice, palette: &Palette
 
 fn status_row(model: &Entity<HostModel>, host: &HostModel, palette: &Palette) -> AnyElement {
     let status = host.status().clone();
-    let color = match status {
-        HostStatus::Running => palette.green,
-        HostStatus::Starting | HostStatus::Stopping => palette.orange,
-        HostStatus::NotCreated => palette.gray,
-        _ => palette.red,
-    };
+    let color = palette.host_status(&status);
     let note = match &status {
         HostStatus::NotInstalled(reason) | HostStatus::Failed(reason) => reason.clone(),
         HostStatus::NotCreated => "Not set up yet. Start sets it up.".into(),
@@ -88,7 +83,11 @@ fn status_row(model: &Entity<HostModel>, host: &HostModel, palette: &Palette) ->
         .flex()
         .items_center()
         .gap(px(8.))
-        .child(pill(status.label(), color, palette.tint(color)))
+        .child(pill(
+            status.label(),
+            palette.readable(color),
+            palette.tint(color),
+        ))
         .child(button(
             "engine-start",
             "Start",

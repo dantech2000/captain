@@ -1,12 +1,15 @@
 use gpui_kit::component::Icon;
 use gpui_kit::*;
 
+use crate::help::{HelpExt, Hint};
 use crate::theme::Palette;
 
-/// A square button that shows only an icon. `label` is for accessibility and tooltips.
+/// A square button that shows only an icon. `help` is its status bar sentence, the
+/// only text that says what it does.
 pub fn icon_button(
     id: impl Into<ElementId>,
     icon: impl Into<Icon>,
+    help: impl Into<Hint>,
     palette: &Palette,
     on_click: impl Fn(&ClickEvent, &mut Window, &mut App) + 'static,
 ) -> Stateful<Div> {
@@ -27,4 +30,5 @@ pub fn icon_button(
         .hover(move |style| style.bg(hover))
         .on_click(on_click)
         .child(Icon::new(icon).size(px(13.)))
+        .help(help)
 }

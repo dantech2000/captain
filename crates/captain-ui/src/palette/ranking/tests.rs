@@ -10,7 +10,7 @@ fn command(section: Section, title: &str, suggested: bool) -> Command {
         section,
         title: title.into(),
         meta: String::new(),
-        icon: IconName::Box,
+        icon: IconName::Box.into(),
         color: hsla(0., 0., 0., 1.),
         suggested,
         kind: CommandKind::GoTo(Page::Containers),

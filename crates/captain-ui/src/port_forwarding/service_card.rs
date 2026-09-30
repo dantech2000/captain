@@ -5,6 +5,7 @@ use captain_core::kubernetes::{ForwardKey, KubeService};
 use gpui_kit::*;
 
 use super::{ForwardingModel, forward_dialog};
+use crate::help::HelpExt;
 use crate::theme::Palette;
 use crate::widgets::{ButtonTone, settings_card, settings_row, text_button};
 
@@ -64,24 +65,30 @@ fn rows(
                             .text_color(palette.text2)
                             .child(format!("127.0.0.1:{local}")),
                     )
-                    .child(text_button(
+                    .child(
+                        text_button(
+                            id,
+                            "Stop",
+                            ButtonTone::Danger,
+                            true,
+                            palette,
+                            move |_, _, cx| handle.update(cx, |model, cx| model.stop(&key, cx)),
+                        )
+                        .help(format!("Stop forwarding 127.0.0.1:{local} to {label}.")),
+                    ),
+                None => div().child(
+                    text_button(
                         id,
-                        "Stop",
-                        ButtonTone::Danger,
+                        "Forward",
+                        ButtonTone::Accent,
                         true,
                         palette,
-                        move |_, _, cx| handle.update(cx, |model, cx| model.stop(&key, cx)),
-                    )),
-                None => div().child(text_button(
-                    id,
-                    "Forward",
-                    ButtonTone::Accent,
-                    true,
-                    palette,
-                    move |_, window, cx| {
-                        forward_dialog::open(handle.clone(), key.clone(), window, cx)
-                    },
-                )),
+                        move |_, window, cx| {
+                            forward_dialog::open(handle.clone(), key.clone(), window, cx)
+                        },
+                    )
+                    .help(format!("Forward a port on this computer to {label}.")),
+                ),
             };
             settings_row(label, note, control, palette).into_any_element()
         })

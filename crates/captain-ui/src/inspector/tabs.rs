@@ -1,5 +1,6 @@
 use gpui_kit::*;
 
+use crate::help::HelpExt;
 use crate::theme::Palette;
 
 /// The inspector tabs, in display order.
@@ -29,6 +30,16 @@ impl Tab {
             Tab::Terminal => "Terminal",
             Tab::Files => "Files",
             Tab::Stats => "Stats",
+        }
+    }
+
+    fn help(self) -> &'static str {
+        match self {
+            Tab::Overview => "Show the state, ports, mounts, and settings of the container.",
+            Tab::Logs => "Show the output of the container, with search and level filters.",
+            Tab::Terminal => "Open a shell in the container.",
+            Tab::Files => "Browse the files in the container and save them to this computer.",
+            Tab::Stats => "Show the CPU, memory, and network use of the container over time.",
         }
     }
 }
@@ -67,5 +78,6 @@ pub fn render(
                 .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
                 .on_click(move |_, window, cx| on_select(tab, window, cx))
                 .child(tab.label())
+                .help(tab.help())
         }))
 }
