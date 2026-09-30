@@ -58,6 +58,7 @@ fn config(family: ThemeFamily, dark: bool) -> ThemeConfig {
     colors.info = hex(t.info);
     colors.info_foreground = hex(t.on(t.info));
     colors.switch = hex(t.border_strong);
+    colors.switch_thumb = hex(0xFFFFFF);
     colors.slider_bar = hex(t.action);
     colors.slider_thumb = hex(t.on_action);
     colors.progress_bar = hex(t.action);

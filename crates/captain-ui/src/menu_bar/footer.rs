@@ -34,7 +34,7 @@ pub fn render(
         let workspace = workspace.clone();
         button(
             "popover-float-logs",
-            format!("Float {name} logs"),
+            "Float logs".to_string(),
             help,
             Tone::Plain,
             true,
