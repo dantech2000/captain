@@ -39,8 +39,8 @@ pub fn run(context: &Context, json: bool) -> Result<()> {
         .and_then(docker_version);
     let report = Status {
         engine: settings.engine_choice(context.machine.captain_available),
-        state: state_name(&status),
-        detail: detail(&status),
+        state: status.key(),
+        detail: status.detail().map(ToString::to_string),
         socket,
         app_running: context.app_running(),
         versions: Versions {
@@ -84,26 +84,6 @@ fn print_text(report: &Status, status: &HostStatus) {
         "Docker:          {}",
         report.versions.docker.clone().unwrap_or_else(none)
     );
-}
-
-/// A stable name for scripts.
-fn state_name(status: &HostStatus) -> &'static str {
-    match status {
-        HostStatus::NotInstalled(_) => "not-installed",
-        HostStatus::NotCreated => "not-created",
-        HostStatus::Stopped => "stopped",
-        HostStatus::Starting => "starting",
-        HostStatus::Running => "running",
-        HostStatus::Stopping => "stopping",
-        HostStatus::Failed(_) => "failed",
-    }
-}
-
-fn detail(status: &HostStatus) -> Option<String> {
-    match status {
-        HostStatus::NotInstalled(why) | HostStatus::Failed(why) => Some(why.clone()),
-        _ => None,
-    }
 }
 
 fn lima_version() -> Option<String> {

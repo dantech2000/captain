@@ -5,7 +5,7 @@ use std::collections::HashMap;
 
 use crate::diagnostics::{Check, CheckState, Fix};
 use crate::format::bytes_label;
-use crate::model::{Container, ContainerState, Health};
+use crate::model::{Container, ContainerAction, ContainerDetail, ContainerState, Health};
 use crate::store::Crash;
 
 /// Why a restarting container stopped, from `inspect`.
@@ -16,6 +16,26 @@ pub struct ExitFacts {
     /// The memory limit in bytes. 0 means no limit.
     pub memory_limit: i64,
     pub restart_count: i64,
+}
+
+impl ExitFacts {
+    /// What `inspect` said about the last run.
+    pub fn of(detail: &ContainerDetail) -> Self {
+        Self {
+            oom_killed: detail.oom_killed,
+            memory_limit: i64::try_from(detail.memory_limit).unwrap_or(i64::MAX),
+            restart_count: detail.restart_count,
+        }
+    }
+}
+
+/// What Captain offers for a container's problem, best first.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ContainerFix {
+    /// Raise the memory limit to this many bytes.
+    RaiseMemory(u64),
+    ShowLogs,
+    Run(ContainerAction),
 }
 
 /// The one problem the menu bar menu shows, with its fixes.
@@ -95,6 +115,27 @@ impl Problem {
         }
     }
 
+    /// The fixes for a container's problem: Raise Memory when a limit ran out,
+    /// then the logs, then Stop to end a crash loop or Restart for a failed health
+    /// check. Other problems have none.
+    pub fn container_fixes(&self) -> Vec<ContainerFix> {
+        let mut fixes = Vec::new();
+        let action = match self {
+            // With no limit the engine itself ran out; a higher limit does not help.
+            Self::OutOfMemory { limit, .. } => {
+                if *limit > 0 {
+                    fixes.push(ContainerFix::RaiseMemory(raised_memory(*limit)));
+                }
+                ContainerAction::Stop
+            }
+            Self::Restarting { .. } => ContainerAction::Stop,
+            Self::Unhealthy { .. } => ContainerAction::Restart,
+            Self::EngineFailed { .. } | Self::FailedCheck(_) => return fixes,
+        };
+        fixes.extend([ContainerFix::ShowLogs, ContainerFix::Run(action)]);
+        fixes
+    }
+
     /// [`Problem::sentence`] as one plain line, for the tray menu.
     pub fn line(&self) -> String {
         let (name, rest) = self.sentence();
@@ -132,10 +173,8 @@ pub fn raised_memory(limit: i64) -> u64 {
 }
 
 /// The problem the menu shows. A failed engine comes first, because
-/// nothing else works without it. Then containers, worst first: out of memory,
-/// restarting, unhealthy. Failed diagnostics checks come last. `facts` holds what
-/// `inspect` said about restarting containers; `crash` gives a container's recent
-/// crash from the event stream, if any.
+/// nothing else works without it. Then containers, worst first (see
+/// [`container_problems`]). Failed diagnostics checks come last.
 pub fn first_problem(
     engine_failure: Option<&str>,
     checks: &[Check],
@@ -153,17 +192,36 @@ pub fn first_problem(
             fix,
         });
     }
-    let restarting = || {
-        containers
-            .iter()
-            .filter(|c| c.state == ContainerState::Restarting || crash(&c.id).is_some())
-    };
-    let out_of_memory = restarting().find_map(|c| {
+    container_problems(containers, facts, crash)
+        .into_iter()
+        .next()
+        .or_else(|| failed().next().cloned().map(Problem::FailedCheck))
+}
+
+/// Every container that needs attention, worst first: out of memory, restarting,
+/// unhealthy. `facts` holds what `inspect` said about restarting containers; `crash`
+/// gives a container's recent crash from the event stream, if any.
+pub fn container_problems(
+    containers: &[Container],
+    facts: &HashMap<String, ExitFacts>,
+    crash: &dyn Fn(&str) -> Option<Crash>,
+) -> Vec<Problem> {
+    let (restarting, others): (Vec<&Container>, Vec<&Container>) = containers
+        .iter()
+        .partition(|c| c.state == ContainerState::Restarting || crash(&c.id).is_some());
+    let out_of_memory = |c: &Container| {
         // Docker clears OOMKilled at each start; the `oom` event does not go away.
         let oom_event = crash(&c.id).is_some_and(|crash| crash.out_of_memory);
-        let facts = facts
+        facts
             .get(&c.id)
-            .filter(|facts| facts.oom_killed || oom_event)?;
+            .filter(|facts| facts.oom_killed || oom_event)
+            .copied()
+    };
+    let (memory, plain): (Vec<&Container>, Vec<&Container>) = restarting
+        .into_iter()
+        .partition(|c| out_of_memory(c).is_some());
+    let memory = memory.into_iter().filter_map(|c| {
+        let facts = out_of_memory(c)?;
         Some(Problem::OutOfMemory {
             id: c.id.clone(),
             name: c.name.clone(),
@@ -171,23 +229,18 @@ pub fn first_problem(
             restarts: facts.restart_count,
         })
     });
-    out_of_memory
-        .or_else(|| {
-            restarting().next().map(|c| Problem::Restarting {
-                id: c.id.clone(),
-                name: c.name.clone(),
-            })
-        })
-        .or_else(|| {
-            containers
-                .iter()
-                .find(|c| needs_attention(c, false))
-                .map(|c| Problem::Unhealthy {
-                    id: c.id.clone(),
-                    name: c.name.clone(),
-                })
-        })
-        .or_else(|| failed().next().cloned().map(Problem::FailedCheck))
+    let plain = plain.into_iter().map(|c| Problem::Restarting {
+        id: c.id.clone(),
+        name: c.name.clone(),
+    });
+    let unhealthy = others
+        .into_iter()
+        .filter(|c| needs_attention(c, false))
+        .map(|c| Problem::Unhealthy {
+            id: c.id.clone(),
+            name: c.name.clone(),
+        });
+    memory.chain(plain).chain(unhealthy).collect()
 }
 
 #[cfg(test)]

@@ -102,6 +102,7 @@ impl ProjectLogView {
             let options = LogOptions {
                 tail: since.is_none().then_some(FIRST_TAIL),
                 since,
+                follow: true,
             };
             let mut lines = engine.logs_with(&container.id, options);
             let (id, service) = (container.id.clone(), service_name(container));

@@ -89,6 +89,10 @@ pub enum Command {
     Tools(ToolsCommand),
     /// Print the DOCKER_HOST for Captain Engine. Use: eval "$(captain docker-env)"
     DockerEnv,
+    /// Run Captain's MCP server on stdin and stdout, for AI agents such as Claude
+    /// Code. Its tools only read: engine status, projects, containers, problems,
+    /// logs, inspect, and disk use.
+    Mcp,
     /// Print the version.
     Version,
     /// Print a shell completion script.

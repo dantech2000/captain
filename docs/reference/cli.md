@@ -36,6 +36,7 @@ Options for every command:
 - [`captain tools install`](#captain-tools-install): Link the tools, add the plugin folder to ~/.docker/config.json, and, with automatic PATH, add ~/.captain/bin to your shell files. Quit Captain first.
 - [`captain tools uninstall`](#captain-tools-uninstall): Remove the links, the plugin folder, and the PATH blocks. Quit Captain first.
 - [`captain docker-env`](#captain-docker-env): Print the DOCKER_HOST for Captain Engine. Use: eval "$(captain docker-env)"
+- [`captain mcp`](#captain-mcp): Run Captain's MCP server on stdin and stdout, for AI agents such as Claude Code. Its tools only read: engine status, projects, containers, problems, logs, inspect, and disk use.
 - [`captain version`](#captain-version): Print the version.
 - [`captain completion`](#captain-completion): Print a shell completion script.
 
@@ -312,6 +313,14 @@ Print the DOCKER_HOST for Captain Engine. Use: eval "$(captain docker-env)"
 
 ```text
 captain docker-env [OPTIONS]
+```
+
+## captain mcp
+
+Run Captain's MCP server on stdin and stdout, for AI agents such as Claude Code. Its tools only read: engine status, projects, containers, problems, logs, inspect, and disk use.
+
+```text
+captain mcp [OPTIONS]
 ```
 
 ## captain version

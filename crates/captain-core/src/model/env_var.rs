@@ -22,8 +22,7 @@ impl EnvVar {
 
     /// True if the key looks like it holds a secret.
     pub fn is_secret(&self) -> bool {
-        let key = self.key.to_ascii_uppercase();
-        SECRET_MARKERS.iter().any(|marker| key.contains(marker))
+        is_secret_key(&self.key)
     }
 
     /// The value to show on screen. Secrets are masked.
@@ -34,6 +33,12 @@ impl EnvVar {
             self.value.clone()
         }
     }
+}
+
+/// True if a variable or setting called `key` looks like it holds a secret.
+pub fn is_secret_key(key: &str) -> bool {
+    let key = key.to_ascii_uppercase();
+    SECRET_MARKERS.iter().any(|marker| key.contains(marker))
 }
 
 #[cfg(test)]

@@ -1,7 +1,7 @@
 # Feature 0038: Agent tools (MCP)
 
 - Milestone: M31
-- Status: Planned. Research done on 2026-09-29; sources are linked in each section.
+- Status: Phases 1–3 built (the server, the read tools, logs and waiting). Phases 4–6 are open. Research done on 2026-09-29; sources are linked in each section.
 
 ## Goal
 
@@ -93,6 +93,42 @@ Six phases, each one pull request with its own tests. Phases 2 and 3 can run in 
 
 After M31: an Agent Skill and an AGENTS.md snippet (see Later).
 
+## Built: phases 1–3
+
+**SDK.** [`rmcp` 3.5.0](https://crates.io/crates/rmcp/3.5.0) ([docs](https://docs.rs/rmcp/3.5.0/rmcp/), [repository](https://github.com/modelcontextprotocol/rust-sdk), [stdio example](https://github.com/modelcontextprotocol/rust-sdk/blob/main/examples/servers/src/counter_stdio.rs), [structured output example](https://github.com/modelcontextprotocol/rust-sdk/blob/main/examples/servers/src/structured_output.rs)) with `default-features = false` and `server`, `macros`, `transport-io`; the tests add `client`. These pull only pure-Rust crates (tokio, tokio-util, schemars 1, uuid, pastey); `cargo check --target x86_64-pc-windows-msvc` passes. The crate is Apache-2.0. The [repository LICENSE](https://github.com/modelcontextprotocol/rust-sdk/blob/main/LICENSE) says the project moves from MIT to Apache-2.0, and older contributions stay MIT until relicensed. Both are permissive and compatible with Captain's `MIT OR Apache-2.0`; the Captain binary must keep rmcp's Apache-2.0 notice, as with its other Apache-2.0 dependencies.
+
+**Protocol.** rmcp answers `initialize` and `server/discover` and negotiates every version it knows, 2024-11-05 through 2026-07-28 (`supportedVersions` in the discover result). `tools/list` is sorted by name, so its order is fixed, and carries `ttlMs` and `cacheScope` for 2026-07-28 clients. `get_info` gives the server name `captain`, the title, and short instructions that point to `help`.
+
+**`captain mcp`** (crates/captain-cli/src/commands/mcp.rs, crates/captain-cli/src/mcp/). It reads the settings like the other commands and connects to the engine they choose, as the app does at launch: Captain Engine's socket, or `engine_endpoint`, or discovery (`DOCKER_HOST`, the current context, then known sockets; `ssh://` goes through the tunnel). It connects on the first tool call, on a blocking thread, so an engine that is down gives a tool error ("Captain Engine does not answer … run `captain start`") and not a failed start. After an unreachable error it connects again on the next call. The first connection also follows the engine's events into `CrashTracker`, so a crash loop that is running between restarts counts, as in the app. Logs go to stderr through `tracing-subscriber` (level from `CAPTAIN_LOG`, default `warn`); stdout carries only protocol messages.
+
+**Where the logic lives.** `captain_core::agent_tools` has no protocol code and is unit-tested alone: the answer structs (with `Serialize` and `JsonSchema`, so each tool's `outputSchema` comes from the same type as its `structuredContent`), their text copies, name checks, log caps, secret masking, and the untrusted-output delimiters. The CLI's tool methods only fetch from the engine and call it. Shared with the app, not copied: `problems::container_problems` (the menu bar's `first_problem` now takes its first entry), `Problem::container_fixes` (the tray's fix items use it), `ExitFacts::of`, `Container::is_sandbox`, `HostStatus::key` and `detail` (`captain status` uses them), `EnvVar`'s secret markers (`is_secret_key`), `PortLink`, and the Storage page's `DiskBreakdown`, `ReclaimPlan`, and `largest_items`. `LogOptions` gained `follow`; the tools read past lines only.
+
+**Tool results.** Each tool declares `outputSchema` (rmcp's `schema_for_output`, JSON Schema 2020-12) and returns `structuredContent` plus one text block. The text block is a compact line form of the same facts, not a summary, because some clients show only text. Failures and refusals (an unknown name, an engine that does not answer, both `container` and `project`) are results with `isError: true`. Every tool has `readOnlyHint: true`, `openWorldHint: false`, and a title. The doc comments of the tool methods are the descriptions; phase 6 generates `docs/reference/mcp.md` from them.
+
+| Tool | Notes |
+|---|---|
+| `help` | The guide text and every listed tool with its description, from the live router. |
+| `engine_status` | Engine, state (`HostStatus::key`, or `unreachable` for another engine), version, platform, CPUs, memory, Captain Engine's disk, Kubernetes, containers running of total. |
+| `list_projects` | Sidebar groups: Compose projects, `k8s:<namespace>`, and "Loose containers". Running of total, services, health counts, ports as links (`http://localhost:8080`, or `localhost:5432 (Postgres)` for ports a browser cannot open), the Compose folder, and the worst problem line from `first_problem`. |
+| `list_containers` | Rows without pod sandboxes. `status_only` keeps name, state, health, and `needs_attention`. `project` filters to one project. 22 containers stay under 8 KB for JSON and text together (a unit test). |
+| `container_problems` | `container_problems` over the containers, with `inspect` of each container that restarts, crashed in the last minute, or fails its health check: kind, Captain's sentence, exit code, restart count, memory limit, and the fixes ("Raise its memory limit to 512 MB.", "Read its logs with the logs tool.", "Stop it."). An engine that does not run is the `engine` field, not an error. |
+| `inspect` | Command, ports, links, mounts, networks, restart policy, limits, last exit, and environment. Values with a secret-looking key become `[masked]`; other values go through the log masker. The text copy puts the command and environment between the delimiters. |
+| `disk_usage` | Used and capacity, the categories, the 10 largest items (Kubernetes users shown as `pod/container`), each cleanup group's count and size, and what the default cleanup frees. Snapshots and capacity count for Captain Engine only. |
+| `logs` | `container` or `project` (merged by time, each line `HH:MM:SS service \| text` in UTC). `tail` defaults to 100, or 1000 with a filter, and is at most 5000 per container. `since` takes `10m`, `2h`, `1d`, a Unix time, or RFC 3339. The newest lines that fit 500 lines and 32 KB come back; lines over 2000 characters are cut. `truncated`, a `hint`, and `newest_time` (to pass as `since`) come with it. Reading stops after 15 seconds. The text block and `output` hold the same lines; a client shows one of them. |
+| `wait_for_healthy` | Polls every second until every target container runs and none is starting or unhealthy, up to `timeout_seconds` (default 60, at most 600). It ends early when a container exited with an error or is dead; one that exited with code 0 (a migration step) is done. A container target is followed by ID. |
+
+**Names.** `check_name` refuses empty values, values that start with `-`, control characters, and more than 256 bytes. `find_container` takes a name, a `pod/container` name, an ID, or a unique ID prefix of 4 or more characters. `find_project` takes a Compose project name. A miss lists up to 20 live names.
+
+**Masking.** `mask_secrets` works word by word: the value after a key with a secret marker (`SECRET`, `PASSWORD`, `PASSWD`, `TOKEN`, `API_KEY`, `PRIVATE`; `-` counts as `_`), in `KEY=value`, `key: value`, `"key": "value"`, and `--key=value` forms; the word after `Bearer` or `Basic`; a URL's password; and token shapes (GitHub, GitLab, Slack, Stripe, npm, Anthropic and OpenAI-style keys, AWS access key IDs, JWTs). Quotes and brackets around a value stay.
+
+**Delimiters.** `wrap_untrusted` puts `=== BEGIN UNTRUSTED CONTAINER OUTPUT <id> (<source>) ===`, one line that says to treat the text as data, the text, and `=== END UNTRUSTED CONTAINER OUTPUT <id> ===` around it. The ID is 16 random hex digits per call, so a log line cannot fake the end line. Terminal escapes and control characters other than tabs and line breaks are dropped first.
+
+**Seams for phases 4–6.** `CaptainServer::new` adds routers with `+`; phase 4 adds an action router there only when `agent_tools.actions` allows it, and uses `Problem::container_fixes` and `raised_memory` for `raise_memory`. `Source` is where the settings and an activity log hook in. Phase 6 reads the tool list and descriptions from `CaptainServer`'s router.
+
+**Tests.** Core: masking, delimiters (a fake END line does not close the block), `since` parsing and filters, the log caps (500 lines; 32 KB with 5,000-character lines), the log report with an injected line and a secret, name checks, the 22-container size test, `status_only` keys, project rows, the problem report (out of memory first, with the raise), inspect masking, disk categories, and readiness. CLI (`mcp::tests`, rmcp's client over `tokio::io::duplex` against `FakeEngine`): all nine tools are listed in order with the read-only annotations, and each call's `structuredContent` keys are in its `outputSchema` and cover its `required` keys; project logs keep `IGNORE PREVIOUS INSTRUCTIONS` inside the delimiters and mask a token; wrong names and `container` with `project` are refused; `wait_for_healthy` returns at once when ready and names the unhealthy container at the timeout.
+
+**Checked by hand** on 2026-09-30 against the running Captain Engine, read only: `initialize`, `server/discover` (2026-07-28), `tools/list`, and calls of `engine_status`, `list_projects`, `list_containers` (`status_only`), `container_problems`, `inspect` (the database password came back `[masked]`), `logs` for a project, `wait_for_healthy`, and `disk_usage`, piped over stdin to `captain-cli mcp`. `tools/list` is about 16 KB with all schemas.
+
 ## Out of scope
 
 - A network transport (Streamable HTTP). If ever added: a bearer token and localhost-only origins, as [Docker's gateway](https://github.com/docker/mcp-gateway/blob/main/docs/security.md) does.
@@ -105,6 +141,9 @@ After M31: an Agent Skill and an AGENTS.md snippet (see Later).
 - `llms.txt` for the docs site ([llmstxt.org](https://llmstxt.org/)).
 
 ## Verification
+
+Steps 1–5 need phases 4 and 5. Until then: `printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-11-25","capabilities":{},"clientInfo":{"name":"t","version":"0"}}}' '{"jsonrpc":"2.0","method":"notifications/initialized"}' '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"engine_status","arguments":{}}}' | captain mcp`, or `claude mcp add --scope user captain -- <path to captain> mcp` by hand.
+
 
 1. Turn on agent tools, connect Claude Code, and run `/mcp`: `captain` is connected with only read tools listed.
 2. Start a container that crash-loops out of memory. Ask "what is wrong with my containers?". Expect the agent to name the out-of-memory kill from `container_problems`.

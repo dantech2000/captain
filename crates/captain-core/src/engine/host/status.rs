@@ -27,6 +27,27 @@ impl HostStatus {
         }
     }
 
+    /// A stable name for scripts and agents, such as `not-created` or `running`.
+    pub fn key(&self) -> &'static str {
+        match self {
+            Self::NotInstalled(_) => "not-installed",
+            Self::NotCreated => "not-created",
+            Self::Stopped => "stopped",
+            Self::Starting => "starting",
+            Self::Running => "running",
+            Self::Stopping => "stopping",
+            Self::Failed(_) => "failed",
+        }
+    }
+
+    /// Why the machine is not installed or failed.
+    pub fn detail(&self) -> Option<&str> {
+        match self {
+            Self::NotInstalled(why) | Self::Failed(why) => Some(why),
+            _ => None,
+        }
+    }
+
     pub fn is_running(&self) -> bool {
         matches!(self, Self::Running)
     }

@@ -121,7 +121,7 @@ pub fn service_name(container: &Container) -> String {
 /// True for the pause container that holds a Kubernetes pod's namespaces. It has no
 /// output and nothing to act on, so the Project page leaves it out.
 pub fn is_sandbox(container: &Container) -> bool {
-    container.is_kubernetes() && container.name.starts_with("k8s_POD_")
+    container.is_sandbox()
 }
 
 /// True for a container that is restarting, dead, or failing its health check.

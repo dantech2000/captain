@@ -30,6 +30,12 @@ impl Container {
         self.kube_namespace.is_some()
     }
 
+    /// True for the pause container that holds a Kubernetes pod's namespaces. It has
+    /// no output and nothing to act on, so lists leave it out.
+    pub fn is_sandbox(&self) -> bool {
+        self.is_kubernetes() && self.name.starts_with("k8s_POD_")
+    }
+
     /// The name to show: `pod/container` for a Kubernetes pod container, else the
     /// name. See [`kube_display_name`].
     pub fn display_name(&self) -> String {

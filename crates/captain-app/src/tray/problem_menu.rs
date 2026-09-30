@@ -3,8 +3,7 @@
 
 use captain_core::diagnostics::{Check, Fix};
 use captain_core::format::bytes_label;
-use captain_core::model::ContainerAction;
-use captain_core::problems::{Problem, raised_memory};
+use captain_core::problems::{ContainerFix, Problem};
 
 use super::dot::Light;
 use super::menu_model::{TrayCommand, TrayItem};
@@ -27,51 +26,47 @@ pub fn problem_items(problem: &Problem) -> Vec<TrayItem> {
             ));
         }
         Problem::FailedCheck(_) => {}
-        Problem::OutOfMemory {
-            id, name, limit, ..
-        } => {
-            // With no limit the engine itself ran out; a higher limit does not help.
-            if *limit > 0 {
-                let bytes = raised_memory(*limit);
-                items.push(TrayItem::command(
-                    format!("Raise Memory to {}", bytes_label(bytes)),
-                    TrayCommand::RaiseMemory {
-                        id: id.clone(),
-                        name: name.clone(),
-                        bytes,
-                    },
-                ));
-            }
-            items.extend(container_fixes(id, name, ContainerAction::Stop));
-        }
-        Problem::Restarting { id, name } => {
-            items.extend(container_fixes(id, name, ContainerAction::Stop));
-        }
-        Problem::Unhealthy { id, name } => {
-            items.extend(container_fixes(id, name, ContainerAction::Restart));
+        Problem::OutOfMemory { id, name, .. }
+        | Problem::Restarting { id, name }
+        | Problem::Unhealthy { id, name } => {
+            items.extend(
+                problem
+                    .container_fixes()
+                    .into_iter()
+                    .map(|fix| fix_item(id, name, fix)),
+            );
         }
     }
     items
 }
 
-/// Show Logs, then Stop to end a crash loop, or Restart for a failed health check.
-fn container_fixes(id: &str, name: &str, action: ContainerAction) -> [TrayItem; 2] {
-    [
-        TrayItem::command(
+/// Raise Memory, Show Logs, then Stop to end a crash loop, or Restart for a failed
+/// health check.
+fn fix_item(id: &str, name: &str, fix: ContainerFix) -> TrayItem {
+    match fix {
+        ContainerFix::RaiseMemory(bytes) => TrayItem::command(
+            format!("Raise Memory to {}", bytes_label(bytes)),
+            TrayCommand::RaiseMemory {
+                id: id.into(),
+                name: name.into(),
+                bytes,
+            },
+        ),
+        ContainerFix::ShowLogs => TrayItem::command(
             "Show Logs in a Window",
             TrayCommand::FloatLog {
                 id: id.into(),
                 name: name.into(),
             },
         ),
-        TrayItem::command(
+        ContainerFix::Run(action) => TrayItem::command(
             format!("{} {name}", action.label()),
             TrayCommand::Container {
                 id: id.into(),
                 action,
             },
         ),
-    ]
+    }
 }
 
 /// The fix's button label in Title Case, as menu items are.

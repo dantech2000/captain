@@ -6,6 +6,7 @@ mod docs;
 mod info;
 mod kubernetes;
 mod list_settings;
+mod mcp;
 mod restart;
 mod run;
 mod set;

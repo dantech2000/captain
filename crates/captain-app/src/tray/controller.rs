@@ -196,11 +196,7 @@ impl Tray {
                 let Ok(detail) = inspect.await else {
                     return;
                 };
-                let facts = ExitFacts {
-                    oom_killed: detail.oom_killed,
-                    memory_limit: i64::try_from(detail.memory_limit).unwrap_or(i64::MAX),
-                    restart_count: detail.restart_count,
-                };
+                let facts = ExitFacts::of(&detail);
                 this.update(cx, |tray, cx| {
                     if tray.exits.insert(id, facts) {
                         tray.workspace_changed(cx);

@@ -34,7 +34,7 @@ pub use container::{Container, ContainerState};
 pub use container_detail::{ContainerDetail, HealthCheck, Mount};
 pub use disk_usage::{BuildCacheRecord, DiskContainer, DiskUsage};
 pub use engine_info::EngineInfo;
-pub use env_var::EnvVar;
+pub use env_var::{EnvVar, is_secret_key};
 pub use event::{EngineEvent, EventKind};
 pub use exec::{DEFAULT_SHELLS, ExecInput, ExecResizer, ExecSession, ExecSpec};
 pub use file::{

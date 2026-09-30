@@ -99,6 +99,7 @@ impl FloatLogView {
         let options = LogOptions {
             tail: since.is_none().then_some(TAIL),
             since,
+            follow: true,
         };
         let mut stream = engine.logs_with(&self.id, options);
         self.stream_error = None;

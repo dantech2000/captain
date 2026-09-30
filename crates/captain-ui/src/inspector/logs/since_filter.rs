@@ -48,6 +48,7 @@ impl LogsPane {
         LogOptions {
             tail: since.is_none().then_some(LOG_TAIL),
             since,
+            follow: true,
         }
     }
 }

@@ -89,6 +89,7 @@ impl ContainerApi for DockerEngine {
         let options = LogOptions {
             tail: Some(tail),
             since: None,
+            follow: true,
         };
         self.logs_with(id, options)
     }
@@ -159,7 +160,7 @@ impl ContainerApi for DockerEngine {
         let id = id.to_string();
         runtime::forward(self.runtime.handle(), move |tx| async move {
             let mut builder = LogsOptionsBuilder::default()
-                .follow(true)
+                .follow(options.follow)
                 .stdout(true)
                 .stderr(true)
                 .timestamps(true)
