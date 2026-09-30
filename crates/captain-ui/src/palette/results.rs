@@ -2,8 +2,10 @@ use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::*;
 
 use super::CommandPalette;
+use super::command::CommandKind;
 use super::key_hint;
 use super::ranking::Ranked;
+use crate::help::HelpExt;
 use crate::icons::glyph;
 use crate::theme::Palette;
 
@@ -13,6 +15,7 @@ pub fn render(
     results: &[Ranked],
     selected: usize,
     query: &str,
+    error: Option<String>,
     scroll: &ScrollHandle,
     palette: &Palette,
     cx: &mut Context<CommandPalette>,
@@ -27,10 +30,10 @@ pub fn render(
         .flex_col();
 
     if results.is_empty() {
-        let text = if query.trim().is_empty() {
-            "No commands yet".to_string()
-        } else {
-            format!("No commands match \u{201c}{}\u{201d}", query.trim())
+        let text = match error {
+            Some(error) => error,
+            None if query.trim().is_empty() => "No commands yet".to_string(),
+            None => format!("No commands match \u{201c}{}\u{201d}", query.trim()),
         };
         return list.child(
             div()
@@ -93,7 +96,8 @@ fn row(
                 .border_color(palette.accent.alpha(0.45))
         })
         .on_mouse_move(cx.listener(move |this, _, _, cx| this.hover(ix, cx)))
-        .on_click(cx.listener(move |this, _, _, cx| this.run_at(ix, cx)))
+        .on_click(cx.listener(move |this, _, window, cx| this.run_at(ix, window, cx)))
+        .help(command.help.clone())
         .child(
             div()
                 .size(px(28.))
@@ -123,6 +127,10 @@ fn row(
                 ),
         )
         .when(selected, |this| {
-            this.child(key_hint("↵", palette).bg(palette.field))
+            let key = match command.kind {
+                CommandKind::Complete(_) => "⇥",
+                _ => "↵",
+            };
+            this.child(key_hint(key, palette).bg(palette.field))
         })
 }

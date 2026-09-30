@@ -1,7 +1,7 @@
 use gpui_kit::component::WindowExt;
 use gpui_kit::*;
 
-use super::{ForwardingModel, service_card};
+use super::{ForwardingModel, forwarding_model, service_card};
 use crate::icons::CaptainIcon;
 use crate::kubernetes::KubeEvent;
 use crate::theme::Palette;
@@ -16,7 +16,7 @@ pub struct PortForwardingView {
 
 impl PortForwardingView {
     pub fn new(workspace: Entity<Workspace>, window: &mut Window, cx: &mut Context<Self>) -> Self {
-        let model = cx.new(ForwardingModel::new);
+        let model = forwarding_model(cx);
         let subscriptions = vec![
             cx.observe(&model, |_, _, cx| cx.notify()),
             cx.subscribe_in(&model, window, |_, _, event: &KubeEvent, window, cx| {

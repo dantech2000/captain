@@ -7,5 +7,5 @@ mod forwarding_model;
 mod forwarding_view;
 mod service_card;
 
-pub use forwarding_model::{ForwardingModel, init};
+pub use forwarding_model::{ForwardingModel, forwarding_model, init};
 pub use forwarding_view::PortForwardingView;

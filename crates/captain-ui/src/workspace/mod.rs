@@ -14,7 +14,7 @@ mod workspace_event;
 mod workspace_state;
 
 pub use connect::{Connector, active_workspace};
-pub use focus::InspectorTab;
+pub use focus::{InspectorTab, LogFilter};
 pub use page::Page;
 pub use workspace_event::WorkspaceEvent;
 pub use workspace_state::{Connection, Workspace};

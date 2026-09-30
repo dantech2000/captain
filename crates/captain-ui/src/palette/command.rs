@@ -1,7 +1,9 @@
+use captain_core::grammar::Action;
 use captain_core::model::{ContainerAction, ProjectAction};
 use captain_core::store::ContainerFilter;
 use gpui_kit::*;
 
+use super::run_action;
 use crate::containers::down_dialog;
 use crate::icons::Glyph;
 use crate::migration::OpenMigrationAssistant;
@@ -10,6 +12,8 @@ use crate::workspace::{Page, Workspace};
 /// The group a command is listed under.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Section {
+    /// Suggestions from the command grammar: `restart api`, `logs worker --since 10m`.
+    Commands,
     Navigate,
     Actions,
     Containers,
@@ -18,6 +22,7 @@ pub enum Section {
 impl Section {
     pub fn label(self) -> &'static str {
         match self {
+            Section::Commands => "Commands",
             Section::Navigate => "Navigate",
             Section::Actions => "Actions",
             Section::Containers => "Containers",
@@ -45,6 +50,10 @@ pub enum CommandKind {
     OpenPort(u16),
     /// Opens the Migration Assistant.
     BringData,
+    /// Runs a command of the grammar.
+    Act(Action),
+    /// Puts this line in the search field, because the command needs more words.
+    Complete(String),
 }
 
 impl CommandKind {
@@ -79,12 +88,15 @@ impl CommandKind {
             }),
             CommandKind::OpenPort(port) => cx.open_url(&format!("http://localhost:{port}")),
             CommandKind::BringData => open_migration(cx),
+            CommandKind::Act(action) => run_action::run(action, workspace, cx),
+            // The palette completes the line instead of running a command.
+            CommandKind::Complete(_) => {}
         }
     }
 }
 
 /// Runs a project action. Down opens the confirmation in the active window first.
-fn run_project(
+pub(super) fn run_project(
     project: String,
     action: ProjectAction,
     workspace: &Entity<Workspace>,
@@ -138,4 +150,9 @@ pub struct Command {
     /// True if the palette lists this command before the user types.
     pub suggested: bool,
     pub kind: CommandKind,
+    /// The status bar sentence. It matches the sentence of the button that does the
+    /// same thing.
+    pub help: String,
+    /// The line Tab puts in the search field, for grammar rows.
+    pub completion: Option<String>,
 }

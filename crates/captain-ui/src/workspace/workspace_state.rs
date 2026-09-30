@@ -9,7 +9,7 @@ use captain_core::store::{
 use captain_core::{Engine, EngineError, ImageBuilder, ProjectRunner};
 use gpui_kit::*;
 
-use super::{InspectorTab, Page, WorkspaceEvent};
+use super::{InspectorTab, LogFilter, Page, WorkspaceEvent};
 
 /// The state of the engine connection.
 #[derive(Debug, Clone)]
@@ -62,6 +62,8 @@ pub struct Workspace {
     pub(super) card_open: bool,
     /// The inspector tab a card button asked for, until the inspector takes it.
     pub(super) inspector_tab: Option<InspectorTab>,
+    /// The Logs tab filters a ⌘K command asked for, until the inspector takes them.
+    pub(super) log_filter: Option<LogFilter>,
 }
 
 impl EventEmitter<WorkspaceEvent> for Workspace {}
@@ -95,6 +97,7 @@ impl Workspace {
             focus: None,
             card_open: false,
             inspector_tab: None,
+            log_filter: None,
         }
     }
 

@@ -5,7 +5,10 @@ use captain_core::store::ContainerFilter;
 use gpui_kit::assets::IconName;
 
 use super::command::{Command, CommandKind, Section};
+use crate::containers::action_help;
 use crate::icons::CaptainIcon;
+use crate::project::{down_help, restart_help, up_help};
+use crate::shell::page_help;
 use crate::theme::Palette;
 use crate::workspace::{Page, Workspace};
 
@@ -13,7 +16,6 @@ use crate::workspace::{Page, Workspace};
 pub fn build(workspace: &Workspace, palette: &Palette) -> Vec<Command> {
     let mut commands = navigation(workspace, palette);
     commands.push(bring_data(palette));
-    commands.push(disk(palette));
     commands.extend(filters(workspace, palette));
     if workspace.has_project_runner() {
         for project in workspace.compose_projects() {
@@ -40,24 +42,13 @@ fn navigation(workspace: &Workspace, palette: &Palette) -> Vec<Command> {
                 _ => "Page".into(),
             },
             icon: page.icon(),
-            color: palette.accent,
+            color: palette.accent_fg,
             suggested: true,
             kind: CommandKind::GoTo(page),
+            help: page_help(page, workspace.page_count(page)),
+            completion: None,
         })
         .collect()
-}
-
-/// Opens the Storage page. Typing `disk` finds it.
-fn disk(palette: &Palette) -> Command {
-    Command {
-        section: Section::Navigate,
-        title: "disk: Storage and cleanup".into(),
-        meta: "What fills the engine's disk".into(),
-        icon: CaptainIcon::Reclaim.into(),
-        color: palette.accent,
-        suggested: false,
-        kind: CommandKind::GoTo(Page::Storage),
-    }
 }
 
 /// Opens the Migration Assistant.
@@ -70,6 +61,8 @@ fn bring_data(palette: &Palette) -> Command {
         color: palette.teal,
         suggested: false,
         kind: CommandKind::BringData,
+        help: "Copy containers, images, and volumes from another engine to this one.".into(),
+        completion: None,
     }
 }
 
@@ -95,6 +88,14 @@ fn filters(workspace: &Workspace, palette: &Palette) -> Vec<Command> {
                 color: palette.indigo,
                 suggested: false,
                 kind: CommandKind::SetFilter(filter),
+                help: match filter {
+                    ContainerFilter::All => "Show every container on the Containers page.".into(),
+                    _ => format!(
+                        "Show only {} containers on the Containers page.",
+                        filter.label().to_lowercase()
+                    ),
+                },
+                completion: None,
             }
         })
         .collect()
@@ -118,6 +119,8 @@ fn container_actions(container: &Container, palette: &Palette) -> Vec<Command> {
             id: container.id.clone(),
             action,
         },
+        help: action_help(action, name),
+        completion: None,
     };
 
     let mut commands = vec![
@@ -126,7 +129,11 @@ fn container_actions(container: &Container, palette: &Palette) -> Vec<Command> {
         } else {
             action(ContainerAction::Start, IconName::Play, palette.green)
         },
-        action(ContainerAction::Restart, IconName::RotateCw, palette.accent),
+        action(
+            ContainerAction::Restart,
+            IconName::RotateCw,
+            palette.accent_fg,
+        ),
     ];
     commands.extend(container.published_ports().into_iter().map(|port| Command {
         section: Section::Actions,
@@ -136,6 +143,8 @@ fn container_actions(container: &Container, palette: &Palette) -> Vec<Command> {
         color: palette.teal,
         suggested: false,
         kind: CommandKind::OpenPort(port),
+        help: format!("Open http://localhost:{port} in your browser."),
+        completion: None,
     }));
     commands
 }
@@ -150,7 +159,11 @@ fn project_actions(project: &ComposeProject, palette: &Palette) -> Vec<Command> 
     [
         (ProjectAction::Up, IconName::Play, palette.green),
         (ProjectAction::Down, IconName::PowerOff, palette.red),
-        (ProjectAction::Restart, IconName::RotateCw, palette.accent),
+        (
+            ProjectAction::Restart,
+            IconName::RotateCw,
+            palette.accent_fg,
+        ),
     ]
     .into_iter()
     .map(|(action, icon, color)| Command {
@@ -164,6 +177,8 @@ fn project_actions(project: &ComposeProject, palette: &Palette) -> Vec<Command> 
             project: project.name.clone(),
             action,
         },
+        help: project_help(project, action),
+        completion: None,
     })
     .collect()
 }
@@ -179,11 +194,27 @@ fn show(container: &Container, palette: &Palette) -> Command {
         color,
         suggested: container.state == ContainerState::Running,
         kind: CommandKind::Show(container.id.clone()),
+        help: format!("Show {} on the Containers page.", container.name),
+        completion: None,
+    }
+}
+
+/// The sentence of the project header button for `action`.
+pub fn project_help(project: &ComposeProject, action: ProjectAction) -> String {
+    match action {
+        ProjectAction::Up => up_help(&project.name),
+        ProjectAction::Down => down_help(&project.name, project.container_count()),
+        ProjectAction::Restart => restart_help(&project.services_label(), &project.name),
+        ProjectAction::Stop => format!(
+            "Stop the services of {}. The containers stay.",
+            project.name
+        ),
+        ProjectAction::Pull => format!("Pull the images of {}.", project.name),
     }
 }
 
 /// The project, if any, and the state, for example `shop · running 3 hours`.
-fn container_meta(container: &Container) -> String {
+pub fn container_meta(container: &Container) -> String {
     let state = match container.state {
         ContainerState::Running => format!("running {}", container.uptime_label()),
         state => state.label().to_string(),

@@ -34,6 +34,11 @@ impl InspectorView {
             if let Some(tab) = workspace.update(cx, |workspace, _| workspace.take_inspector_tab()) {
                 this.set_tab(tab.into(), cx);
             }
+            // A `logs` command in the ⌘K palette asks for filters.
+            if let Some(filter) = workspace.update(cx, |workspace, _| workspace.take_log_filter()) {
+                this.logs
+                    .update(cx, |logs, cx| logs.filter(filter.since, filter.errors, cx));
+            }
             cx.notify();
         });
         let mut view = Self {

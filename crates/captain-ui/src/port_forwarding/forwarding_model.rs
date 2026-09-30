@@ -1,6 +1,7 @@
 use std::sync::Arc;
 use std::time::Duration;
 
+use captain_core::HostError;
 use captain_core::kubernetes::{Forward, ForwardKey, KubeService, PortForwarding};
 use gpui_kit::*;
 
@@ -16,6 +17,20 @@ impl Global for Backend {}
 /// Installs the forwarder. The app calls it once Captain Engine has a cluster.
 pub fn init(cx: &mut App, backend: Arc<dyn PortForwarding>) {
     cx.set_global(Backend(backend));
+}
+
+struct Shared(Entity<ForwardingModel>);
+
+impl Global for Shared {}
+
+/// The one model that the Port Forwarding page and the ⌘K palette share.
+pub fn forwarding_model(cx: &mut App) -> Entity<ForwardingModel> {
+    if let Some(shared) = cx.try_global::<Shared>() {
+        return shared.0.clone();
+    }
+    let model = cx.new(ForwardingModel::new);
+    cx.set_global(Shared(model.clone()));
+    model
 }
 
 /// The Services and the forwards that run.
@@ -84,22 +99,35 @@ impl ForwardingModel {
                         return;
                     };
                     let result = read.await;
-                    this.update(cx, |model, cx| {
-                        model.loaded = true;
-                        match result {
-                            Ok(services) => {
-                                model.services = services;
-                                model.error = None;
-                            }
-                            Err(error) => model.error = Some(error.0.into()),
-                        }
-                        model.refresh_forwards(cx);
-                    })
-                    .ok();
+                    this.update(cx, |model, cx| model.take(result, cx)).ok();
                     cx.background_executor().timer(POLL).await;
                 }
             })
         });
+    }
+
+    /// Reads the Services once, for the ⌘K palette.
+    pub fn refresh(&mut self, cx: &mut Context<Self>) {
+        let Some(read) = self.backend.as_ref().map(|backend| backend.services()) else {
+            return;
+        };
+        cx.spawn(async move |this, cx| {
+            let result = read.await;
+            this.update(cx, |model, cx| model.take(result, cx)).ok();
+        })
+        .detach();
+    }
+
+    fn take(&mut self, result: Result<Vec<KubeService>, HostError>, cx: &mut Context<Self>) {
+        self.loaded = true;
+        match result {
+            Ok(services) => {
+                self.services = services;
+                self.error = None;
+            }
+            Err(error) => self.error = Some(error.0.into()),
+        }
+        self.refresh_forwards(cx);
     }
 
     /// Starts a forward on `local_port`, or a free port when it is `None`.

@@ -7,9 +7,13 @@ pub const CONTEXT: &str = "CommandPalette";
 /// context wins, so the palette binds them again for its search field.
 const SEARCH_FIELD: &str = "CommandPalette > Input";
 
-gpui_kit::actions!(command_palette, [SelectPrev, SelectNext, Confirm, Dismiss]);
+gpui_kit::actions!(
+    command_palette,
+    [SelectPrev, SelectNext, Confirm, Complete, Dismiss]
+);
 
-/// Binds the palette keys: up and down move the highlight, enter runs, escape closes.
+/// Binds the palette keys: up and down move the highlight, enter runs, tab completes
+/// the highlighted command, escape closes.
 pub fn init(cx: &mut App) {
     let mut bindings = Vec::new();
     for context in [CONTEXT, SEARCH_FIELD] {
@@ -17,6 +21,7 @@ pub fn init(cx: &mut App) {
             KeyBinding::new("up", SelectPrev, Some(context)),
             KeyBinding::new("down", SelectNext, Some(context)),
             KeyBinding::new("enter", Confirm, Some(context)),
+            KeyBinding::new("tab", Complete, Some(context)),
             KeyBinding::new("escape", Dismiss, Some(context)),
         ]);
     }

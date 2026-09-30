@@ -14,6 +14,8 @@ fn command(section: Section, title: &str, suggested: bool) -> Command {
         color: hsla(0., 0., 0., 1.),
         suggested,
         kind: CommandKind::GoTo(Page::Containers),
+        help: String::new(),
+        completion: None,
     }
 }
 

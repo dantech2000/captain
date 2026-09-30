@@ -1,4 +1,5 @@
 use std::sync::Arc;
+use std::time::Duration;
 
 use captain_core::ProjectRunner;
 use captain_core::store::{ContainerFilter, ContainerGroup, GroupKey, StatsBoard};
@@ -11,6 +12,15 @@ use super::{Page, Workspace};
 pub enum InspectorTab {
     Logs,
     Terminal,
+}
+
+/// Filters for the Logs tab, from a command such as `logs api --since 10m --errors`.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct LogFilter {
+    /// Only lines from this long ago on.
+    pub since: Option<Duration>,
+    /// Only error lines.
+    pub errors: bool,
 }
 
 impl Workspace {
@@ -65,6 +75,17 @@ impl Workspace {
         self.card_open = true;
         self.inspector_tab = Some(tab);
         self.select(id, cx);
+    }
+
+    /// Opens the inspector on container `id` at the Logs tab, with `filter`.
+    pub fn open_logs(&mut self, id: String, filter: LogFilter, cx: &mut Context<Self>) {
+        self.log_filter = Some(filter);
+        self.open_card_tab(id, InspectorTab::Logs, cx);
+    }
+
+    /// The Logs tab filters a command asked for, once. It does not notify.
+    pub fn take_log_filter(&mut self) -> Option<LogFilter> {
+        self.log_filter.take()
     }
 
     /// The tab a card button asked for, once. It does not notify.

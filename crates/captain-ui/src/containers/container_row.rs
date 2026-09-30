@@ -275,7 +275,7 @@ fn trailing_cell(
 }
 
 /// The status bar sentence for a row button.
-fn action_help(action: ContainerAction, name: &str) -> String {
+pub(crate) fn action_help(action: ContainerAction, name: &str) -> String {
     match action {
         ContainerAction::Stop => format!("Stop {name}. Its files and volumes stay."),
         ContainerAction::Pause => format!("Pause {name}. Its processes freeze, not stop."),

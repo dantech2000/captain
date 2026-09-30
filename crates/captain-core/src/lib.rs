@@ -9,6 +9,7 @@ mod error;
 pub mod extension;
 mod fake_engine;
 pub mod format;
+pub mod grammar;
 pub mod kubernetes;
 pub mod link_target;
 pub mod migration;

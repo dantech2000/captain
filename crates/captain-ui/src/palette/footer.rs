@@ -33,5 +33,6 @@ pub fn render(palette: &Palette) -> impl IntoElement {
         .child(div().flex_1())
         .child("↑↓ Move")
         .child("↵ Run")
+        .child("⇥ Complete")
         .child("esc Close")
 }

@@ -1,3 +1,4 @@
+use captain_core::grammar::duration_label;
 use captain_core::store::LevelFilter;
 use gpui_kit::assets::IconName;
 use gpui_kit::component::input::{Input, InputState};
@@ -101,6 +102,18 @@ pub fn filter_row(
         .on_click(cx.listener(|this, _, _, cx| this.toggle_time(cx)))
         .help("Show or hide the time of each line.");
 
+    let since = pane.since().map(|since| {
+        let label = duration_label(since);
+        chip("logs-since", true, palette)
+            .gap(px(4.))
+            .child(format!("Since {}", label.trim_start_matches("the ")))
+            .child(Icon::new(IconName::Close).size(px(10.)))
+            .on_click(cx.listener(|this, _, _, cx| this.clear_since(cx)))
+            .help(format!(
+                "Only lines from {label} show. Click to show the recent lines."
+            ))
+    });
+
     div()
         .flex()
         .items_center()
@@ -108,6 +121,7 @@ pub fn filter_row(
         .children(chips)
         .child(div().w(px(1.)).h(px(14.)).mx(px(2.)).bg(palette.sep))
         .child(time)
+        .children(since)
         .child(div().flex_1())
         .child(
             div()

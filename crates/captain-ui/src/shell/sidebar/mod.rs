@@ -6,6 +6,8 @@ mod projects;
 mod search_button;
 mod tools;
 
+pub(crate) use page_help::page_help;
+
 use gpui_kit::*;
 
 pub use disk_card::DiskSummary;

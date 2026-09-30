@@ -1,12 +1,13 @@
 use std::path::PathBuf;
 
-use captain_core::model::{ComposeProject, ProjectAction, count_label};
+use captain_core::model::{ComposeProject, ProjectAction};
 use captain_core::store::GroupKey;
 use gpui_kit::component::Sizable;
 use gpui_kit::component::spinner::Spinner;
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::*;
 
+use super::action_help::{down_help, restart_help, up_help};
 use super::system_open::open_terminal;
 use super::{ProjectNotice, ProjectView};
 use crate::containers::down_dialog;
@@ -165,22 +166,15 @@ fn buttons(
             palette,
             move |window, cx| down_dialog::open(project.clone(), handle.clone(), window, cx),
         )
-        .help(format!(
-            "Stop and remove the {} of {name}. Volumes and images stay.",
-            count_label(count, "container")
-        ))
+        .help(down_help(name, count))
     };
     let (action, label, help) = if active == 0 {
-        (
-            ProjectAction::Up,
-            "Up",
-            format!("Create and start the services of {name} (docker compose up)."),
-        )
+        (ProjectAction::Up, "Up", up_help(name))
     } else {
         (
             ProjectAction::Restart,
             "Restart project",
-            format!("Restart the {} of {name}.", project.services_label()),
+            restart_help(&project.services_label(), name),
         )
     };
     let primary = {

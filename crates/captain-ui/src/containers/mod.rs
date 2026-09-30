@@ -11,4 +11,5 @@ mod project_card;
 mod selection_bar;
 mod stat_tiles;
 
+pub(crate) use container_row::action_help;
 pub use containers_view::ContainersView;

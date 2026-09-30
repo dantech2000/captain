@@ -1,9 +1,13 @@
 use gpui_kit::component::input::{self, InputEvent, InputState};
 use gpui_kit::*;
 
-use super::keys::{CONTEXT, Confirm, Dismiss, SelectNext, SelectPrev};
+use captain_core::grammar::{Catalog, examples};
+
+use super::command::CommandKind;
+use super::keys::{CONTEXT, Complete, Confirm, Dismiss, SelectNext, SelectPrev};
 use super::ranking::{self, Ranked};
-use super::{commands, footer, results, search_field};
+use super::{commands, footer, grammar, results, search_field, try_row};
+use crate::port_forwarding::{ForwardingModel, forwarding_model};
 use crate::theme::Palette;
 use crate::workspace::Workspace;
 
@@ -11,6 +15,9 @@ use crate::workspace::Workspace;
 /// [`DismissEvent`] to close.
 pub struct CommandPalette {
     workspace: Entity<Workspace>,
+    /// The Kubernetes services for `forward`, read when the palette opens while
+    /// k3s runs.
+    forwarding: Option<Entity<ForwardingModel>>,
     input: Entity<InputState>,
     /// The highlighted row. Kept in range when the results change.
     selected: usize,
@@ -29,21 +36,50 @@ impl CommandPalette {
                 cx.notify();
             }
         });
-        let observe = cx.observe(&workspace, |_, _, cx| cx.notify());
+        let mut subscriptions = vec![edited, cx.observe(&workspace, |_, _, cx| cx.notify())];
+        let forwarding = grammar::kube_runs(cx).then(|| {
+            let model = forwarding_model(cx);
+            model.update(cx, |model, cx| model.refresh(cx));
+            subscriptions.push(cx.observe(&model, |_, _, cx| cx.notify()));
+            model
+        });
         Self {
             workspace,
+            forwarding,
             input,
             selected: 0,
             scroll: ScrollHandle::new(),
-            _subscriptions: vec![edited, observe],
+            _subscriptions: subscriptions,
         }
     }
 
-    /// The rows to show for the current query and workspace.
+    fn catalog(&self, cx: &App) -> Catalog {
+        let forwarding = self.forwarding.as_ref().map(|model| model.read(cx));
+        grammar::catalog(self.workspace.read(cx), forwarding, cx)
+    }
+
+    /// The rows to show for the current query and workspace: the grammar's
+    /// suggestions, then the plain search results unless the line is a command.
     fn results(&self, cx: &App) -> Vec<Ranked> {
         let query = self.input.read(cx).value();
-        let commands = commands::build(self.workspace.read(cx), &Palette::of(cx));
-        ranking::rank(commands, &query)
+        let workspace = self.workspace.read(cx);
+        let palette = Palette::of(cx);
+        let mut rows = grammar::rows(&query, &self.catalog(cx), workspace, &palette);
+        if !grammar::is_command(&query) {
+            let commands = commands::build(workspace, &palette);
+            rows.extend(ranking::rank(commands, &query));
+        }
+        rows
+    }
+
+    /// Puts `line` in the search field, with a space for the next word.
+    pub(super) fn fill(&mut self, line: &str, window: &mut Window, cx: &mut Context<Self>) {
+        let text = format!("{} ", line.trim_end());
+        self.input
+            .update(cx, |input, cx| input.set_value(text, window, cx));
+        self.selected = 0;
+        self.scroll.scroll_to_item(0);
+        cx.notify();
     }
 
     fn select_prev(&mut self, _: &SelectPrev, _: &mut Window, cx: &mut Context<Self>) {
@@ -68,19 +104,36 @@ impl CommandPalette {
         cx.notify();
     }
 
-    fn confirm(&mut self, _: &Confirm, _: &mut Window, cx: &mut Context<Self>) {
-        self.run_at(self.selected, cx);
+    fn confirm(&mut self, _: &Confirm, window: &mut Window, cx: &mut Context<Self>) {
+        self.run_at(self.selected, window, cx);
+    }
+
+    /// Tab: puts the highlighted grammar row in the search field.
+    fn complete(&mut self, _: &Complete, window: &mut Window, cx: &mut Context<Self>) {
+        let completion = self
+            .results(cx)
+            .into_iter()
+            .nth(self.selected)
+            .and_then(|ranked| ranked.command.completion);
+        if let Some(line) = completion {
+            self.fill(&line, window, cx);
+        }
     }
 
     fn dismiss(&mut self, _: &Dismiss, _: &mut Window, cx: &mut Context<Self>) {
         cx.emit(DismissEvent);
     }
 
-    /// Runs the command in row `ix` and closes the palette.
-    pub(super) fn run_at(&mut self, ix: usize, cx: &mut Context<Self>) {
+    /// Runs the command in row `ix` and closes the palette. A command that needs
+    /// more words goes into the search field instead.
+    pub(super) fn run_at(&mut self, ix: usize, window: &mut Window, cx: &mut Context<Self>) {
         let Some(ranked) = self.results(cx).into_iter().nth(ix) else {
             return;
         };
+        if let CommandKind::Complete(line) = &ranked.command.kind {
+            self.fill(line, window, cx);
+            return;
+        }
         ranked.command.kind.run(&self.workspace, cx);
         cx.emit(DismissEvent);
     }
@@ -109,6 +162,9 @@ impl Render for CommandPalette {
         let query = self.input.read(cx).value();
         let results = self.results(cx);
         self.selected = self.selected.min(results.len().saturating_sub(1));
+        let catalog = self.catalog(cx);
+        let error = grammar::error(&query, &catalog);
+        let tries = query.trim().is_empty().then(|| examples(&catalog));
 
         div()
             .id("command-palette")
@@ -116,6 +172,7 @@ impl Render for CommandPalette {
             .on_action(cx.listener(Self::select_prev))
             .on_action(cx.listener(Self::select_next))
             .on_action(cx.listener(Self::confirm))
+            .on_action(cx.listener(Self::complete))
             .on_action(cx.listener(Self::dismiss))
             // The search field handles escape itself and then passes it up.
             .on_action(cx.listener(|_, _: &input::Escape, _, cx| cx.emit(DismissEvent)))
@@ -138,10 +195,12 @@ impl Render for CommandPalette {
             .text_size(px(13.))
             .text_color(palette.text)
             .child(search_field::render(&self.input, &palette))
+            .children(tries.map(|tries| try_row::render(tries, &palette, cx)))
             .child(results::render(
                 &results,
                 self.selected,
                 &query,
+                error,
                 &self.scroll,
                 &palette,
                 cx,

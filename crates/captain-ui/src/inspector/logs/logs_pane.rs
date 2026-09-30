@@ -18,14 +18,16 @@ use crate::theme::Palette;
 /// How long the Copy button shows a check after a copy.
 const COPIED_FOR: Duration = Duration::from_millis(1500);
 /// How many past log lines to load when a container is selected.
-const LOG_TAIL: usize = 500;
+pub(super) const LOG_TAIL: usize = 500;
 
 /// The Logs tab of one container: its recent lines and how the tab shows them.
 pub struct LogsPane {
     /// The engine and container the lines come from, for Reconnect.
     source: Option<(Arc<dyn Engine>, String)>,
     buffer: LogBuffer,
-    level: LevelFilter,
+    pub(super) level: LevelFilter,
+    /// Only lines from this long before the load on, and that time in Unix seconds.
+    pub(super) since: Option<(Duration, i64)>,
     query: SharedString,
     /// The search field. It needs a window, so the first render creates it.
     search: Option<Entity<InputState>>,
@@ -49,6 +51,7 @@ impl Default for LogsPane {
             source: None,
             buffer: LogBuffer::default(),
             level: LevelFilter::default(),
+            since: None,
             query: SharedString::default(),
             search: None,
             show_time: true,
@@ -65,9 +68,10 @@ impl Default for LogsPane {
 
 impl LogsPane {
     /// Empties the view and shows the recent and new lines of container `id`. The
-    /// filters and search text stay.
+    /// level filter and search text stay; the time filter goes.
     pub fn load(&mut self, engine: Arc<dyn Engine>, id: String, cx: &mut Context<Self>) {
         self.source = Some((engine, id));
+        self.since = None;
         self.reconnect(cx);
     }
 
@@ -76,7 +80,7 @@ impl LogsPane {
         let Some((engine, id)) = &self.source else {
             return;
         };
-        let mut lines = engine.logs(id, LOG_TAIL);
+        let mut lines = engine.logs_with(id, self.log_options());
         self.buffer.clear();
         self.following = true;
         self.unseen = 0;
