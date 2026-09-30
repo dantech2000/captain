@@ -10,7 +10,7 @@ use serde_json::Value;
 use sha2::{Digest, Sha256};
 
 /// The context Captain creates for Captain Engine.
-pub const CAPTAIN_CONTEXT: &str = "captain";
+pub const CAPTAIN_CONTEXT: &str = "captain-engine";
 
 /// The built-in context. It has no metadata; it means `DOCKER_HOST` or the default socket.
 const DEFAULT_CONTEXT: &str = "default";

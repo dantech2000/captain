@@ -51,7 +51,7 @@ The user's own terminal uses the tools inside `Captain.app`: `docker`, Compose, 
   - The link state and a **Relink** button (**Install** after `captain tools uninstall`).
   - The plugin folder state in `config.json`.
   - **PATH**: Automatic or Manual, and a row per shell file with its state, and the line and a Copy button when the user must add it.
-  - **docker commands use: \<context\>** and **Use Captain Engine…**, which asks, then creates the `captain` context if needed (`docker context create`) and makes it the default (`docker context use`), with the code from [0026](0026-contexts-and-remote-hosts.md).
+  - **docker commands use: \<context\>** and **Use Captain Engine…**, which asks, then creates the `captain-engine` context if needed (`docker context create`) and makes it the default (`docker context use`), with the code from [0026](0026-contexts-and-remote-hosts.md).
 - **CLI:** `captain tools status [--json]`, `captain tools install [--path automatic|manual]`, and `captain tools uninstall`. `install` and `uninstall` save the setting, so they refuse while the app runs, like `captain set`. `uninstall` removes the links, the plugin folder from `config.json`, and the blocks, and the app then leaves them alone.
 - **Platforms.** macOS is the target. On Linux the same code runs, but packages do not bundle tools yet, so there is nothing to link. On Windows the card and the CLI say "Command-line tools are not supported on Windows yet."
 
@@ -77,6 +77,6 @@ The user's own terminal uses the tools inside `Captain.app`: `docker`, Compose, 
 3. Open the bundled app. Check that `~/.captain/bin` and `~/.captain/cli-plugins` hold the links, and that `~/.docker/config.json` lists `~/.captain/cli-plugins` first in `cliPluginsExtraDirs`.
 4. Open Settings > Command-line tools. The rows show where each tool comes from. With a chezmoi or home-manager `~/.zshrc`, the PATH row shows the line and a Copy button.
 5. Add the line, open a new terminal, and click Relink. The `docker` row says Captain. Run `docker compose version`, `docker buildx version`, and `docker pull` of a private image.
-6. Click **Use Captain Engine…** and confirm. `docker context ls` marks `captain` with `*`.
+6. Click **Use Captain Engine…** and confirm. `docker context ls` marks `captain-engine` with `*`.
 7. Move `Captain.app` and open it. The links point at the new place.
 8. Quit Captain and run `captain tools uninstall`. The links, the plugin folder entry, and the blocks are gone.

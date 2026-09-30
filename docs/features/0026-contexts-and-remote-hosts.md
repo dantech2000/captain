@@ -7,13 +7,13 @@
 
 ## Goal
 
-The user sees the Docker CLI contexts in Settings and connects Captain to any of them. The user can make a `captain` context for Captain Engine and make a context the Docker CLI default. Captain also connects to a remote engine over SSH (`ssh://user@host`).
+The user sees the Docker CLI contexts in Settings and connects Captain to any of them. The user can make a `captain-engine` context for Captain Engine and make a context the Docker CLI default. Captain also connects to a remote engine over SSH (`ssh://user@host`).
 
 ## In scope
 
 - Context store parsing in `captain-core` (`docker_context`). The Docker CLI keeps each context in `<config dir>/contexts/meta/<sha256 of the name>/meta.json`, with `Name`, `Metadata.Description`, and `Endpoints.docker.Host`. `config.json` names the default in `currentContext`. The config dir is `DOCKER_CONFIG`, else `~/.docker`. Captain reads a context by its hash directory, lists all contexts sorted by name, and never writes the store itself.
 - The Switch engine card lists the contexts under the detected engines. Each row shows the name, the host, and the description. The CLI default has the note "Default context". **Use** connects Captain to the context's host, the same as a detected engine. **Make default…** asks first, then runs `docker context use NAME`. The `default` context has no metadata, so it is not listed; its socket is in the detected list.
-- **Create context…** writes a `captain` context that points at Captain Engine's socket. It asks first, then runs `docker context create captain --description "Captain Engine" --docker host=unix://…`. If a `captain` context exists with another host, the button says **Update context…** and runs `docker context update`. The row hides when the `captain` context already points at Captain Engine.
+- **Create context…** writes a `captain-engine` context that points at Captain Engine's socket. It asks first, then runs `docker context create captain --description "Captain Engine" --docker host=unix://…`. If a `captain-engine` context exists with another host, the button says **Update context…** and runs `docker context update`. The row hides when the `captain-engine` context already points at Captain Engine.
 - Captain runs these commands with the user's config dir in `DOCKER_CONFIG`, not Captain's own (feature 0021), and without `DOCKER_HOST` and `DOCKER_CONTEXT`. Captain never removes a context.
 - SSH URLs in `captain-core` (`ssh`): `ssh://[user@]host[:port][/remote/socket]`, the same form as the Docker CLI. A password, a query, or a fragment is an error. A path sets the remote socket; the default is `/var/run/docker.sock`.
 - The SSH tunnel in `captain-docker` (`ssh_tunnel`). For an `ssh://` endpoint, Captain runs the system `ssh`:
@@ -54,8 +54,8 @@ The user sees the Docker CLI contexts in Settings and connects Captain to any of
 3. Run `cargo test -p captain-docker --test live_contexts -- --ignored`. It creates a context and makes it the default with the real `docker` CLI in a temp `DOCKER_CONFIG`, and Captain reads the result.
 4. Start Captain and open Settings. The Switch engine card lists the contexts from `docker context ls`, and the default one has the note "Default context".
 5. Click **Use** on a context. The Engine card shows its host.
-6. Click **Create context…** and confirm. `docker context ls` shows `captain`. The row goes away.
-7. Click **Make default…** on `captain` and confirm. `docker context ls` marks `captain` with `*`.
+6. Click **Create context…** and confirm. `docker context ls` shows `captain-engine`. The row goes away.
+7. Click **Make default…** on `captain-engine` and confirm. `docker context ls` marks `captain-engine` with `*`.
 8. Type `ssh://user@host` for a host with key login and click "Use this engine". The Engine card shows Connected and the `ssh://` URL. Kill the `ssh` process. Captain starts it again.
 9. Type `ssh://user@host` for a host that needs a password. The Containers page shows the SSH key message.
 10. Quit Captain. No `ssh -nNT` process stays.

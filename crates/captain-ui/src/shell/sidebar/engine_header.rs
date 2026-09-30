@@ -3,11 +3,11 @@ use gpui_kit::*;
 
 use crate::engine_host::HostSummary;
 use crate::help::HelpExt;
-use crate::icons::{CaptainIcon, cap_icon};
 use crate::theme::Palette;
+use crate::widgets::brand_mark;
 use crate::workspace::{Connection, Workspace};
 
-/// The engine glyph, its name, and one line of state: for example `Running · 5 CPUs
+/// The app icon, the app name, and one line of engine state: for example `Running · 5 CPUs
 /// · 463 MB`. With Captain Engine the state comes from the host, except that a
 /// running engine that does not answer shows red. Its height never changes.
 pub fn render(
@@ -33,10 +33,10 @@ pub fn render(
         ),
         _ => state.to_string(),
     };
-    let title = if host.is_some() {
+    let engine = if host.is_some() {
         "Captain Engine"
     } else {
-        "Engine"
+        "The engine"
     };
     div()
         .id("sidebar-engine-header")
@@ -46,7 +46,7 @@ pub fn render(
         .gap(px(10.))
         .px(px(4.))
         .pb(px(12.))
-        .child(cap_icon(CaptainIcon::Engine, px(30.), palette.accent_fg))
+        .child(brand_mark(px(36.)))
         .child(
             div()
                 .flex_1()
@@ -58,7 +58,7 @@ pub fn render(
                     div()
                         .text_size(px(14.))
                         .font_weight(FontWeight::BOLD)
-                        .child(title),
+                        .child("Captain"),
                 )
                 .child(
                     div()
@@ -72,7 +72,7 @@ pub fn render(
                 ),
         )
         .help(format!(
-            "{title}: {}. Memory counts every container.",
+            "{engine}: {}. Memory counts every container.",
             state.to_lowercase()
         ))
 }
