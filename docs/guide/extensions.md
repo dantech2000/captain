@@ -6,6 +6,8 @@ You can install extensions on any engine, but their windows open only on macOS.
 
 An extension runs code from its publisher on your Mac and in the engine, with your permissions. Install only extensions you trust.
 
+![The Extensions page with Disk usage, Portainer, and Resource usage installed, and the Show extension containers checkbox](../images/extensions.png)
+
 ## Install an extension
 
 1. Click the Extensions button in the sidebar.
@@ -36,6 +38,10 @@ Click **Open**. The extension opens in its own window. Click **Open** again to b
 Some extensions, such as Portainer, show a page that their backend serves on `localhost`. The window loads that page once the backend runs.
 
 A link in an extension to a container, an image, or a volume brings Captain's main window to the front and shows that item.
+
+| Portainer, with its backend | Resource usage |
+|---|---|
+| ![Portainer's home page in its own window, connected to Captain Engine with 9 containers](../images/ext-portainer.png) | ![Docker's Resource usage extension with live CPU and memory for each container, grouped by project](../images/ext-resource-usage.png) |
 
 ## Update an extension
 
