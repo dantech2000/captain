@@ -8,6 +8,7 @@ mod host_files;
 mod host_kubernetes;
 mod host_model;
 mod host_reload;
+mod host_restart;
 mod host_screen;
 mod host_snapshot;
 mod host_summary;

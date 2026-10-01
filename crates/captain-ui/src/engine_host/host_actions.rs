@@ -196,7 +196,8 @@ impl HostModel {
         .detach();
     }
 
-    /// Saves new resources. A running engine gets them on its next start.
+    /// Saves new resources. A stopped engine gets them now, and a running engine on
+    /// its next start; until then Settings shows "Restart to apply".
     pub fn set_resources(&mut self, resources: HostResources, cx: &mut Context<Self>) {
         if self.snapshotting {
             return;
@@ -205,7 +206,12 @@ impl HostModel {
         let apply = self.host.set_resources(resources);
         cx.spawn(async move |this, cx| {
             let result = apply.await;
-            this.update(cx, |_, cx| report_resize(result, cx)).ok();
+            this.update(cx, |_, cx| {
+                report_resize(result, cx);
+                // A grown disk raises the disk stepper's floor.
+                cx.notify();
+            })
+            .ok();
         })
         .detach();
         cx.notify();

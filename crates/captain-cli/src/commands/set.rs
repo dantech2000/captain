@@ -6,13 +6,17 @@ use anyhow::{Result, anyhow};
 use futures::executor::block_on;
 
 use crate::context::Context;
-use crate::settings_keys::SettingKey;
+use crate::settings_keys::{SettingKey, check_disk_floor};
 
 pub fn run(context: &Context, key: SettingKey, value: &str) -> Result<()> {
+    let current_disk = (key == SettingKey::Disk)
+        .then(|| current_disk(context))
+        .flatten();
     let saved = context.update_settings(
         "Captain is running. Change this in Settings, or quit Captain first.",
         |settings| {
             key.apply(settings, value, &context.machine)
+                .and_then(|()| check_disk_floor(settings, &context.machine, current_disk))
                 .map_err(|why| anyhow!(why))?;
             Ok(key.value(settings, &context.machine))
         },
@@ -22,6 +26,14 @@ pub fn run(context: &Context, key: SettingKey, value: &str) -> Result<()> {
         println!("Run `captain restart` to apply it.");
     }
     Ok(())
+}
+
+/// The size of Captain Engine's disk now, or `None` before the first setup. A
+/// status check reads it.
+fn current_disk(context: &Context) -> Option<u64> {
+    let host = context.host(&context.load_or_default());
+    block_on(host.status()).ok()?;
+    host.current_disk()
 }
 
 fn engine_running(context: &Context) -> bool {

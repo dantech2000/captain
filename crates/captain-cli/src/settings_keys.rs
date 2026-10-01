@@ -170,25 +170,39 @@ fn memory(
     Ok(wanted)
 }
 
-/// The stepper's range, 16 GiB to 1 TiB, and never smaller than now.
+/// The stepper's range, 16 GiB to 1 TiB. [`check_disk_floor`] checks the disk
+/// that exists.
 fn disk(resources: HostResources, value: &str) -> Result<HostResources, String> {
     let gib = parse_gib(value)?;
     let wanted = HostResources {
         disk_bytes: gib.saturating_mul(GIB),
         ..resources
     };
-    if wanted.step_disk(0) != wanted {
-        let low = wanted.step_disk(i64::MIN / 2).disk_gib();
-        let high = wanted.step_disk(i64::MAX / 2).disk_gib();
+    if wanted.step_disk(0, None) != wanted {
+        let low = wanted.step_disk(i64::MIN / 2, None).disk_gib();
+        let high = wanted.step_disk(i64::MAX / 2, None).disk_gib();
         return Err(format!("Disk must be {low} to {high} GiB."));
     }
-    if wanted.disk_bytes < resources.disk_bytes {
-        return Err(format!(
-            "The disk cannot shrink below {} GiB.",
-            resources.disk_gib()
-        ));
-    }
     Ok(wanted)
+}
+
+/// Refuses a disk smaller than Captain Engine's disk now, `current`, because a disk
+/// cannot shrink. The stepper on the Settings page stops at the same size.
+pub fn check_disk_floor(
+    settings: &Settings,
+    machine: &Machine,
+    current: Option<u64>,
+) -> Result<(), String> {
+    let wanted = engine_resources(settings, machine);
+    match current {
+        Some(current) if wanted.step_disk(0, Some(current)) != wanted => {
+            let now = wanted.step_disk(0, Some(current)).disk_gib();
+            Err(format!(
+                "Captain Engine's disk is {now} GiB, and a disk cannot shrink. Use {now} GiB or more."
+            ))
+        }
+        _ => Ok(()),
+    }
 }
 
 #[cfg(test)]

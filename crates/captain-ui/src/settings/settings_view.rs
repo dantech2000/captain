@@ -27,6 +27,9 @@ pub struct SettingsView {
     pub(super) host: Option<Entity<HostModel>>,
     /// Free bytes on Captain Engine's disk, read in the background.
     pub(super) free_disk: Option<u64>,
+    /// A larger disk size in bytes that the disk stepper shows until Grow saves it
+    /// or the dialog is cancelled.
+    pub(super) disk_pending: Option<u64>,
     /// The k3s cluster, when Captain Engine has one.
     pub(super) kubernetes: Option<Entity<KubernetesModel>>,
     /// The Kubernetes version picker. The first render creates it.
@@ -78,6 +81,7 @@ impl SettingsView {
             workspace,
             host,
             free_disk: None,
+            disk_pending: None,
             kubernetes,
             kube_form: None,
             kube_form_source: None,

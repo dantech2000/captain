@@ -31,10 +31,10 @@ pub fn render(view: &SettingsView, palette: &Palette, cx: &mut Context<SettingsV
                 _ => None,
             };
             let restart = host
-                .daemon_needs_restart(cx)
-                .then(|| restart_row(model, palette));
+                .restart_note(cx)
+                .map(|note| restart_row(model, note, palette));
             section
-                .children(engine_resources::rows(model, host, view.free_disk, palette))
+                .children(engine_resources::rows(view, model, host, palette, cx))
                 .children(restart)
                 .children(problem.map(|why| {
                     super::page_section::under_note(why, palette).text_color(palette.red)
@@ -44,9 +44,10 @@ pub fn render(view: &SettingsView, palette: &Palette, cx: &mut Context<SettingsV
     }
 }
 
-/// "Restart to apply", while the engine runs with other Docker daemon settings
-/// than settings.json has, for example after an edit in the file.
-fn restart_row(model: &Entity<HostModel>, palette: &Palette) -> Stateful<Div> {
+/// "Restart to apply", while the engine runs with other resources or Docker daemon
+/// settings than settings.json has, for example after a change on this page or an
+/// edit in the file. `note` says what differs.
+fn restart_row(model: &Entity<HostModel>, note: String, palette: &Palette) -> Stateful<Div> {
     let model = model.clone();
     sub_row("", palette)
         .id("settings-daemon-restart")
@@ -56,7 +57,7 @@ fn restart_row(model: &Entity<HostModel>, palette: &Palette) -> Stateful<Div> {
                 .min_w_0()
                 .text_size(px(12.))
                 .text_color(palette.warn_text)
-                .child("Restart to apply: Captain Engine runs with the previous Docker daemon settings."),
+                .child(note),
         )
         .child(text_button(
             "daemon-restart",
@@ -66,7 +67,7 @@ fn restart_row(model: &Entity<HostModel>, palette: &Palette) -> Stateful<Div> {
             palette,
             move |_, _, cx| model.update(cx, |model, cx| model.restart(cx)),
         ))
-        .help("Restart Captain Engine to use the Docker daemon settings in settings.json.")
+        .help("Restart Captain Engine to use the saved resources and Docker daemon settings.")
 }
 
 /// The connection to another engine, and Reconnect.

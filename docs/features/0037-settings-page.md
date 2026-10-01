@@ -16,7 +16,10 @@ A centered column, about 760 px wide, with a 26 px "Settings" title. Each sectio
 
 1. **Appearance.** The three themes as small buttons with a strip of their colors (`theme_card.rs`), and System, Light, or Dark.
 2. **Engine.** A menu button with the engine in use and its state: "Captain Engine · Running", or the other engine's name ("Rancher Desktop · Connected"). The menu lists Captain Engine, the engines found on this computer, the Docker contexts, and "Add a remote host…". That item opens the engines sheet: the endpoint (Automatic or Custom, with Use automatic), the found engines, the contexts with Use, Make default, and Create or Update context, Rescan, and a remote host field (`ssh://user@host` and the other URL kinds).
-   - With Captain Engine: a Resources row with CPU, memory, and disk steppers (the limits of `HostResources`), and the note "Changes apply the next time the engine starts." with this computer's memory and the free space on the engine's disk.
+   - With Captain Engine: a Resources row with CPU, memory, and disk steppers (the limits of `HostResources`), and the note "A running engine uses new values after a restart." with this computer's memory and the free space on the engine's disk.
+     - CPUs and memory save on each click. A stopped engine gets them at once (`limactl edit`). A running engine gets them on its next start.
+     - **Restart to apply**, with Restart, while the engine runs with other resources or Docker daemon settings than the saved ones. One row covers both causes and names what differs: "Restart to apply: Captain Engine runs with 4 CPUs and 6.0 GB memory; the new settings are 6 CPUs and 8.0 GB memory." `EngineHost::running_resources` gives the resources the running instance started with; the Lima host records them from each `limactl list --json` (status checks, the end of a start, and after `limactl edit`). `HostResources::restart_change` compares CPUs, memory in MiB, and the disk only when it grows, as `limactl edit` applies them.
+     - The disk can grow but not shrink. The stepper does not go below `EngineHost::current_disk`, the instance's disk now (16 GiB before the first setup). **+** only changes the shown size; a **Grow…** button then appears. It asks "Grow the disk to 96.0 GB? A disk can grow but not shrink." with Grow and Cancel. Grow saves the size; Cancel keeps the saved one. So several clicks need one question. **−** below the saved size, but not below the disk now, saves at once, because the disk has not grown to it yet.
    - With another engine: the endpoint, the Docker version, and Reconnect.
    - "…" menu: Start, Stop, Restart, Bring data from another engine…, Show engine files (the Lima instance folder), and Reset engine… (the old reset dialog). With another engine: Reconnect and Bring data from another engine….
 3. **Kubernetes.** One switch. When it is on: the version picker, Apply now, Reset…, a status line, and the memory advice when the engine has less than 8 GB.
@@ -63,7 +66,7 @@ The page no longer shows these. The code that applies them stays.
 
 1. Run `cargo test -p captain-core setup` and `cargo test -p captain-ui options_entries`.
 2. Open Captain at 1440×900 and open Settings. The page does not scroll. Hover each control; the status bar shows its sentence.
-3. Click each theme and each mode. Step the CPUs, memory, and disk. The note shows the Mac's memory and free disk.
+3. Click each theme and each mode. Step the CPUs, memory, and disk. The note shows the Mac's memory and free disk. With the engine running, raise the memory: Restart to apply appears and names both sizes. Click + on Disk twice, then Grow…: the dialog names the new size. Cancel keeps the old size; Grow saves it. − stops at the disk's current size. See `docs/testing.md` test 16.
 4. Open the engine menu. Pick another engine, then Captain Engine. Open "Add a remote host…", type `ssh://user@host`, and click Connect.
 5. Open "…". Show engine files opens `~/.captain/lima/captain` in the Finder.
 6. Turn Kubernetes on. The version picker and status line show.

@@ -61,12 +61,37 @@ impl HostResources {
         }
     }
 
-    /// Adds `delta` GiB of disk, keeping 16 GiB to 1 TiB.
-    pub fn step_disk(self, delta: i64) -> Self {
+    /// Adds `delta` GiB of disk, keeping 16 GiB to 1 TiB, and never below `current`,
+    /// the size of the machine's disk now, because a disk cannot shrink.
+    pub fn step_disk(self, delta: i64, current: Option<u64>) -> Self {
+        let floor = current.map_or(MIN_DISK, |bytes| step(bytes, 0).clamp(MIN_DISK, MAX_DISK));
         Self {
-            disk_bytes: step(self.disk_bytes, delta).clamp(MIN_DISK, MAX_DISK),
+            disk_bytes: step(self.disk_bytes, delta).clamp(floor, MAX_DISK),
             ..self
         }
+    }
+
+    /// What a restart would change in a machine that runs with `running`: its
+    /// resources and these, each as "4 CPUs and 6.0 GB memory", or `None` when they
+    /// match. Memory compares in MiB and the disk only when it grows, as Lima applies
+    /// them.
+    pub fn restart_change(&self, running: &HostResources) -> Option<(String, String)> {
+        const MIB: u64 = 1024 * 1024;
+        let mut before = Vec::new();
+        let mut after = Vec::new();
+        if self.cpus != running.cpus {
+            before.push(format!("{} CPUs", running.cpus));
+            after.push(format!("{} CPUs", self.cpus));
+        }
+        if self.memory_bytes / MIB != running.memory_bytes / MIB {
+            before.push(format!("{} memory", bytes_label(running.memory_bytes)));
+            after.push(format!("{} memory", bytes_label(self.memory_bytes)));
+        }
+        if self.disk_bytes / GIB > running.disk_bytes / GIB {
+            before.push(format!("a {} disk", bytes_label(running.disk_bytes)));
+            after.push(format!("a {} disk", bytes_label(self.disk_bytes)));
+        }
+        (!after.is_empty()).then(|| (and_list(&before), and_list(&after)))
     }
 
     /// "4 CPUs · 8 GB memory · 64 GB disk".
@@ -87,6 +112,16 @@ impl HostResources {
     /// Disk in whole GiB, rounded down, at least 1.
     pub fn disk_gib(&self) -> u64 {
         (self.disk_bytes / GIB).max(1)
+    }
+}
+
+/// "a", "a and b", or "a, b, and c".
+fn and_list(items: &[String]) -> String {
+    match items {
+        [] => String::new(),
+        [one] => one.clone(),
+        [first, second] => format!("{first} and {second}"),
+        [rest @ .., last] => format!("{}, and {last}", rest.join(", ")),
     }
 }
 

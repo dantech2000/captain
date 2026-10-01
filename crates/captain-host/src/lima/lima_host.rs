@@ -54,6 +54,9 @@ struct Inner {
     /// What the running engine uses, once a start applied it or a status check read
     /// it. `None` while stopped or not known yet.
     running_daemon: Mutex<Option<DaemonState>>,
+    /// The instance as the last `limactl list` saw it: whether it ran, and its
+    /// resources. `None` when it did not exist or was not read yet.
+    seen: Mutex<Option<Seen>>,
     /// The Kubernetes settings for the next start. See ADR 0010.
     kubernetes: Mutex<KubernetesSettings>,
     /// The `limactl` that passed the version check.
@@ -81,6 +84,7 @@ impl LimaHost {
                 resources: Mutex::new(resources),
                 daemon: Mutex::new(DaemonSettings::default()),
                 running_daemon: Mutex::new(None),
+                seen: Mutex::new(None),
                 kubernetes: Mutex::new(KubernetesSettings::default()),
                 checked: Mutex::new(None),
                 cancel: Cancel::default(),
@@ -166,6 +170,13 @@ impl Inner {
     }
 }
 
+/// What the last `limactl list` said about the instance.
+#[derive(Debug, Clone, Copy)]
+struct Seen {
+    running: bool,
+    resources: HostResources,
+}
+
 /// Sets the phase back to idle when the action ends, also on an early return.
 struct PhaseGuard<'a>(&'a Mutex<Phase>);
 
@@ -233,6 +244,16 @@ impl EngineHost for LimaHost {
 
     fn running_daemon(&self) -> Option<DaemonState> {
         lock(&self.inner.running_daemon).clone()
+    }
+
+    fn running_resources(&self) -> Option<HostResources> {
+        lock(&self.inner.seen)
+            .filter(|seen| seen.running)
+            .map(|seen| seen.resources)
+    }
+
+    fn current_disk(&self) -> Option<u64> {
+        lock(&self.inner.seen).map(|seen| seen.resources.disk_bytes)
     }
 
     fn snapshots(&self) -> Option<Arc<dyn EngineSnapshots>> {

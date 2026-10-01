@@ -7,6 +7,7 @@ mod appearance_section;
 mod cli_tools_state;
 mod context_actions;
 mod context_rows;
+mod disk_dialog;
 mod endpoint_picker;
 mod engine_menu;
 mod engine_resources;

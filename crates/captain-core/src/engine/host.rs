@@ -66,6 +66,19 @@ pub trait EngineHost: Send + Sync + 'static {
         None
     }
 
+    /// The resources the running machine started with, as of the last status check.
+    /// `None` while it does not run or the host does not know. The UI compares them
+    /// with the saved ones to ask for a restart.
+    fn running_resources(&self) -> Option<HostResources> {
+        None
+    }
+
+    /// The size of the machine's disk now, as of the last status check, or `None`
+    /// before the first setup. A disk cannot shrink below it.
+    fn current_disk(&self) -> Option<u64> {
+        None
+    }
+
     /// Snapshots of this machine, or `None` for a host without them. See ADR 0012.
     fn snapshots(&self) -> Option<Arc<dyn EngineSnapshots>> {
         None

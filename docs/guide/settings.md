@@ -23,7 +23,15 @@ The state of Captain Engine, and its resources:
 - **Memory**
 - **Disk**
 
-Changes apply the next time the engine starts. The disk grows as it fills, up to its size. It cannot shrink, so you can only make it larger.
+Each click on **CPUs** or **Memory** saves the new value. A stopped engine gets it at once. A running engine keeps its old values until it restarts, and a **Restart to apply** row says what changes, for example "Captain Engine runs with 4 CPUs and 6.0 GB memory; the new settings are 6 CPUs and 8.0 GB memory." Click **Restart** to apply it. The same row shows when the Docker daemon settings changed.
+
+The disk grows as it fills, up to its size. It can grow but not shrink:
+
+1. Click **+** on **Disk** until it shows the size you want. Nothing is saved yet.
+2. Click **Grow…**. Captain asks "Grow the disk to 96.0 GB? A disk can grow but not shrink."
+3. Click **Grow** to save the size, or **Cancel** to keep the disk as it is.
+
+**−** does not go below the size of the disk now. A running engine gets the larger disk when it restarts.
 
 ### Kubernetes
 
@@ -106,7 +114,7 @@ If your editor marks the comments as errors, set the file's language to JSON wit
 
 Captain watches the file and applies it when you save. You do not need to restart Captain.
 
-Engine options, such as the resources, the Docker daemon, and Kubernetes, apply the next time Captain Engine starts. Captain says so when you save. If you change the resources while Captain takes or restores a snapshot, Captain applies them when the snapshot is done, before it starts the engine again. A restore keeps the snapshot's resources instead.
+Engine options, such as the resources, the Docker daemon, and Kubernetes, apply the next time Captain Engine starts. While the engine runs with other resources or Docker daemon settings, the Engine section shows **Restart to apply**. Captain says so when you save. If you change the resources while Captain takes or restores a snapshot, Captain applies them when the snapshot is done, before it starts the engine again. A restore keeps the snapshot's resources instead.
 
 ### Mistakes
 
@@ -131,5 +139,7 @@ captain list-settings
 captain set memory 8
 captain set stop-engine-on-quit false
 ```
+
+`captain set disk` refuses a size smaller than the disk now, because a disk cannot shrink.
 
 See [The command line](cli.md).

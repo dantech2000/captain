@@ -5,7 +5,7 @@ use std::time::Duration;
 
 use captain_core::{HostError, HostResources, HostStatus};
 
-use super::{Inner, Phase, daemon_steps, engine_lock, kube_steps, lock};
+use super::{Inner, Phase, Seen, daemon_steps, engine_lock, kube_steps, lock};
 use crate::lima::args;
 use crate::lima::instance::{LimaInstance, find_instance};
 use crate::lima::limactl::Limactl;
@@ -73,6 +73,8 @@ pub fn start(inner: &Inner, sink: &mut dyn FnMut(String)) -> Result<(), HostErro
             socket.display()
         )));
     }
+    // Learn the resources it started with, for "Restart to apply".
+    find(inner, &limactl).ok();
     // Each step below runs under `inner.cancel`, so a stop ends it at once.
     daemon_steps::apply(inner, &limactl, sink)?;
     kube_steps::on_start(inner, &limactl, sink);
@@ -151,7 +153,11 @@ pub fn apply_resources(inner: &Inner) -> Result<(), HostError> {
     match find(inner, &limactl)? {
         Some(instance) if instance.status == "Stopped" => {
             match args::edit(&inner.paths.instance, &instance.resources(), &wanted) {
-                Some(edit) => limactl.output(&edit).map(drop),
+                Some(edit) => {
+                    limactl.output(&edit)?;
+                    // The disk floor follows the grown disk.
+                    find(inner, &limactl).map(drop)
+                }
                 None => Ok(()),
             }
         }
@@ -186,7 +192,14 @@ fn cancel_start(inner: &Inner) {
     }
 }
 
+/// The instance as `limactl list` reports it. It also records what it saw, for
+/// `running_resources` and `current_disk`.
 pub fn find(inner: &Inner, limactl: &Limactl) -> Result<Option<LimaInstance>, HostError> {
     let json = limactl.output_within(&args::list(), QUICK_TIMEOUT)?;
-    Ok(find_instance(&json, &inner.paths.instance))
+    let instance = find_instance(&json, &inner.paths.instance);
+    *lock(&inner.seen) = instance.as_ref().map(|instance| Seen {
+        running: instance.status == "Running",
+        resources: instance.resources(),
+    });
+    Ok(instance)
 }

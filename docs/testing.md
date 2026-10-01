@@ -247,6 +247,25 @@ Use a test project with a service that runs out of memory, for example `command:
 
 Clean up: turn off **Let agents use Captain**, and `docker compose down` in the test folder.
 
+## 16. Engine resources
+
+Restarts the engine once. The disk steps grow the real disk, so stop at a size you are glad to keep.
+
+1. Open **Settings > Engine**. Click **+** on **Memory** once.
+   - Expect: the **Restart to apply** row appears, for example "Captain Engine runs with 6.0 GB memory; the new settings are 7.0 GB memory."
+2. Click **Restart**.
+   - Expect: the engine restarts and the row is gone.
+3. Click **−** on **Disk**.
+   - Expect: the size does not go below the disk's current size.
+4. Click **+** on **Disk** twice.
+   - Expect: the stepper shows 32 GB more, and **Grow…** appears. Nothing is saved yet.
+5. Click **Grow…**, then **Cancel**.
+   - Expect: the stepper shows the old size again, and **Grow…** is gone.
+6. Click **+** on **Disk** once, then **Grow…**, then **Grow**.
+   - Expect: the stepper keeps the new size. **Restart to apply** names the larger disk. After **Restart**, `LIMA_HOME=~/.captain/lima limactl list captain` shows the new disk, and **−** stops at it.
+7. Quit Captain. Run `captain set disk 16`.
+   - Expect: "Captain Engine's disk is N GiB, and a disk cannot shrink. Use N GiB or more."
+
 ## Last run
 
 2026-09-29, commit c656372, macOS, on the real Captain Engine. Tests 1–3 ran first through the `captain` CLI (the same host code as the app), then the UI steps in the app.

@@ -1,7 +1,7 @@
 use captain_core::GIB;
 use captain_core::settings::{EngineChoice, Settings};
 
-use super::{Machine, SettingKey, engine_resources};
+use super::{Machine, SettingKey, check_disk_floor, engine_resources};
 
 const MACHINE: Machine = Machine {
     cpus: 8,
@@ -55,18 +55,18 @@ fn a_new_resource_keeps_the_other_defaults() {
 }
 
 #[test]
-fn the_disk_can_grow_but_not_shrink() {
+fn the_disk_cannot_shrink_below_the_engine_disk() {
+    let settings = set(SettingKey::Disk, "48").unwrap();
+    assert_eq!(check_disk_floor(&settings, &MACHINE, None), Ok(()));
     assert_eq!(
-        set(SettingKey::Disk, "128")
-            .unwrap()
-            .engine_resources
-            .unwrap()
-            .disk_gib(),
-        128
+        check_disk_floor(&settings, &MACHINE, Some(32 * GIB)),
+        Ok(())
     );
     assert_eq!(
-        set(SettingKey::Disk, "32"),
-        Err("The disk cannot shrink below 64 GiB.".into())
+        check_disk_floor(&settings, &MACHINE, Some(64 * GIB)),
+        Err(
+            "Captain Engine's disk is 64 GiB, and a disk cannot shrink. Use 64 GiB or more.".into()
+        )
     );
     assert_eq!(
         set(SettingKey::Disk, "2048"),
