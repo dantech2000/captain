@@ -1,7 +1,7 @@
 use gpui_kit::*;
 
 use super::app_mark;
-use super::rail_button::{page_button, toggle_button};
+use super::rail_button::{page_button, terminal_button, toggle_button};
 use crate::engine_host::HostSummary;
 use crate::shell::engine_state::EngineState;
 use crate::theme::Palette;
@@ -26,7 +26,7 @@ const PINNED: [Page; 2] = [Page::Diagnostics, Page::Settings];
 
 /// A slim column at the far left: room for the window buttons, the app icon with
 /// the engine's state dot, the button that hides the projects list, the pages, and
-/// Diagnostics and Settings at the bottom. `failures` is a red badge on Diagnostics.
+/// the terminal button, Diagnostics, and Settings at the bottom. `failures` is a red badge on Diagnostics.
 pub fn render(
     handle: &Entity<Workspace>,
     workspace: &Workspace,
@@ -86,6 +86,7 @@ pub fn render(
             column()
                 .flex_shrink_0()
                 .pt(px(8.))
+                .child(terminal_button(handle, workspace.terminal_open(), palette))
                 .children(PINNED.map(button)),
         )
 }

@@ -4,8 +4,8 @@ use captain_terminal::{Cell, CursorShape, Screen};
 use gpui_kit::*;
 
 use super::spans::{spans_by, text_segments};
-use crate::inspector::terminal::colors::TerminalColors;
-use crate::inspector::terminal::metrics::GridMetrics;
+use crate::terminal::colors::TerminalColors;
+use crate::terminal::metrics::GridMetrics;
 
 /// The width of a beam cursor and the height of an underline cursor.
 const CURSOR_BAR: Pixels = px(2.);

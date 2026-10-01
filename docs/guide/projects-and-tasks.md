@@ -11,7 +11,7 @@ The project buttons and tasks run the `docker compose` CLI. Captain.app includes
 ## The header
 
 - **Open folder** opens the project folder in Finder.
-- **Terminal** opens Terminal.app in the project folder. Its `docker` commands use your default docker context.
+- **Terminal** opens a tab in Captain's terminal panel, in the project folder. Its `docker` commands use the engine that Captain shows. See [The terminal panel](getting-started.md#the-terminal-panel).
 - **Down** stops and removes the project's containers. Captain asks first. Volumes and images stay.
 - **Restart project** restarts every service. While nothing runs, the button is **Up**, which runs `docker compose up`.
 

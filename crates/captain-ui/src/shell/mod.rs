@@ -10,7 +10,7 @@ pub use app_shell::AppShell;
 pub(crate) use engine_state::EngineState;
 pub(crate) use layout::left_width;
 use layout::{RAIL_WIDTH, SIDEBAR_WIDTH};
-pub(crate) use rail::sidebar_help;
 pub use rail::{ToggleSidebar, page_bindings};
+pub(crate) use rail::{sidebar_help, terminal_help};
 pub(crate) use sidebar::page_help;
 pub use status_bar::engine_name;

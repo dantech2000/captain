@@ -101,9 +101,24 @@ Click a project in the sidebar to open its page. The page has five parts.
 4. **The Tasks card.** Named commands from the Compose file.
 5. **The project log.** One log for all services, sorted by time, with a colored tag per service.
 
-**Terminal** opens Terminal.app in the project folder. Its `docker` commands use your default docker context, which is not always Captain Engine. To make them use Captain Engine, [set up your terminal](moving-from-docker-desktop-or-rancher.md#set-up-your-terminal).
+**Terminal** opens a tab in the [terminal panel](#the-terminal-panel), in the project folder.
 
 [Projects and tasks](projects-and-tasks.md) explains the Open row, tasks, the log, and the Map tab.
+
+### The terminal panel
+
+Captain has its own terminal under the page. Press ⌃` (Control and the backtick key) to show or hide it, or click the terminal button at the bottom of the rail, above Diagnostics. The ⌘K palette has **Toggle terminal** too.
+
+Each tab runs your login shell. Its `docker` commands use the engine that Captain shows: Captain sets `DOCKER_HOST` to that engine, removes `DOCKER_CONTEXT`, and puts Captain's tools first on `PATH`. The dim first line of a tab says which engine, for example `docker → Captain Engine (unix:///…/docker.sock)`. Your shell's startup files run after that. If they set `DOCKER_HOST` or `DOCKER_CONTEXT`, they win.
+
+1. To open a tab, click **+**, or press ⌘T while the panel has focus. On a project page, the tab opens in the project folder. Elsewhere it opens in your home folder.
+2. To close a tab, click its **×**, or press ⌘W. The shell and the program in it end.
+3. To resize the panel, drag its top edge. Double-click the edge to go back to the default height.
+4. To hide the panel, press ⌃` or click the chevron. The tabs keep running.
+
+When a shell exits, the tab shows `[Process exited with code N]`. Click **Restart** for a new shell in the same folder, or **Close tab**.
+
+While the terminal has focus, Control keys such as Ctrl-K and Ctrl-B go to the shell. On macOS, ⌘K, ⌘B, ⌘1 to ⌘9, and ⌘, still work, and ⌘C and ⌘V copy and paste. On Linux and Windows, Captain's shortcuts use Ctrl, so the shell gets them while the terminal has focus. Click outside the terminal to use them. Copy and paste are Ctrl-Shift-C and Ctrl-Shift-V, and Ctrl-Shift-T and Ctrl-Shift-W open and close tabs.
 
 ### The status bar
 

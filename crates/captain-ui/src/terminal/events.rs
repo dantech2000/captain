@@ -6,12 +6,12 @@ use gpui_kit::*;
 use super::grid::{LINE_HEIGHT, TerminalGrid};
 use super::input::{Shortcut, key_input, shortcut};
 use super::keys::KEY_CONTEXT;
-use super::terminal_pane::{Phase, TerminalPane};
+use super::terminal_view::{Phase, TerminalView};
 use crate::theme::Palette;
 
 const MACOS: bool = cfg!(target_os = "macos");
 
-impl TerminalPane {
+impl TerminalView {
     /// The rounded box around the grid, with every input handler, and an overlay while
     /// the session is not running.
     pub(super) fn grid_box(
@@ -55,7 +55,7 @@ impl TerminalPane {
                 this.on_scroll(event.delta.pixel_delta(LINE_HEIGHT).y, cx);
             }))
             .child(grid)
-            .children(super::status::overlay(&self.phase, palette))
+            .children(super::overlay::render(self, palette, cx))
     }
 
     /// Handles a keystroke. Returns false for keystrokes the app should see.

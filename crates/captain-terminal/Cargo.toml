@@ -1,6 +1,6 @@
 [package]
 name = "captain-terminal"
-description = "Terminal emulation for Captain's exec terminal, behind a swappable Emulator trait"
+description = "Terminal emulation behind a swappable Emulator trait, and the PTY of Captain's terminal panel"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -16,6 +16,10 @@ ghostty = []
 
 [dependencies]
 alacritty_terminal = { workspace = true, optional = true }
+portable-pty.workspace = true
+
+[target.'cfg(unix)'.dependencies]
+rustix.workspace = true
 
 [lints]
 workspace = true

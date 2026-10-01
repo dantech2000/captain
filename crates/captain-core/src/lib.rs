@@ -14,6 +14,7 @@ mod fake_engine;
 mod file_replace;
 pub mod format;
 pub mod grammar;
+pub mod host_shell;
 pub mod known_projects;
 pub mod kubernetes;
 pub mod link_target;

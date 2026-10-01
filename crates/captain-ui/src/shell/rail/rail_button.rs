@@ -8,6 +8,7 @@ use gpui_kit::*;
 use crate::help::{CMD, HelpExt};
 use crate::icons::glyph;
 use crate::shell::page_help;
+use crate::terminal_panel::TOGGLE_KEYS;
 use crate::theme::Palette;
 use crate::workspace::{Page, Workspace};
 
@@ -83,6 +84,35 @@ pub fn toggle_button(handle: &Entity<Workspace>, hidden: bool, palette: &Palette
             Tooltip::new(label).key_binding(kbd).build(window, cx)
         })
         .help_keys(sidebar_help(hidden), &[CMD, "B"])
+}
+
+/// Shows the terminal panel, or hides it. ⌃` does the same.
+pub fn terminal_button(handle: &Entity<Workspace>, open: bool, palette: &Palette) -> Stateful<Div> {
+    let handle = handle.clone();
+    let color = if open {
+        palette.accent_fg
+    } else {
+        palette.text2
+    };
+    button("rail-terminal", palette)
+        .when(open, |this| this.bg(palette.nav_selected))
+        .text_color(color)
+        .on_click(move |_, _, cx| handle.update(cx, |workspace, cx| workspace.toggle_terminal(cx)))
+        .child(Icon::new(IconName::SquareTerminal).size(px(18.)))
+        .tooltip(|window, cx| {
+            let kbd = Keystroke::parse("ctrl-`").ok().map(Kbd::new);
+            Tooltip::new("Terminal").key_binding(kbd).build(window, cx)
+        })
+        .help_keys(terminal_help(open), TOGGLE_KEYS)
+}
+
+/// The status bar sentence for the terminal button, and for the palette's row.
+pub fn terminal_help(open: bool) -> &'static str {
+    if open {
+        "Hide the terminal panel. Its tabs keep running."
+    } else {
+        "Show the terminal panel: shells on this computer whose docker uses Captain's engine."
+    }
 }
 
 /// The status bar sentence for the sidebar button, and for the palette's row.

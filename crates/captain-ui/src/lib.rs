@@ -21,6 +21,8 @@ mod settings;
 mod shell;
 mod snapshots;
 mod storage;
+mod terminal;
+mod terminal_panel;
 mod theme;
 mod volumes;
 mod widgets;
@@ -49,5 +51,6 @@ pub use settings::{
 };
 pub use shell::{AppShell, ToggleSidebar, engine_name, page_bindings};
 pub use storage::init as storage_init;
+pub use terminal_panel::{ToggleTerminal, terminal_bindings};
 pub use widgets::error_notification;
 pub use workspace::{Connection, Connector, Page, Workspace};

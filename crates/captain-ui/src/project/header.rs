@@ -8,8 +8,6 @@ use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::*;
 
 use super::action_help::{down_help, restart_help, up_help};
-use super::system_open::open_terminal;
-use super::{ProjectNotice, ProjectView};
 use crate::containers::down_dialog;
 use crate::help::HelpExt;
 use crate::theme::Palette;
@@ -25,7 +23,6 @@ pub fn render(
     (active, count): (usize, usize),
     handle: &Entity<Workspace>,
     workspace: &Workspace,
-    view: &WeakEntity<ProjectView>,
     tabs: Div,
     palette: &Palette,
 ) -> Stateful<Div> {
@@ -44,7 +41,7 @@ pub fn render(
             .text_color(palette.text2)
             .child(Spinner::new().xsmall().color(palette.text2))
             .child(action.progress_label()),
-        None => buttons(project, (active, count), handle, workspace, view, palette),
+        None => buttons(project, (active, count), handle, workspace, palette),
     });
     drag_region("project-header")
         .flex_shrink_0()
@@ -102,7 +99,6 @@ fn buttons(
     (active, count): (usize, usize),
     handle: &Entity<Workspace>,
     workspace: &Workspace,
-    view: &WeakEntity<ProjectView>,
     palette: &Palette,
 ) -> Div {
     let name = &project.name;
@@ -136,25 +132,19 @@ fn buttons(
         .help(help)
     };
     let terminal = {
-        let (dir, view) = (dir.clone(), view.clone());
+        let (dir, handle) = (dir.clone(), handle.clone());
         secondary(
             "project-terminal",
             "Terminal",
             dir.is_some(),
             palette,
             move |_, cx| {
-                let Some(dir) = &dir else { return };
-                if let Err(error) = open_terminal(dir) {
-                    let notice = ProjectNotice::Failed {
-                        title: "Cannot open a terminal".into(),
-                        error: error.to_string(),
-                    };
-                    view.update(cx, |_, cx| cx.emit(notice)).ok();
-                }
+                let Some(dir) = dir.clone() else { return };
+                handle.update(cx, |workspace, cx| workspace.open_terminal_in(dir, cx));
             },
         )
         .help(format!(
-            "Open a terminal in {shown}. Its docker CLI uses your current docker context."
+            "Open a terminal tab in {shown}, in Captain's terminal panel. Its docker uses the engine Captain shows."
         ))
     };
     let down = {

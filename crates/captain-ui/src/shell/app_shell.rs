@@ -2,7 +2,9 @@ use gpui_kit::component::WindowExt;
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::*;
 
-use super::details_rail::{self, Details};
+mod page_area;
+
+use super::details_rail::Details;
 use super::rail::{self, ToggleSidebar};
 use super::sidebar;
 use super::status_bar::StatusBar;
@@ -23,6 +25,7 @@ use crate::project::{ProjectNotice, ProjectView};
 use crate::settings::{self, SettingsView};
 use crate::snapshots::SnapshotsView;
 use crate::storage::StorageView;
+use crate::terminal_panel::{TerminalPanel, ToggleTerminal};
 use crate::theme::Palette;
 use crate::volumes::VolumesView;
 use crate::workspace::{Connection, Connector, Page, Workspace, WorkspaceEvent};
@@ -44,6 +47,7 @@ pub struct AppShell {
     diagnostics: Entity<DiagnosticsView>,
     settings: Entity<SettingsView>,
     status_bar: Entity<StatusBar>,
+    terminal: Entity<TerminalPanel>,
     palette: Option<Entity<CommandPalette>>,
     focus_handle: FocusHandle,
     _subscriptions: Vec<Subscription>,
@@ -108,6 +112,7 @@ impl AppShell {
             this.focus_handle.focus(window, cx);
         }));
 
+        let terminal = cx.new(|cx| TerminalPanel::new(workspace.clone(), project.clone(), cx));
         Self {
             containers: cx.new(|cx| ContainersView::new(workspace.clone(), cx)),
             project,
@@ -122,6 +127,7 @@ impl AppShell {
             diagnostics: cx.new(|cx| DiagnosticsView::new(workspace.clone(), cx)),
             settings: cx.new(|cx| SettingsView::new(workspace.clone(), cx)),
             status_bar: cx.new(|cx| StatusBar::new(workspace.clone(), cx)),
+            terminal,
             workspace,
             palette: None,
             focus_handle,
@@ -184,33 +190,6 @@ impl AppShell {
         }
         cx.notify();
     }
-
-    /// The page, and beside the Containers and Project pages the details panel, or
-    /// the rail that shows it again when `details` says it is hidden.
-    fn page(&self, page: Page, details: Details, palette: &Palette) -> Div {
-        let main = div().flex_1().min_w_0().h_full();
-        let row = div().flex_1().min_w_0().h_full().flex();
-        let details = |row: Div| match &details {
-            Details::None => row,
-            Details::Shown => row.child(self.inspector.clone()),
-            Details::Hidden(name) => {
-                row.child(details_rail::render(&self.workspace, name, palette))
-            }
-        };
-        match page {
-            Page::Containers => details(row.child(main.child(self.containers.clone()))),
-            Page::Project => details(row.child(main.child(self.project.clone()))),
-            Page::Images => row.child(main.child(self.images.clone())),
-            Page::Volumes => row.child(main.child(self.volumes.clone())),
-            Page::Networks => row.child(main.child(self.networks.clone())),
-            Page::Extensions => row.child(main.child(self.extensions.clone())),
-            Page::Snapshots => row.child(main.child(self.snapshots.clone())),
-            Page::Storage => row.child(main.child(self.storage.clone())),
-            Page::PortForwarding => row.child(main.child(self.forwarding.clone())),
-            Page::Diagnostics => row.child(main.child(self.diagnostics.clone())),
-            Page::Settings => row.child(main.child(self.settings.clone())),
-        }
-    }
 }
 
 impl Render for AppShell {
@@ -251,6 +230,10 @@ impl Render for AppShell {
                 this.workspace
                     .update(cx, |workspace, cx| workspace.toggle_sidebar(cx));
             }))
+            .on_action(cx.listener(|this, _: &ToggleTerminal, _, cx| {
+                this.workspace
+                    .update(cx, |workspace, cx| workspace.toggle_terminal(cx));
+            }))
             .on_action(cx.listener(|this, _: &NewProject, window, cx| {
                 new_project::open(this.workspace.clone(), this.project.clone(), window, cx);
             }))
@@ -277,12 +260,12 @@ impl Render for AppShell {
                     .when(!workspace.sidebar_hidden(), |row| {
                         row.child(sidebar::render(&self.workspace, workspace, &palette, cx))
                     })
-                    // The traffic lights are wider than the rail, so a page beside the
-                    // rail alone keeps its title clear of them.
-                    .child(
-                        self.page(workspace.page(), details, &palette)
-                            .when(workspace.sidebar_hidden(), |page| page.pl(px(16.))),
-                    ),
+                    .child(self.page_area(
+                        workspace.page(),
+                        details,
+                        (workspace.sidebar_hidden(), workspace.terminal_open()),
+                        &palette,
+                    )),
             )
             .child(self.status_bar.clone())
             .children(self.palette.clone().map(|command_palette| {

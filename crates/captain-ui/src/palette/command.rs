@@ -55,6 +55,8 @@ pub enum CommandKind {
     NewProject,
     /// Hides the projects list, or shows it again, as ⌘B does.
     ToggleSidebar,
+    /// Shows the terminal panel, or hides it, as ⌃` does.
+    ToggleTerminal,
     /// Runs a command of the grammar.
     Act(Action),
     /// Puts this line in the search field, because the command needs more words.
@@ -95,6 +97,7 @@ impl CommandKind {
             CommandKind::BringData => dispatch(Box::new(OpenMigrationAssistant), cx),
             CommandKind::NewProject => dispatch(Box::new(NewProject), cx),
             CommandKind::ToggleSidebar => workspace.update(cx, |w, cx| w.toggle_sidebar(cx)),
+            CommandKind::ToggleTerminal => workspace.update(cx, |w, cx| w.toggle_terminal(cx)),
             CommandKind::Act(action) => run_action::run(action, workspace, cx),
             // The palette completes the line instead of running a command.
             CommandKind::Complete(_) => {}

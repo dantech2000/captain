@@ -9,7 +9,7 @@ use crate::containers::action_help;
 use crate::help::cmd_key;
 use crate::icons::CaptainIcon;
 use crate::project::{down_help, restart_help, up_help};
-use crate::shell::{page_help, sidebar_help};
+use crate::shell::{page_help, sidebar_help, terminal_help};
 use crate::theme::Palette;
 use crate::workspace::{Page, Workspace};
 
@@ -19,6 +19,7 @@ pub fn build(workspace: &Workspace, palette: &Palette) -> Vec<Command> {
     commands.push(new_project(palette));
     commands.push(bring_data(palette));
     commands.push(toggle_sidebar(workspace, palette));
+    commands.push(toggle_terminal(workspace, palette));
     commands.extend(filters(workspace, palette));
     if workspace.has_project_runner() {
         for project in workspace.compose_projects() {
@@ -104,6 +105,26 @@ fn toggle_sidebar(workspace: &Workspace, palette: &Palette) -> Command {
         suggested: false,
         kind: CommandKind::ToggleSidebar,
         help: sidebar_help(hidden).into(),
+        completion: None,
+    }
+}
+
+/// Shows the terminal panel, or hides it, as ⌃` does.
+fn toggle_terminal(workspace: &Workspace, palette: &Palette) -> Command {
+    let meta = if cfg!(target_os = "macos") {
+        "⌃`"
+    } else {
+        "Ctrl `"
+    };
+    Command {
+        section: Section::Actions,
+        title: "Toggle terminal".into(),
+        meta: meta.into(),
+        icon: IconName::SquareTerminal.into(),
+        color: palette.accent_fg,
+        suggested: false,
+        kind: CommandKind::ToggleTerminal,
+        help: terminal_help(workspace.terminal_open()).into(),
         completion: None,
     }
 }

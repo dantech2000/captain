@@ -12,6 +12,7 @@ use captain_core::{Engine, EngineError, ImageBuilder, ProjectRunner};
 use gpui_kit::*;
 
 use super::reveal::Reveal;
+use super::terminal::TerminalPanelState;
 use super::{InspectorTab, LogFilter, Page, WorkspaceEvent};
 
 /// The state of the engine connection.
@@ -81,6 +82,8 @@ pub struct Workspace {
     pub(super) reveal: Option<Reveal>,
     /// Follows `show_extension_containers` in the settings.
     pub(super) settings: Option<Subscription>,
+    /// The terminal panel: open or hidden, and its height.
+    pub(super) terminal: TerminalPanelState,
 }
 
 impl EventEmitter<WorkspaceEvent> for Workspace {}
@@ -121,6 +124,7 @@ impl Workspace {
             log_filter: None,
             reveal: None,
             settings: None,
+            terminal: TerminalPanelState::default(),
         }
     }
 

@@ -58,7 +58,7 @@ The main window opens on what the user works on: a project. The sidebar lists Co
 ## Out of scope
 
 - Opening the user's editor. Captain cannot know it; "Open folder" opens the folder with the system's default app (`open`, `xdg-open`, or Explorer).
-- `DOCKER_HOST` in the new Terminal window. `open -a Terminal DIR` cannot pass environment variables, so the shell uses the user's docker context. The help says so.
+- `DOCKER_HOST` in the new Terminal window. `open -a Terminal DIR` cannot pass environment variables, so the shell uses the user's docker context. Fixed in M34: the button now opens a tab in Captain's terminal panel with `DOCKER_HOST` set ([0041](0041-integrated-terminal.md)).
 - Output that streams while a task runs. The card shows the output when the task ends.
 - Shortcuts (⌘O, ⌘T, ⌘⇧R) from the design. They come with the command grammar (M27).
 

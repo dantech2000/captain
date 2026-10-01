@@ -1,5 +1,5 @@
-//! The terminal grid element. Each frame it measures the cells, tells the pane the
-//! grid size, and paints the pane's screen: backgrounds, then text runs per row, then
+//! The terminal grid element. Each frame it measures the cells, tells the view the
+//! grid size, and paints the view's screen: backgrounds, then text runs per row, then
 //! the cursor.
 
 mod frame;
@@ -7,7 +7,7 @@ mod spans;
 
 use gpui_kit::*;
 
-use super::TerminalPane;
+use super::TerminalView;
 use super::colors::TerminalColors;
 use super::metrics::GridMetrics;
 use frame::Frame;
@@ -17,7 +17,7 @@ pub const FONT_SIZE: Pixels = px(12.);
 pub const LINE_HEIGHT: Pixels = px(16.);
 
 pub struct TerminalGrid {
-    pane: Entity<TerminalPane>,
+    view: Entity<TerminalView>,
     colors: TerminalColors,
     font: Font,
     focused: bool,
@@ -25,13 +25,13 @@ pub struct TerminalGrid {
 
 impl TerminalGrid {
     pub fn new(
-        pane: Entity<TerminalPane>,
+        view: Entity<TerminalView>,
         colors: TerminalColors,
         family: SharedString,
         focused: bool,
     ) -> Self {
         Self {
-            pane,
+            view,
             colors,
             font: font(family),
             focused,
@@ -93,8 +93,8 @@ impl Element for TerminalGrid {
         cx: &mut App,
     ) -> Frame {
         let metrics = GridMetrics::fit(bounds, self.cell_size(window));
-        self.pane.update(cx, |pane, cx| pane.sync_size(metrics, cx));
-        let screen = self.pane.read(cx).snapshot();
+        self.view.update(cx, |view, cx| view.sync_size(metrics, cx));
+        let screen = self.view.read(cx).snapshot();
         let style = frame::Style {
             colors: &self.colors,
             font: &self.font,

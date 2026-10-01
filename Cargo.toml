@@ -44,6 +44,9 @@ muda = { version = "0.20", default-features = false }
 objc2 = "0.6"
 objc2-app-kit = { version = "0.3.2", default-features = false, features = ["std", "NSApplication", "NSDockTile", "NSResponder"] }
 objc2-foundation = { version = "0.3.2", default-features = false, features = ["std", "NSString"] }
+# The PTY of the terminal panel: ConPTY on Windows, openpty elsewhere. See
+# docs/features/0041-integrated-terminal.md.
+portable-pty = "0.9"
 raw-window-handle = { version = "0.6", features = ["std"] }
 # The MCP server of `captain mcp`, stdio only; see docs/features/0038-agent-tools.md.
 rmcp = { version = "3.5", default-features = false, features = ["server", "macros", "transport-io"] }

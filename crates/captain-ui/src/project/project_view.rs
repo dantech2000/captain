@@ -57,6 +57,13 @@ pub struct ProjectView {
 impl EventEmitter<ProjectNotice> for ProjectView {}
 
 impl ProjectView {
+    /// The shown Compose project's folder, when it is on this computer. A new
+    /// terminal tab opens there.
+    pub fn folder(&self) -> Option<std::path::PathBuf> {
+        let dir = self.project.as_ref()?.working_dir.as_ref()?;
+        Some(std::path::PathBuf::from(dir)).filter(|dir| dir.is_dir())
+    }
+
     pub fn new(workspace: Entity<Workspace>, cx: &mut Context<Self>) -> Self {
         let host = host_model(cx);
         let mut subscriptions = vec![

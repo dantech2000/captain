@@ -1,40 +1,38 @@
-//! Starting the exec, pumping its output into the emulator, and resizing it.
+//! Starting a session from the source, pumping its output into the emulator, and
+//! resizing it.
 
 use std::time::Duration;
 
 use captain_core::EngineError;
-use captain_core::model::{ExecSession, ExecSpec};
+use captain_core::model::ExecSession;
 use captain_terminal::default_emulator;
 use futures::StreamExt;
 use gpui_kit::*;
 
 use super::metrics::GridMetrics;
-use super::terminal_pane::{DEFAULT_SIZE, Live, Phase, TerminalPane};
+use super::terminal_view::{DEFAULT_SIZE, Live, Phase, TerminalView};
 
-/// How long the grid size must hold still before the engine hears about it. Dragging
+/// How long the grid size must hold still before the session hears about it. Dragging
 /// a window edge would otherwise send a resize for every frame.
 const RESIZE_DEBOUNCE: Duration = Duration::from_millis(150);
 /// Output chunks fed to the emulator before one repaint.
 const CHUNKS_PER_FRAME: usize = 64;
 
-impl TerminalPane {
-    /// Starts a shell in the target container, if it runs and the engine is connected.
+impl TerminalView {
+    /// Starts a session from the source, if there is one.
     pub(super) fn start(&mut self, cx: &mut Context<Self>) {
-        let (Some(target), Some(engine)) = (self.target.clone(), self.engine.clone()) else {
+        let Some(source) = self.source.clone() else {
             return;
         };
-        if !target.running {
-            return;
-        }
         let (cols, rows) = self
             .metrics
             .map_or(DEFAULT_SIZE, |metrics| (metrics.cols, metrics.rows));
         self.emulator = default_emulator(cols, rows);
         self.phase = Phase::Connecting;
         self.wants_focus = true;
-        let exec = engine.exec(&target.id, ExecSpec::shell(cols, rows));
+        let open = source.open(cols, rows);
         self.tasks = vec![cx.spawn(async move |this, cx| {
-            let result = exec.await;
+            let result = open.await;
             this.update(cx, |this, cx| this.attach(result, cx)).ok();
         })];
         cx.notify();
@@ -92,6 +90,12 @@ impl TerminalPane {
     }
 
     fn finish(&mut self, code: Option<i64>, cx: &mut Context<Self>) {
+        let line = match code {
+            Some(code) => format!("\r\n[Process exited with code {code}]\r\n"),
+            None => "\r\n[Process exited]\r\n".to_string(),
+        };
+        self.emulator.feed(line.as_bytes());
+        self.emulator.scroll_to_bottom();
         self.live = None;
         self.resize_task = None;
         self.phase = Phase::Exited(code);
@@ -108,7 +112,7 @@ impl TerminalPane {
     }
 
     /// Called by the grid on each frame. A new size resizes the emulator at once and the
-    /// exec after a short pause.
+    /// session after a short pause.
     pub(super) fn sync_size(&mut self, metrics: GridMetrics, cx: &mut Context<Self>) {
         self.metrics = Some(metrics);
         let size = (metrics.cols, metrics.rows);
@@ -128,7 +132,7 @@ impl TerminalPane {
                 cx.background_executor().timer(delay).await;
             }
             if let Err(error) = resizer.resize(cols, rows).await {
-                tracing::debug!(%error, "exec resize failed");
+                tracing::debug!(%error, "terminal resize failed");
             }
         }));
     }

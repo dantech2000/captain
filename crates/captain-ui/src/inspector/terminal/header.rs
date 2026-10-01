@@ -1,28 +1,29 @@
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::*;
 
-use super::terminal_pane::{Phase, TerminalPane};
+use super::terminal_pane::TerminalPane;
+use crate::terminal::Phase;
 use crate::theme::Palette;
 use crate::widgets::{ButtonTone, text_button};
 
 /// The bar above the grid: a state dot, the shell and container, the grid size, and
 /// Reconnect once the session has ended.
 pub fn render(pane: &TerminalPane, palette: &Palette, cx: &mut Context<TerminalPane>) -> Div {
+    let view = pane.view.read(cx);
     let name = pane.target.as_ref().map_or("", |t| t.name.as_str());
-    let command = pane.command.as_deref().unwrap_or("shell");
-    let title = pane
-        .emulator
+    let command = view.command().unwrap_or("shell");
+    let title = view
         .title()
-        .filter(|title| !title.is_empty())
         .unwrap_or_else(|| format!("{command} · {name}"));
-    let dot = match pane.phase {
+    let dot = match view.phase() {
         _ if !pane.running() => palette.gray,
         Phase::Running => palette.green,
         Phase::Connecting | Phase::Idle => palette.orange,
         Phase::Exited(_) | Phase::Failed(_) => palette.red,
     };
-    let (cols, rows) = pane.emulator.size();
-    let ended = matches!(pane.phase, Phase::Exited(_) | Phase::Failed(_));
+    let (cols, rows) = view.size();
+    let ended = matches!(view.phase(), Phase::Exited(_) | Phase::Failed(_));
+    let target = pane.view.clone();
 
     div()
         .h(px(26.))
@@ -42,7 +43,7 @@ pub fn render(pane: &TerminalPane, palette: &Palette, cx: &mut Context<TerminalP
                 .text_color(palette.text2)
                 .child(title),
         )
-        .when_some(pane.running().then_some(()), |bar, ()| {
+        .when(pane.running(), |bar| {
             bar.child(
                 div()
                     .flex_shrink_0()
@@ -59,7 +60,7 @@ pub fn render(pane: &TerminalPane, palette: &Palette, cx: &mut Context<TerminalP
                 ButtonTone::Accent,
                 true,
                 palette,
-                cx.listener(|this, _, _, cx| this.reconnect(cx)),
+                move |_, _, cx| target.update(cx, |view, cx| view.restart(cx)),
             ))
         })
 }

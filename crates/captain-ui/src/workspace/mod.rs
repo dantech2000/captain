@@ -11,6 +11,7 @@ mod page;
 mod projects;
 mod reveal;
 mod stats_feed;
+mod terminal;
 mod workspace_event;
 mod workspace_state;
 

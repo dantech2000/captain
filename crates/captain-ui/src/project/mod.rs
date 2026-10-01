@@ -16,7 +16,6 @@ mod page;
 mod project_view;
 mod service_card;
 mod staging;
-mod system_open;
 mod tasks;
 mod tasks_card;
 mod view_tabs;

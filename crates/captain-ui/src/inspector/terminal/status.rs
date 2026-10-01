@@ -2,7 +2,6 @@
 
 use gpui_kit::*;
 
-use super::terminal_pane::Phase;
 use crate::icons::{CaptainIcon, cap_icon};
 use crate::theme::Palette;
 
@@ -29,37 +28,4 @@ pub fn not_running(palette: &Palette) -> Div {
                 .text_center()
                 .child("Start the container to open a shell in it."),
         )
-}
-
-/// A note over the bottom of the grid while the session is connecting or has ended.
-pub fn overlay(phase: &Phase, palette: &Palette) -> Option<Div> {
-    let (text, color) = match phase {
-        Phase::Idle | Phase::Running => return None,
-        Phase::Connecting => ("Connecting…".to_string(), palette.text2),
-        Phase::Exited(Some(code)) => (
-            format!("Process exited with code {code} — Reconnect to start a new shell"),
-            palette.text2,
-        ),
-        Phase::Exited(None) => (
-            "Process exited — Reconnect to start a new shell".to_string(),
-            palette.text2,
-        ),
-        Phase::Failed(error) => (format!("Could not start a shell: {error}"), palette.red),
-    };
-    Some(
-        div()
-            .absolute()
-            .left(px(8.))
-            .right(px(8.))
-            .bottom(px(8.))
-            .px(px(10.))
-            .py(px(6.))
-            .rounded(px(7.))
-            .bg(palette.panel)
-            .border_1()
-            .border_color(palette.sep)
-            .text_size(px(11.))
-            .text_color(color)
-            .child(text),
-    )
 }

@@ -61,7 +61,6 @@ pub fn render(view: &ProjectView, cx: &mut Context<ProjectView>) -> AnyElement {
         (active, containers.len()),
         &handle,
         workspace,
-        &weak,
         tabs,
         &palette,
     );
