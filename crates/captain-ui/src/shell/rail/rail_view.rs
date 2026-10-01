@@ -47,7 +47,7 @@ pub fn render(
     };
     let column = || div().flex().flex_col().items_center().gap(px(4.));
     div()
-        .w(px(56.))
+        .w(px(super::super::RAIL_WIDTH))
         .h_full()
         .flex_shrink_0()
         .flex()

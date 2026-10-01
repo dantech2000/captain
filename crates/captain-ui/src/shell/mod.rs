@@ -1,12 +1,15 @@
 mod app_shell;
 mod details_rail;
 mod engine_state;
+mod layout;
 mod rail;
 mod sidebar;
 mod status_bar;
 
 pub use app_shell::AppShell;
 pub(crate) use engine_state::EngineState;
+pub(crate) use layout::left_width;
+use layout::{RAIL_WIDTH, SIDEBAR_WIDTH};
 pub use rail::ToggleSidebar;
 pub(crate) use rail::sidebar_help;
 pub(crate) use sidebar::page_help;

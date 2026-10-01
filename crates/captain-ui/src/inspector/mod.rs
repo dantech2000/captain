@@ -6,6 +6,7 @@ mod inspector_view;
 mod logs;
 mod overview;
 mod processes;
+mod resize_handle;
 mod section;
 mod stats_tab;
 mod tabs;

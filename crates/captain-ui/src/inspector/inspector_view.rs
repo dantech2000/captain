@@ -4,6 +4,7 @@ use gpui_kit::*;
 use super::files::FilesPane;
 use super::logs::LogsPane;
 use super::processes::ProcessList;
+use super::resize_handle::{self, DraggedEdge};
 use super::tabs::{self, Tab};
 use super::terminal::{TerminalPane, TerminalTarget};
 use super::{actions, header, overview, stats_tab};
@@ -23,6 +24,8 @@ pub struct InspectorView {
     files: Entity<FilesPane>,
     processes: Entity<ProcessList>,
     detail_task: Option<Task<()>>,
+    /// The panel's width, set by dragging its left edge.
+    width: f32,
     _observe: Subscription,
 }
 
@@ -51,6 +54,7 @@ impl InspectorView {
             files: cx.new(FilesPane::new),
             processes: cx.new(|_| ProcessList::new()),
             detail_task: None,
+            width: resize_handle::DEFAULT_WIDTH,
             _observe: observe,
         };
         view.follow_selection(cx);
@@ -165,8 +169,30 @@ impl Render for InspectorView {
         };
         let workspace = self.workspace.read(cx);
 
+        let reset = cx.entity().downgrade();
         div()
-            .w(px(400.))
+            .w(px(self.width))
+            .relative()
+            .on_drag_move(
+                cx.listener(|this, event: &DragMoveEvent<DraggedEdge>, window, cx| {
+                    let beside = crate::shell::left_width(this.workspace.read(cx).sidebar_hidden());
+                    let room = f32::from(window.viewport_size().width) - beside;
+                    this.width = resize_handle::width_for(
+                        event.bounds.right(),
+                        event.event.position.x,
+                        room,
+                    );
+                    cx.notify();
+                }),
+            )
+            .child(resize_handle::render(&palette, move |_, cx| {
+                reset
+                    .update(cx, |this, cx| {
+                        this.width = resize_handle::DEFAULT_WIDTH;
+                        cx.notify();
+                    })
+                    .ok();
+            }))
             .h_full()
             .flex_shrink_0()
             .flex()

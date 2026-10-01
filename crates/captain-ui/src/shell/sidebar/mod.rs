@@ -21,7 +21,7 @@ pub fn render(
     palette: &Palette,
 ) -> impl IntoElement {
     div()
-        .w(px(256.))
+        .w(px(super::SIDEBAR_WIDTH))
         .h_full()
         .flex_shrink_0()
         .flex()

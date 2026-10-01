@@ -13,6 +13,8 @@ pub const PORTS_WIDTH: f32 = 150.;
 pub const CPU_WIDTH: f32 = 112.;
 pub const MEMORY_WIDTH: f32 = 64.;
 pub const TRAILING_WIDTH: f32 = 92.;
+/// The name column never gets narrower than this; long names truncate.
+const NAME_MIN_WIDTH: f32 = 150.;
 
 /// One container: state, name, image, ports, CPU, memory, and uptime or actions.
 pub fn render(
@@ -122,7 +124,7 @@ fn name_cell(container: &Container, palette: &Palette) -> Div {
 
     div()
         .flex_1()
-        .min_w_0()
+        .min_w(px(NAME_MIN_WIDTH))
         .flex()
         .items_center()
         .gap(px(12.))
