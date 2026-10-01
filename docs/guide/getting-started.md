@@ -52,21 +52,29 @@ When you quit Captain, Captain Engine stops, and its containers stop with it. To
 
 ## The main window
 
-The window has a sidebar on the left, the page on the right, and a status bar at the bottom.
+The window has an icon rail at the far left, the sidebar next to it, the page on the right, and a status bar at the bottom. Press ⌘B to hide the sidebar, so the page gets the width. Press ⌘B again to show it.
 
 ![The Containers page with two Compose projects and one loose container, and the inspector open on the api container](../images/containers.png)
+
+### The icon rail
+
+From top to bottom:
+
+- **The app icon.** A dot on the icon shows the engine state, in the same color as the dot in the sidebar header. Point at the icon to read the state in the status bar.
+- **The sidebar button.** It hides the sidebar, or shows it again. The shortcut is ⌘B.
+- **The page buttons.** Containers, Images, Volumes, Networks, Snapshots, Storage, Extensions, and Port Forwarding (while Kubernetes runs).
+- **Diagnostics and Settings**, at the bottom. Diagnostics shows a red count while a check fails.
 
 ### The sidebar
 
 From top to bottom:
 
-- **The engine header.** The engine name, its state, its CPUs, and its memory.
+- **The engine header.** The app name, the engine name, and its state.
 - **The search button.** It opens the command palette. The shortcut is ⌘K.
 - **Projects.** One entry per Compose project, with "Compose · N services", how many containers run, and the published ports. **All containers**, on the same line, shows every container in one list.
 - **Kubernetes namespaces.** One entry per namespace, while **Show Kubernetes containers** is on. See [Kubernetes](kubernetes.md).
 - **Loose containers.** The containers that are in no project.
 - **The Disk card.** How much of the engine disk is in use, and how much you can free. Click it to open [Storage](storage.md).
-- **The page buttons.** Icon buttons for Images, Volumes, Networks, Snapshots, Storage, Extensions, Port Forwarding (while Kubernetes runs), Diagnostics, and Settings. Diagnostics shows a red count while a check fails.
 - **The engine card.** CPU and memory gauges, and **Start**, **Stop**, or **Set up** for Captain Engine.
 
 ### The project page

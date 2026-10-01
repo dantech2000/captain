@@ -37,6 +37,7 @@ pub fn render(
         .flex()
         .items_center()
         .gap(px(12.))
+        .mt(px(10.))
         .p(px(12.))
         .rounded(px(12.))
         .bg(palette.card)

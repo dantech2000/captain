@@ -70,6 +70,17 @@ impl Workspace {
         cx.notify();
     }
 
+    /// True while the user keeps the projects list hidden.
+    pub fn sidebar_hidden(&self) -> bool {
+        self.sidebar_hidden
+    }
+
+    /// Hides the projects list, or shows it again.
+    pub fn toggle_sidebar(&mut self, cx: &mut Context<Self>) {
+        self.sidebar_hidden = !self.sidebar_hidden;
+        cx.notify();
+    }
+
     /// Opens the inspector on container `id`, or closes it if it shows `id` already.
     pub fn toggle_card(&mut self, id: String, cx: &mut Context<Self>) {
         let showing = self.card_open && self.selected.as_deref() == Some(id.as_str());

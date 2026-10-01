@@ -7,7 +7,7 @@ Captain has two places for settings:
 
 ## The Settings page
 
-Click the Settings button at the bottom of the sidebar. The page has these sections.
+Click the Settings button at the bottom of the icon rail. The page has these sections.
 
 ![The Settings page with the sections Appearance, Engine, Kubernetes, Startup, Terminal, AI agents, and Everything else](../images/settings.png)
 

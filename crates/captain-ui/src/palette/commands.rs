@@ -8,7 +8,7 @@ use super::command::{Command, CommandKind, Section};
 use crate::containers::action_help;
 use crate::icons::CaptainIcon;
 use crate::project::{down_help, restart_help, up_help};
-use crate::shell::page_help;
+use crate::shell::{page_help, sidebar_help};
 use crate::theme::Palette;
 use crate::workspace::{Page, Workspace};
 
@@ -16,6 +16,7 @@ use crate::workspace::{Page, Workspace};
 pub fn build(workspace: &Workspace, palette: &Palette) -> Vec<Command> {
     let mut commands = navigation(workspace, palette);
     commands.push(bring_data(palette));
+    commands.push(toggle_sidebar(workspace, palette));
     commands.extend(filters(workspace, palette));
     if workspace.has_project_runner() {
         for project in workspace.compose_projects() {
@@ -62,6 +63,30 @@ fn bring_data(palette: &Palette) -> Command {
         suggested: false,
         kind: CommandKind::BringData,
         help: "Copy containers, images, and volumes from another engine to this one.".into(),
+        completion: None,
+    }
+}
+
+/// Hides the projects list, or shows it again.
+fn toggle_sidebar(workspace: &Workspace, palette: &Palette) -> Command {
+    let hidden = workspace.sidebar_hidden();
+    Command {
+        section: Section::Actions,
+        title: "Toggle sidebar".into(),
+        meta: if cfg!(target_os = "macos") {
+            "⌘B".into()
+        } else {
+            "Ctrl B".into()
+        },
+        icon: if hidden {
+            IconName::PanelLeftOpen.into()
+        } else {
+            IconName::PanelLeftClose.into()
+        },
+        color: palette.accent_fg,
+        suggested: false,
+        kind: CommandKind::ToggleSidebar,
+        help: sidebar_help(hidden).into(),
         completion: None,
     }
 }

@@ -66,6 +66,8 @@ pub struct Workspace {
     /// True after the user hid the details panel. Selecting a container shows it
     /// again.
     pub(super) details_hidden: bool,
+    /// True after the user hid the projects list with ⌘B. Only the icon rail shows.
+    pub(super) sidebar_hidden: bool,
     /// Containers that exited on their own lately, from the event stream.
     pub(super) crashes: CrashTracker,
     /// Redraws when the next recent crash stops counting. See
@@ -112,6 +114,7 @@ impl Workspace {
             focus: None,
             card_open: false,
             details_hidden: false,
+            sidebar_hidden: false,
             crashes: CrashTracker::default(),
             crash_expiry: None,
             inspector_tab: None,

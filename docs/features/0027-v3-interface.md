@@ -53,6 +53,7 @@ The palette tables from the canvas. `dusk` is Harbor's neutrals with Periwinkle'
 |---|---|---|---|---|---|---|
 | Window | #1B2632 | #F4F0E8 | #0C0C16 | #FFFFFF | #1B2632 | #F4F0E8 |
 | Sidebar | #16202A | #EAE4D8 | #11111D | #F5F5FF | #16202A | #EAE4D8 |
+| Rail | #111921 | #E1DACB | #0A0A12 | #ECECF9 | #111921 | #E1DACB |
 | Card | #202D3B | #FBF8F2 | #141424 | #FFFFFF | #202D3B | #FBF8F2 |
 | Field | #223040 | #EEE9DF | #171729 | #F1F1FB | #223040 | #EEE9DF |
 | Button | #2C3B4D | #FBF8F2 | #1C1C31 | #EFEFFA | #2C3B4D | #FBF8F2 |
@@ -72,7 +73,7 @@ The palette tables from the canvas. `dusk` is Harbor's neutrals with Periwinkle'
 | Log panel | #141D27 | #FBF8F2 | #08080F | #F8F8FE | #141D27 | #FBF8F2 |
 | Labels | #C9785C #8FB4D9 #D4A5C9 #E6B980 #B9F0D7 | #A35139 #2F5E8C #8A4F7D #B06A1E #3F7A55 | #9D8CFF #7FDDC0 #FF8FC7 #FFB36B #C9E8FF | #7B61FF #1F9E83 #C23F8A #C26A12 #2C7FB8 | #C9785C #8FB4D9 #D4A5C9 #E6B980 #C9C1B1 | #A35139 #2F5E8C #8A4F7D #B06A1E #3F7A55 |
 
-Text on the action color, and text colors on their window and card colors, meet 4.5:1.
+Text on the action color, and text colors on their window, card, and rail colors, meet 4.5:1. The rail is the icon column at the far left of the window (spec 0030), one step darker than the sidebar.
 
 ## Out of scope
 

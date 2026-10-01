@@ -11,14 +11,20 @@ The main window opens on what the user works on: a project. The sidebar lists Co
 ## In scope
 
 - **Sidebar.**
-  - The engine header on top: the engine glyph, "Captain Engine" (or "Engine"), and its state with CPUs and memory.
+  - The engine header on top: "Captain", then "Captain Engine" (or the engine's name) and its state with a state dot. The app icon moved to the icon rail.
   - The search button.
   - "Projects", with an "All containers" link on the same line. One entry per Compose project: a stack glyph in the project's label color, the name, "Compose · N services", a running summary with a state dot, and the published ports as chips.
   - One entry per Kubernetes namespace that has containers, only while "Show Kubernetes containers" is on: a cluster glyph and "Kubernetes · N pods".
   - "Loose containers": the containers in no project and no namespace. The Containers page uses the same name for their card.
-  - A spacer, then a row of icon buttons for the pages of all resources: Images, Volumes, Networks, Snapshots, Extensions, Port Forwarding (while the cluster runs), Diagnostics (with the failure badge), and Settings. It replaces the list of pages.
-  - The Disk card above the icon row (feature 0031).
+  - The Disk card under the entries (feature 0031).
   - The engine card at the bottom: CPU and memory gauges, and with Captain Engine a Start, Set up, or Stop button. It has no title, because the engine header names the engine and its state. It keeps its height when the engine stops or starts, so the entries above it and its button do not move.
+- **Icon rail.** A 56 px column at the far left of the window, with its own `Rail` token (one step darker than the sidebar, see [0027](0027-v3-interface.md)) and a hairline border.
+  - A 44 px drag area on top, so the window buttons of the transparent title bar stay clear and the window moves from there.
+  - The app icon, with a dot in the engine's state color. Its help is the engine header's sentence.
+  - A button that hides the sidebar (Lucide `PanelLeftClose`) or shows it again (`PanelLeftOpen`). ⌘B (Ctrl-B on Linux and Windows) and the palette's "Toggle sidebar" row do the same. While the sidebar is hidden, only the rail shows and the page gets the width. `Workspace::sidebar_hidden` keeps the choice while Captain runs, as `details_hidden` does for the details panel; it is not in the settings file. The terminal grid frees Ctrl-B for the shell, as it does Ctrl-K.
+  - The page buttons, in the order of the old icon row with Containers first: Containers, Images, Volumes, Networks, Snapshots, Storage, Extensions, and Port Forwarding (while the cluster runs). The selected page has the selection background and the action color.
+  - Diagnostics (with the failure badge) and Settings pinned at the bottom.
+  - Each button has its page's help sentence in the status bar; no tooltips.
 - **Project page** (`Page::Project`, for the sidebar entry in `Workspace::focus`). It works for all three kinds of entries. The header buttons, the Open row, and tasks need a Compose project.
   1. **Header.** The working folder and Compose file in mono, the name in large type, then Open folder, Terminal, Down, and a primary Restart project (Up while nothing runs).
   2. **Open row.** One pill per published port: the service and `localhost:PORT`. A click opens `http://localhost:PORT`. Well-known ports of databases and brokers (5432, 3306, 6379, 27017, 9092, and a few more) copy the address instead, and the help says so.
@@ -76,3 +82,4 @@ The main window opens on what the user works on: a project. The sidebar lists Co
 6. Restart the project. Check that the log keeps the old lines and adds new ones below a divider.
 7. Turn Kubernetes on and show its containers. Check the namespace entry and the `pod/container` names. Hide them; check that the Memory tile and the menu bar count drop.
 8. Stop and start the engine. Check that the sidebar entries and the Start button do not move, and that "Captain Engine" shows only in the header.
+9. Check the icon rail: the window buttons sit clear above the app icon, and a drag there moves the window. Point at each rail button; check its sentence in the status bar. Press ⌘B; check that only the rail shows and the page takes the width. Press ⌘B again, then use the rail button and the palette's "Toggle sidebar" row. Do this at the minimum window size, in all three themes, light and dark.

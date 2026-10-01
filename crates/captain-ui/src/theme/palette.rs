@@ -13,6 +13,8 @@ pub struct Palette {
     pub dark: bool,
     pub bg: Hsla,
     pub side: Hsla,
+    /// The icon rail at the far left of the window.
+    pub rail: Hsla,
     pub panel: Hsla,
     pub group: Hsla,
     pub card: Hsla,
@@ -79,6 +81,7 @@ impl Palette {
             dark,
             bg: c(t.window),
             side: c(t.sidebar),
+            rail: c(t.rail),
             panel: c(t.sidebar),
             group: c(t.card),
             card: c(t.card),

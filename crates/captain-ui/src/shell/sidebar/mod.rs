@@ -4,7 +4,6 @@ mod engine_header;
 mod page_help;
 mod projects;
 mod search_button;
-mod tools;
 
 pub(crate) use page_help::page_help;
 
@@ -17,8 +16,8 @@ use crate::theme::Palette;
 use crate::widgets::drag_region;
 use crate::workspace::Workspace;
 
-/// The engine header, search, the projects, the Disk card, the resource pages as
-/// icons, and the engine card. The projects list takes the free height, so the parts
+/// The engine header, search, the projects, the Disk card, and the engine card, to
+/// the right of the icon rail. The projects list takes the free height, so the parts
 /// below it do not move when entries come and go. `disk` is `None` until the storage
 /// model has read the disk use.
 pub fn render(
@@ -26,8 +25,6 @@ pub fn render(
     workspace: &Workspace,
     host: Option<&HostSummary>,
     disk: Option<&DiskSummary>,
-    failures: usize,
-    forwarding: bool,
     palette: &Palette,
 ) -> impl IntoElement {
     div()
@@ -46,8 +43,5 @@ pub fn render(
         .child(search_button::render(palette))
         .child(projects::render(handle, workspace, palette))
         .children(disk.map(|disk| disk_card::render(handle, disk, palette)))
-        .child(tools::render(
-            handle, workspace, failures, forwarding, palette,
-        ))
         .child(engine_card::render(workspace, host, palette))
 }

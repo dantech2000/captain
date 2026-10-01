@@ -50,6 +50,8 @@ pub enum CommandKind {
     OpenPort(u16),
     /// Opens the Migration Assistant.
     BringData,
+    /// Hides the projects list, or shows it again, as ⌘B does.
+    ToggleSidebar,
     /// Runs a command of the grammar.
     Act(Action),
     /// Puts this line in the search field, because the command needs more words.
@@ -88,6 +90,7 @@ impl CommandKind {
             }),
             CommandKind::OpenPort(port) => cx.open_url(&format!("http://localhost:{port}")),
             CommandKind::BringData => open_migration(cx),
+            CommandKind::ToggleSidebar => workspace.update(cx, |w, cx| w.toggle_sidebar(cx)),
             CommandKind::Act(action) => run_action::run(action, workspace, cx),
             // The palette completes the line instead of running a command.
             CommandKind::Complete(_) => {}

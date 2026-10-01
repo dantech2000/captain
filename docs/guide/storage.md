@@ -1,6 +1,6 @@
 # Storage
 
-The Storage page shows what fills the engine disk, who uses each large item, and what you can remove. Open it with the Disk card in the sidebar, the Storage button, or `disk` in the command palette.
+The Storage page shows what fills the engine disk, who uses each large item, and what you can remove. Open it with the Disk card in the sidebar, the Storage button in the icon rail, or `disk` in the command palette.
 
 ![The Storage page: 970 MB of 64.0 GB in use, the largest items with who uses them, and Free up space with 249 MB to free](../images/storage.png)
 

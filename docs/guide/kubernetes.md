@@ -41,7 +41,7 @@ Each pod container is also a Docker container. Captain hides them by default. Tu
 
 ## Port Forwarding
 
-While the cluster runs, the sidebar has a **Port Forwarding** button. The page lists each service with TCP ports, grouped by namespace.
+While the cluster runs, the icon rail has a **Port Forwarding** button. The page lists each service with TCP ports, grouped by namespace.
 
 1. Click **Forward** on a service port.
 2. Enter a **Local port** above 1024, or leave it empty for any free port.

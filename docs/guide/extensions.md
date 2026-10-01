@@ -10,7 +10,7 @@ An extension runs code from its publisher on your Mac and in the engine, with yo
 
 ## Install an extension
 
-1. Click the Extensions button in the sidebar.
+1. Click the Extensions button in the icon rail.
 2. Enter the image, for example `docker/disk-usage-extension`.
 3. Click **Install**, or press Return. Captain pulls the image.
    If you do not give a tag, Captain pulls the newest version tag, for example `0.2.9`. It uses `latest` only when no tag is a version.

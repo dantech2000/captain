@@ -1,7 +1,9 @@
 use gpui_kit::component::WindowExt;
+use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::*;
 
-use super::details_rail;
+use super::details_rail::{self, Details};
+use super::rail::{self, ToggleSidebar};
 use super::sidebar::{self, DiskSummary};
 use super::status_bar::StatusBar;
 use crate::containers::ContainersView;
@@ -24,8 +26,8 @@ use crate::theme::Palette;
 use crate::volumes::VolumesView;
 use crate::workspace::{Connection, Connector, Page, Workspace, WorkspaceEvent};
 
-/// The root view: sidebar, the current page, the status bar, and the command palette
-/// overlay.
+/// The root view: the icon rail, the sidebar unless ⌘B hid it, the current page, the
+/// status bar, and the command palette overlay.
 pub struct AppShell {
     workspace: Entity<Workspace>,
     containers: Entity<ContainersView>,
@@ -212,7 +214,7 @@ impl Render for AppShell {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let palette = Palette::of(cx);
         let host = host_summary(cx);
-        let disk = disk_summary(cx);
+        let disk = DiskSummary::read(cx);
         // The page shows only while the cluster runs. See feature 0024.
         let forwarding =
             kubernetes_model(cx).is_some_and(|model| model.read(cx).status().is_running());
@@ -243,6 +245,10 @@ impl Render for AppShell {
             .text_size(px(13.))
             .track_focus(&self.focus_handle)
             .on_action(cx.listener(Self::toggle_palette))
+            .on_action(cx.listener(|this, _: &ToggleSidebar, _, cx| {
+                this.workspace
+                    .update(cx, |workspace, cx| workspace.toggle_sidebar(cx));
+            }))
             .on_action(cx.listener(|this, _: &OpenMigrationAssistant, window, cx| {
                 crate::migration::open(this.workspace.clone(), window, cx);
             }))
@@ -255,15 +261,23 @@ impl Render for AppShell {
                     .flex_1()
                     .min_h_0()
                     .flex()
-                    .child(sidebar::render(
+                    .child(rail::render(
                         &self.workspace,
                         workspace,
                         host.as_ref(),
-                        disk.as_ref(),
                         failures(cx),
                         forwarding,
                         &palette,
                     ))
+                    .when(!workspace.sidebar_hidden(), |row| {
+                        row.child(sidebar::render(
+                            &self.workspace,
+                            workspace,
+                            host.as_ref(),
+                            disk.as_ref(),
+                            &palette,
+                        ))
+                    })
                     .child(self.page(workspace.page(), details, &palette)),
             )
             .child(self.status_bar.clone())
@@ -279,22 +293,4 @@ impl Render for AppShell {
                     .child(command_palette)
             }))
     }
-}
-
-/// The Disk card's data, once the storage model has read the disk use.
-fn disk_summary(cx: &App) -> Option<DiskSummary> {
-    let model = storage_model(cx)?;
-    let model = model.read(cx);
-    Some(DiskSummary {
-        breakdown: model.breakdown(cx)?,
-        freeable: model.default_bytes(),
-    })
-}
-
-/// What stands beside the page: nothing, the details panel, or the rail for the
-/// hidden panel of the named container.
-enum Details {
-    None,
-    Shown,
-    Hidden(String),
 }

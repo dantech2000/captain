@@ -1,6 +1,6 @@
 # Troubleshooting
 
-Start with the Diagnostics page. Click the Diagnostics button in the sidebar. The button shows a red count while a check fails.
+Start with the Diagnostics page. Click the Diagnostics button at the bottom of the icon rail. The button shows a red count while a check fails.
 
 ![The Diagnostics page with eight passed checks, and Show logs, Show engine files, and Debug logging under Troubleshooting](../images/diagnostics.png)
 

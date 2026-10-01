@@ -19,6 +19,8 @@ The key hint on each row shows ↵ when Return runs it, or ⇥ when Tab complete
 
 Type a word that is not a command, such as `redis`. The palette shows matching containers, images, pages, and actions, ranked by how well they match.
 
+Type `sidebar` to find **Toggle sidebar**. It hides the sidebar, or shows it again, as ⌘B does.
+
 The empty palette starts with a **Try** row. It shows up to five commands built from your own container and project names. Click one to put it in the field.
 
 ## Commands

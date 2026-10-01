@@ -11,6 +11,7 @@ fn text_and_actions_meet_4_5_to_1_in_every_theme() {
             let pairs = [
                 ("text on window", t.text, t.window),
                 ("text on card", t.text, t.card),
+                ("text on rail", t.text, t.rail),
                 ("on action on action", t.on_action, t.action),
             ];
             for (what, fg, bg) in pairs {

@@ -10,6 +10,8 @@ use super::contrast;
 pub struct Tokens {
     pub window: u32,
     pub sidebar: u32,
+    /// The icon rail at the far left: one step darker than the sidebar.
+    pub rail: u32,
     pub card: u32,
     pub field: u32,
     pub button: u32,
@@ -36,6 +38,7 @@ pub struct Tokens {
 const HARBOR_DARK: Tokens = Tokens {
     window: 0x1b2632,
     sidebar: 0x16202a,
+    rail: 0x111921,
     card: 0x202d3b,
     field: 0x223040,
     button: 0x2c3b4d,
@@ -59,6 +62,7 @@ const HARBOR_DARK: Tokens = Tokens {
 const HARBOR_LIGHT: Tokens = Tokens {
     window: 0xf4f0e8,
     sidebar: 0xeae4d8,
+    rail: 0xe1dacb,
     card: 0xfbf8f2,
     field: 0xeee9df,
     button: 0xfbf8f2,
@@ -103,6 +107,7 @@ const DUSK_LIGHT: Tokens = Tokens {
 const PERIWINKLE_DARK: Tokens = Tokens {
     window: 0x0c0c16,
     sidebar: 0x11111d,
+    rail: 0x0a0a12,
     card: 0x141424,
     field: 0x171729,
     button: 0x1c1c31,
@@ -127,6 +132,7 @@ const PERIWINKLE_DARK: Tokens = Tokens {
 const PERIWINKLE_LIGHT: Tokens = Tokens {
     window: 0xffffff,
     sidebar: 0xf5f5ff,
+    rail: 0xececf9,
     card: 0xffffff,
     field: 0xf1f1fb,
     button: 0xefeffa,

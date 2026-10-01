@@ -3,7 +3,7 @@ use captain_core::storage::DiskBreakdown;
 use gpui_kit::*;
 
 use crate::help::HelpExt;
-use crate::storage::category_color;
+use crate::storage::{category_color, storage_model};
 use crate::theme::Palette;
 use crate::workspace::{Page, Workspace};
 
@@ -12,6 +12,18 @@ use crate::workspace::{Page, Workspace};
 pub struct DiskSummary {
     pub breakdown: DiskBreakdown,
     pub freeable: u64,
+}
+
+impl DiskSummary {
+    /// The Disk card's data, once the storage model has read the disk use.
+    pub fn read(cx: &App) -> Option<Self> {
+        let model = storage_model(cx)?;
+        let model = model.read(cx);
+        Some(Self {
+            breakdown: model.breakdown(cx)?,
+            freeable: model.default_bytes(),
+        })
+    }
 }
 
 /// "Disk 18.2 of 64 GB", a bar with a part per category, and what a cleanup can

@@ -32,3 +32,11 @@ pub fn render(workspace: &Entity<Workspace>, name: &str, palette: &Palette) -> D
             },
         ))
 }
+
+/// What stands beside the page: nothing, the details panel, or the rail for the
+/// hidden panel of the named container.
+pub enum Details {
+    None,
+    Shown,
+    Hidden(String),
+}

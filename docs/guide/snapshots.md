@@ -6,7 +6,7 @@ Snapshots need Captain Engine, so they work only on macOS. They live in `~/.capt
 
 ## Create a snapshot
 
-1. Click the Snapshots button in the sidebar.
+1. Click the Snapshots button in the icon rail.
 2. Click **Create snapshot…**.
 3. Enter a **Name**. The default is the date and time. Add a **Description** if you want.
 4. Click **Create**.
