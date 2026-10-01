@@ -278,7 +278,12 @@ impl Render for AppShell {
                             &palette,
                         ))
                     })
-                    .child(self.page(workspace.page(), details, &palette)),
+                    // The traffic lights are wider than the rail, so a page beside the
+                    // rail alone keeps its title clear of them.
+                    .child(
+                        self.page(workspace.page(), details, &palette)
+                            .when(workspace.sidebar_hidden(), |page| page.pl(px(16.))),
+                    ),
             )
             .child(self.status_bar.clone())
             .children(self.palette.clone().map(|command_palette| {

@@ -28,7 +28,7 @@ pub fn render(
     palette: &Palette,
 ) -> impl IntoElement {
     div()
-        .w(px(272.))
+        .w(px(256.))
         .h_full()
         .flex_shrink_0()
         .flex()

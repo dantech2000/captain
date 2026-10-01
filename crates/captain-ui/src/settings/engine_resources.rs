@@ -49,7 +49,14 @@ pub fn rows(
             ))
             .help(help)
     };
-    let steppers = sub_row("Resources", palette)
+    // The steppers wrap to a second line in a narrow window, and Grow stays beside
+    // the disk stepper it belongs to.
+    let controls = div()
+        .flex()
+        .flex_wrap()
+        .items_center()
+        .gap(px(12.))
+        .min_w_0()
         .child(step(
             "CPUs",
             "engine-cpus",
@@ -64,8 +71,15 @@ pub fn rows(
             bytes_label(resources.memory_bytes),
             |r, delta, machine| r.step_memory(i64::from(delta), machine.memory_bytes),
         ))
-        .child(disk(view.disk_pending, model, resources, palette, cx))
-        .children(view.disk_pending.map(|disk| grow_button(model, disk, palette, cx)));
+        .child(
+            div()
+                .flex()
+                .items_center()
+                .gap(px(8.))
+                .child(disk(view.disk_pending, model, resources, palette, cx))
+                .children(view.disk_pending.map(|disk| grow_button(model, disk, palette, cx))),
+        );
+    let steppers = sub_row("Resources", palette).child(controls);
     [
         steppers,
         under_note(note(host.machine(), view.free_disk), palette),
