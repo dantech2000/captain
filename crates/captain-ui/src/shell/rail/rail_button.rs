@@ -11,6 +11,8 @@ use crate::shell::page_help;
 use crate::theme::Palette;
 use crate::workspace::{Page, Workspace};
 
+use super::page_keys::page_key;
+
 /// A rail entry for `page`. `badge` is the red count on Diagnostics.
 pub fn page_button(
     handle: &Entity<Workspace>,
@@ -48,8 +50,12 @@ pub fn page_button(
                 .font_weight(FontWeight::BOLD)
                 .child(count.to_string())
         }))
-        .tooltip(move |window, cx| Tooltip::new(page.label()).build(window, cx))
-        .help(page_help(page, count))
+        .tooltip(move |window, cx| {
+            Tooltip::new(page.label())
+                .key_binding(page_kbd(page))
+                .build(window, cx)
+        })
+        .help_keys(page_help(page, count), page_keys(page))
 }
 
 /// Hides the projects list, or shows it again when `hidden`. ⌘B does the same.
@@ -71,12 +77,9 @@ pub fn toggle_button(handle: &Entity<Workspace>, hidden: bool, palette: &Palette
                 "Hide sidebar"
             };
             // Both cmd-b and ctrl-b are bound; show the one this platform uses.
-            let keys = if cfg!(target_os = "macos") {
-                "cmd-b"
-            } else {
-                "ctrl-b"
-            };
-            let kbd = Keystroke::parse(keys).ok().map(Kbd::new);
+            let kbd = Keystroke::parse(&format!("{}-b", modifier()))
+                .ok()
+                .map(Kbd::new);
             Tooltip::new(label).key_binding(kbd).build(window, cx)
         })
         .help_keys(sidebar_help(hidden), &[CMD, "B"])
@@ -88,6 +91,40 @@ pub fn sidebar_help(hidden: bool) -> &'static str {
         "Show the projects list."
     } else {
         "Hide the projects list, so the page gets the width."
+    }
+}
+
+/// The modifier this platform's shortcuts use, for tooltips.
+fn modifier() -> &'static str {
+    if cfg!(target_os = "macos") {
+        "cmd"
+    } else {
+        "ctrl"
+    }
+}
+
+/// The shortcut of `page` as a tooltip key chip.
+fn page_kbd(page: Page) -> Option<Kbd> {
+    let key = page_key(page)?;
+    Keystroke::parse(&format!("{}-{key}", modifier()))
+        .ok()
+        .map(Kbd::new)
+}
+
+/// The shortcut of `page` for the status bar's key chips.
+fn page_keys(page: Page) -> &'static [&'static str] {
+    match page_key(page) {
+        Some("1") => &[CMD, "1"],
+        Some("2") => &[CMD, "2"],
+        Some("3") => &[CMD, "3"],
+        Some("4") => &[CMD, "4"],
+        Some("5") => &[CMD, "5"],
+        Some("6") => &[CMD, "6"],
+        Some("7") => &[CMD, "7"],
+        Some("8") => &[CMD, "8"],
+        Some("9") => &[CMD, "9"],
+        Some(",") => &[CMD, ","],
+        _ => &[],
     }
 }
 

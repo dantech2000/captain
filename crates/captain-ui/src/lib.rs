@@ -45,7 +45,7 @@ pub use settings::{
     init_file_watch as settings_watch_init, init_system as system_init,
     observe as observe_settings, open_settings_file, settings_file_path,
 };
-pub use shell::{AppShell, ToggleSidebar, engine_name};
+pub use shell::{AppShell, ToggleSidebar, engine_name, page_bindings};
 pub use storage::init as storage_init;
 pub use widgets::error_notification;
 pub use workspace::{Connection, Connector, Page, Workspace};

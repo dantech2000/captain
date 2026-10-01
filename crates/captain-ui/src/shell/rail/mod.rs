@@ -2,9 +2,11 @@
 //! hides the projects list, and the pages.
 
 mod app_mark;
+mod page_keys;
 mod rail_button;
 mod rail_view;
 
+pub use page_keys::{on_page_actions, page_bindings};
 pub use rail_button::sidebar_help;
 pub use rail_view::render;
 

@@ -231,8 +231,8 @@ impl Render for AppShell {
             _ => Details::None,
         };
 
-        div()
-            .size_full()
+        let root = rail::on_page_actions(div(), &self.workspace, forwarding);
+        root.size_full()
             .relative()
             .flex()
             .flex_col()

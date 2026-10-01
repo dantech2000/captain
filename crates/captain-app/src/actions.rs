@@ -1,6 +1,6 @@
 //! App-wide actions, key bindings, and the menu bar.
 
-use captain_ui::{ToggleCommandPalette, ToggleSidebar};
+use captain_ui::{ToggleCommandPalette, ToggleSidebar, page_bindings};
 use gpui_kit::*;
 
 use crate::quit;
@@ -17,6 +17,9 @@ pub fn register(cx: &mut App) {
         KeyBinding::new("cmd-b", ToggleSidebar, None),
         KeyBinding::new("ctrl-b", ToggleSidebar, None),
     ]);
+    // ⌘1 to ⌘9 and ⌘, for the rail's pages; Ctrl on Linux and Windows.
+    cx.bind_keys(page_bindings("cmd"));
+    cx.bind_keys(page_bindings("ctrl"));
     cx.set_menus([Menu::new("Captain").items([MenuItem::action("Quit Captain", Quit)])]);
 
     // Closing the last window keeps Captain running while its menu bar icon is up;

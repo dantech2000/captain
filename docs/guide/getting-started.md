@@ -65,6 +65,23 @@ From top to bottom:
 - **The page buttons.** Containers, Images, Volumes, Networks, Snapshots, Storage, Extensions, and Port Forwarding (while Kubernetes runs).
 - **Diagnostics and Settings**, at the bottom. Diagnostics shows a red count while a check fails.
 
+Each button has a shortcut. Point at a button to see it in a tooltip and in the status bar. On Linux and Windows, use Ctrl in place of ⌘.
+
+| Page | Shortcut |
+|---|---|
+| Containers | ⌘1 |
+| Images | ⌘2 |
+| Volumes | ⌘3 |
+| Networks | ⌘4 |
+| Snapshots | ⌘5 |
+| Storage | ⌘6 |
+| Extensions | ⌘7 |
+| Port Forwarding (while Kubernetes runs) | ⌘8 |
+| Diagnostics | ⌘9 |
+| Settings | ⌘, |
+| Hide or show the sidebar | ⌘B |
+| Command palette | ⌘K |
+
 ### The sidebar
 
 From top to bottom:
