@@ -15,6 +15,10 @@ use crate::lima::template;
 /// How long `limactl list` and the other status checks may take.
 pub const QUICK_TIMEOUT: Duration = Duration::from_secs(30);
 
+/// How long Docker may take to stop its containers before the VM shuts down.
+/// `dockerd` waits the longest container stop timeout plus 5 seconds.
+const DOCKER_STOP_TIMEOUT: Duration = Duration::from_secs(60);
+
 pub fn status(inner: &Inner) -> HostStatus {
     match inner.phase() {
         Phase::Starting => return HostStatus::Starting,
@@ -117,7 +121,10 @@ pub fn stop(inner: &Inner) -> Result<(), HostError> {
     match find(inner, &limactl)? {
         None => Ok(()),
         Some(instance) if instance.status == "Stopped" => Ok(()),
-        Some(_) => {
+        Some(instance) => {
+            if instance.status == "Running" {
+                stop_docker(inner, &limactl);
+            }
             let mut ignore = |_| {};
             limactl
                 .stream(
@@ -134,6 +141,17 @@ pub fn stop(inner: &Inner) -> Result<(), HostError> {
                     )
                 })
         }
+    }
+}
+
+/// Stops Docker in the VM first, so each container stops with its own timeout while
+/// the guest is healthy. `limactl stop` gives the guest's shutdown 30 seconds, then
+/// kills the VM, and a slow shutdown then kills the containers too. On a failure or
+/// a timeout the stop goes on.
+fn stop_docker(inner: &Inner, limactl: &Limactl) {
+    let args = args::stop_docker(&inner.paths.instance);
+    if let Err(error) = limactl.output_within(&args, DOCKER_STOP_TIMEOUT) {
+        tracing::warn!(%error, "Docker did not stop in Captain Engine; stopping the VM anyway");
     }
 }
 

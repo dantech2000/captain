@@ -48,7 +48,9 @@ Captain Engine lives in `~/.captain/lima`. It never touches your own Lima or Col
 
 When Captain Engine is stopped, the window shows **Captain Engine is stopped**. Click **Start**. The next launch of Captain also starts the engine.
 
-When you quit Captain, Captain Engine stops, and its containers stop with it. To keep the engine running after you quit, set `stop_engine_on_quit` to `false` in the [settings file](settings.md).
+When you quit Captain, Captain Engine stops, and its containers stop with it.
+
+Before the VM shuts down, Captain stops Docker in the engine. Docker sends each container its stop signal and waits for its stop timeout (10 seconds unless the container sets another, for example `stop_grace_period` in Compose). Databases such as PostgreSQL shut down cleanly this way. Containers with the restart policy `always` or `unless-stopped` start again with the engine. This applies to Stop, Restart, Quit, and the stop before a snapshot or a restore. To keep the engine running after you quit, set `stop_engine_on_quit` to `false` in the [settings file](settings.md).
 
 ## The main window
 

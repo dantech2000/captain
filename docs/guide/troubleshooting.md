@@ -102,6 +102,7 @@ To report a problem, attach `captain.log` and describe what you did.
 | "Captain is already running." | Another Captain window runs. Use the menu bar icon to open it. |
 | "Captain Engine is starting in another Captain process." | The `captain` command or the app is starting or stopping the engine. Wait until it ends. |
 | "Captain is running. Change this in Settings, or quit Captain first." | `captain set` and other commands that change settings need the app to be closed. |
+| A database logs "not properly shut down; automatic recovery in progress" | The engine stopped before the container did, for example after a forced stop or a crash. Captain stops Docker before each stop, so this should not repeat. If a container needs more than 60 seconds to stop, stop it yourself before you stop the engine. |
 | A start that names a `.restore-backup` folder | A snapshot restore did not finish. Captain keeps the old engine files in that folder. Move the folder out of `~/.captain/lima/captain`, then start again. |
 
 ## The engine does not answer after sleep

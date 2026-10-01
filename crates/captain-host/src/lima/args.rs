@@ -52,6 +52,20 @@ pub fn stop(name: &str, force: bool) -> Vec<String> {
     }
 }
 
+/// Stops k3s, if installed, and Docker in the VM. `dockerd` then stops every
+/// container in parallel with its own stop timeout, and restart policies still
+/// apply at the next start, unlike `docker stop`. Stopping `docker.socket` too keeps
+/// a client from starting Docker again by socket activation.
+const STOP_DOCKER_SCRIPT: &str = r#"units="docker.socket docker.service"
+[ -f /etc/systemd/system/k3s.service ] && units="k3s.service $units"
+exec systemctl stop $units
+"#;
+
+/// `limactl shell` arguments that stop Docker in the VM before `limactl stop`.
+pub fn stop_docker(name: &str) -> Vec<String> {
+    super::daemon::shell(name, STOP_DOCKER_SCRIPT, &["sudo", "-n"])
+}
+
 pub fn delete(name: &str) -> Vec<String> {
     with(base("delete"), &[name, "--force", "--tty=false"])
 }

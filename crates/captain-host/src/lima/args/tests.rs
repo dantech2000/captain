@@ -2,7 +2,7 @@ use std::path::Path;
 
 use captain_core::{GIB, HostResources};
 
-use super::{create, delete, edit, list, progress_line, start, stop};
+use super::{create, delete, edit, list, progress_line, start, stop, stop_docker};
 
 fn joined(args: Vec<String>) -> String {
     args.join(" ")
@@ -30,6 +30,12 @@ fn builds_each_command() {
         joined(stop("captain", true)),
         "--log-format json stop captain --tty=false --force"
     );
+    let docker = stop_docker("captain");
+    assert_eq!(
+        joined(docker[..8].to_vec()),
+        "shell --workdir / captain sudo -n sh -c"
+    );
+    assert!(docker[8].contains("exec systemctl stop $units"));
     assert_eq!(
         joined(delete("captain")),
         "--log-format json delete captain --force --tty=false"
