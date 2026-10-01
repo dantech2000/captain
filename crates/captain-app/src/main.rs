@@ -56,6 +56,7 @@ fn main() {
         );
         captain_ui::system_init(cx, Arc::new(system::System));
         captain_ui::palette_init(cx);
+        captain_ui::new_project_init(cx);
         actions::register(cx);
         // A tunnel to an ssh:// engine must not outlive Captain; see feature 0026.
         cx.on_app_quit(|_| {

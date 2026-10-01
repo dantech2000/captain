@@ -119,3 +119,17 @@ fn background_launch_needs_the_menu_bar_icon() {
     assert!(settings.opens_window_at_launch(false));
     assert!(Settings::default().opens_window_at_launch(true));
 }
+
+#[test]
+fn projects_dir_expands_the_home_folder() {
+    let home = std::path::Path::new("/Users/me");
+    assert_eq!(
+        Settings::default().projects_dir_in(home),
+        home.join("Captain")
+    );
+    let settings = Settings::from_json(r#"{"projects_dir": "/srv/projects"}"#).unwrap();
+    assert_eq!(
+        settings.projects_dir_in(home),
+        std::path::PathBuf::from("/srv/projects")
+    );
+}

@@ -6,6 +6,7 @@ use gpui_kit::assets::IconName;
 
 use super::command::{Command, CommandKind, Section};
 use crate::containers::action_help;
+use crate::help::cmd_key;
 use crate::icons::CaptainIcon;
 use crate::project::{down_help, restart_help, up_help};
 use crate::shell::{page_help, sidebar_help};
@@ -15,6 +16,7 @@ use crate::workspace::{Page, Workspace};
 /// Every command the palette offers for the current workspace.
 pub fn build(workspace: &Workspace, palette: &Palette) -> Vec<Command> {
     let mut commands = navigation(workspace, palette);
+    commands.push(new_project(palette));
     commands.push(bring_data(palette));
     commands.push(toggle_sidebar(workspace, palette));
     commands.extend(filters(workspace, palette));
@@ -50,6 +52,21 @@ fn navigation(workspace: &Workspace, palette: &Palette) -> Vec<Command> {
             completion: None,
         })
         .collect()
+}
+
+/// Opens the New sheet. "new" finds it.
+fn new_project(palette: &Palette) -> Command {
+    Command {
+        section: Section::Actions,
+        title: "New project\u{2026}".into(),
+        meta: cmd_key("N"),
+        icon: IconName::Plus.into(),
+        color: palette.accent_fg,
+        suggested: true,
+        kind: CommandKind::NewProject,
+        help: "New project: run an image, start from a template, open a folder, or paste a docker run command.".into(),
+        completion: None,
+    }
 }
 
 /// Opens the Migration Assistant.

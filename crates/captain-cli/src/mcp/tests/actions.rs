@@ -1,6 +1,6 @@
 //! The action tools behind the `agent_tools` settings, and the activity log.
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
 use captain_core::agent_tools::{AgentAction, AgentToolsSettings, read_activity};
@@ -71,6 +71,10 @@ impl ProjectRunner for FakeRunner {
     }
 
     fn apply_up(&self, _: &ComposeProject, _: &[String]) -> EngineFuture<String> {
+        unreachable!()
+    }
+
+    fn project_name(&self, _: &Path, _: &[PathBuf]) -> EngineFuture<String> {
         unreachable!()
     }
 }

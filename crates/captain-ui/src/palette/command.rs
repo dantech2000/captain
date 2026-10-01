@@ -7,6 +7,7 @@ use super::run_action;
 use crate::containers::down_dialog;
 use crate::icons::Glyph;
 use crate::migration::OpenMigrationAssistant;
+use crate::new_project::NewProject;
 use crate::workspace::{Page, Workspace};
 
 /// The group a command is listed under.
@@ -50,6 +51,8 @@ pub enum CommandKind {
     OpenPort(u16),
     /// Opens the Migration Assistant.
     BringData,
+    /// Opens the New sheet, as ⌘N does.
+    NewProject,
     /// Hides the projects list, or shows it again, as ⌘B does.
     ToggleSidebar,
     /// Runs a command of the grammar.
@@ -89,7 +92,8 @@ impl CommandKind {
                 w.set_page(Page::Containers, cx);
             }),
             CommandKind::OpenPort(port) => cx.open_url(&format!("http://localhost:{port}")),
-            CommandKind::BringData => open_migration(cx),
+            CommandKind::BringData => dispatch(Box::new(OpenMigrationAssistant), cx),
+            CommandKind::NewProject => dispatch(Box::new(NewProject), cx),
             CommandKind::ToggleSidebar => workspace.update(cx, |w, cx| w.toggle_sidebar(cx)),
             CommandKind::Act(action) => run_action::run(action, workspace, cx),
             // The palette completes the line instead of running a command.
@@ -124,16 +128,16 @@ pub(super) fn run_project(
     });
 }
 
-/// Dispatches [`OpenMigrationAssistant`] in the active window, once the palette's
-/// own event has finished.
-fn open_migration(cx: &mut App) {
+/// Dispatches `action`, such as [`OpenMigrationAssistant`], in the active window,
+/// once the palette's own event has finished.
+fn dispatch(action: Box<dyn gpui_kit::Action>, cx: &mut App) {
     let Some(window) = cx.active_window() else {
         return;
     };
     cx.defer(move |cx| {
         window
             .update(cx, |_, window, cx| {
-                window.dispatch_action(Box::new(OpenMigrationAssistant), cx);
+                window.dispatch_action(action, cx);
             })
             .ok();
     });

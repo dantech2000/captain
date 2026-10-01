@@ -1,4 +1,4 @@
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use super::EngineFuture;
 use crate::model::{ComposeProject, ProjectAction, ProjectTask, ProjectTasks, TaskOutput};
@@ -46,4 +46,8 @@ pub trait ProjectRunner: Send + Sync + 'static {
     /// Runs `up -d --remove-orphans`, or with `build` services, `up -d --build`
     /// for those. The future gives Compose's output.
     fn apply_up(&self, project: &ComposeProject, build: &[String]) -> EngineFuture<String>;
+
+    /// The project name `docker compose config` gives for `files` in the folder
+    /// `dir`. It fails with Compose's error when the files are not valid.
+    fn project_name(&self, dir: &Path, files: &[PathBuf]) -> EngineFuture<String>;
 }

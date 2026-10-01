@@ -1,3 +1,4 @@
+mod known_entry;
 mod page_help;
 mod projects;
 mod search_button;
@@ -6,6 +7,7 @@ pub(crate) use page_help::page_help;
 
 use gpui_kit::*;
 
+use crate::new_project::known_projects;
 use crate::theme::Palette;
 use crate::widgets::drag_region;
 use crate::workspace::Workspace;
@@ -16,6 +18,7 @@ pub fn render(
     handle: &Entity<Workspace>,
     workspace: &Workspace,
     palette: &Palette,
+    cx: &App,
 ) -> impl IntoElement {
     div()
         .w(px(super::SIDEBAR_WIDTH))
@@ -30,5 +33,10 @@ pub fn render(
         .border_color(palette.sep)
         .child(drag_region("sidebar-drag").h(px(48.)).flex_shrink_0())
         .child(search_button::render(palette))
-        .child(projects::render(handle, workspace, palette))
+        .child(projects::render(
+            handle,
+            workspace,
+            &known_projects(cx),
+            palette,
+        ))
 }

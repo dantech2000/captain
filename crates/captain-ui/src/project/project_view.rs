@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::time::{Duration, Instant};
 
 use captain_core::format::bytes_label;
+use captain_core::known_projects::KnownProject;
 use captain_core::model::{
     ComposeProject, ContainerDetail, ContainerState, EngineEvent, EventKind,
 };
@@ -18,6 +19,7 @@ use super::tasks::TaskState;
 use super::view_tabs::ProjectTab;
 use super::{ProjectNotice, page};
 use crate::engine_host::{HostModel, host_model};
+use crate::new_project::known_model;
 use crate::workspace::Workspace;
 
 /// Exits count toward "3 times in 2 min" for this long.
@@ -70,6 +72,11 @@ impl ProjectView {
             host.as_ref()
                 .map(|host| cx.observe(host, |_, _, cx| cx.notify())),
         );
+        let known = known_model(cx);
+        subscriptions.push(cx.observe(&known, |this, _, cx| {
+            this.follow(cx);
+            cx.notify();
+        }));
         let log = cx.new(|cx| ProjectLogView::new(workspace.clone(), cx));
         let mut view = Self {
             workspace,
@@ -90,6 +97,12 @@ impl ProjectView {
         };
         view.follow(cx);
         view
+    }
+
+    /// Shows the Files tab, for example for a project the user just opened.
+    pub fn show_files(&mut self, cx: &mut Context<Self>) {
+        self.tab = ProjectTab::Files;
+        cx.notify();
     }
 
     /// Exits of `service` in the last two minutes.
@@ -132,8 +145,17 @@ impl ProjectView {
             let store = workspace.store();
             self.staged.retain_containers(|id| store.find(id).is_some());
         }
+        let known = known_model(cx).read(cx).projects().to_vec();
+        let workspace = self.workspace.read(cx);
         if let Some(GroupKey::Project(name)) = &focus
             && let Some(project) = compose_project(workspace.store().containers(), name)
+                .or_else(|| self.project.clone())
+                .or_else(|| {
+                    known
+                        .iter()
+                        .find(|k| &k.name == name)
+                        .map(KnownProject::compose_project)
+                })
         {
             let stale = self.tasks.stale(&project);
             let compose = workspace.has_project_runner();

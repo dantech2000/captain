@@ -207,6 +207,16 @@ Show the containers that run extension backends in the container lists, the side
 - Default: `false`
 - Example: `"show_extension_containers": true`
 
+## Projects
+
+### `projects_dir`
+
+The folder for the projects Captain creates, one folder per project. `~/` means your home folder. Captain creates it on first use. Changing it moves nothing. Applies at once.
+
+- Type: a string
+- Default: `"~/Captain"`
+- Example: `"projects_dir": "~/code/captain"`
+
 ## Storage
 
 ### `weekly_build_cache_cleanup`

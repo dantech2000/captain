@@ -1,24 +1,64 @@
-use captain_core::store::ContainerGroup;
+use captain_core::known_projects::{KnownProject, known_match, stopped_known};
+use captain_core::store::{ContainerGroup, GroupKey};
+use gpui_kit::assets::IconName;
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::*;
 
-use crate::help::HelpExt;
+use super::known_entry::{self, with_remove_menu};
+use crate::help::{CMD, HelpExt, Hint};
 use crate::icons::cap_icon;
+use crate::new_project::NewProject;
 use crate::project::GroupInfo;
 use crate::theme::Palette;
+use crate::widgets::icon_button;
 use crate::workspace::{Page, Workspace};
 
-/// "Projects" with an "All containers" link, then one entry per Compose project,
-/// Kubernetes namespace, and the loose containers. It scrolls when it is long.
+/// "Projects" with New and an "All containers" link, then one entry per Compose
+/// project, the known projects that do not run, the Kubernetes namespaces, and
+/// the loose containers. It scrolls when it is long.
 pub fn render(
     handle: &Entity<Workspace>,
     workspace: &Workspace,
+    known: &[KnownProject],
     palette: &Palette,
 ) -> impl IntoElement {
     let groups = workspace.sidebar_groups();
+    let live = workspace.compose_projects();
+    let stopped = stopped_known(&live, known);
     let focus = (workspace.page() == Page::Project)
         .then(|| workspace.focus().cloned())
         .flatten();
+    let (projects, others): (Vec<_>, Vec<_>) = groups
+        .into_iter()
+        .partition(|group| group.project().is_some());
+    let mut entries: Vec<AnyElement> = projects
+        .into_iter()
+        .map(|group| {
+            let selected = focus.as_ref() == Some(&group.key);
+            let project = live
+                .iter()
+                .find(|p| Some(p.name.as_str()) == group.project());
+            let known = project.filter(|p| known_match(p, known).is_some()).cloned();
+            let entry = entry(handle, workspace, group, selected, palette);
+            match known {
+                Some(project) => {
+                    let folder = project
+                        .short_working_dir(std::env::home_dir().as_deref())
+                        .unwrap_or_default();
+                    with_remove_menu(entry, project.name, folder, handle).into_any_element()
+                }
+                None => entry.into_any_element(),
+            }
+        })
+        .collect();
+    entries.extend(stopped.into_iter().map(|project| {
+        let selected = focus.as_ref() == Some(&GroupKey::Project(project.name.clone()));
+        known_entry::render(handle, workspace, project, selected, palette)
+    }));
+    entries.extend(others.into_iter().map(|group| {
+        let selected = focus.as_ref() == Some(&group.key);
+        entry(handle, workspace, group, selected, palette).into_any_element()
+    }));
     div()
         .flex_1()
         .min_h_0()
@@ -34,10 +74,7 @@ pub fn render(
                 .flex()
                 .flex_col()
                 .gap(px(4.))
-                .children(groups.into_iter().map(|group| {
-                    let selected = focus.as_ref() == Some(&group.key);
-                    entry(handle, workspace, group, selected, palette)
-                })),
+                .children(entries),
         )
 }
 
@@ -55,9 +92,28 @@ fn heading(handle: &Entity<Workspace>, workspace: &Workspace, palette: &Palette)
         .text_size(px(11.))
         .child(
             div()
-                .font_weight(FontWeight::SEMIBOLD)
-                .text_color(palette.text3)
-                .child("Projects"),
+                .flex()
+                .items_center()
+                .gap(px(6.))
+                .child(
+                    div()
+                        .font_weight(FontWeight::SEMIBOLD)
+                        .text_color(palette.text3)
+                        .child("Projects"),
+                )
+                .child(
+                    icon_button(
+                        "sidebar-new-project",
+                        IconName::Plus,
+                        Hint::with_keys(
+                            "New project: run an image, start from a template, open a folder, or paste a docker run command.",
+                            &[CMD, "N"],
+                        ),
+                        palette,
+                        |_, window, cx| window.dispatch_action(Box::new(NewProject), cx),
+                    )
+                    .size(px(20.)),
+                ),
         )
         .child(
             div()

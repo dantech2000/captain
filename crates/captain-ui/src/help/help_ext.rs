@@ -10,6 +10,15 @@ pub const CMD: &str = if cfg!(target_os = "macos") {
     "Ctrl"
 };
 
+/// A shortcut with the command key, as a key chip shows it: `⌘N`, or `Ctrl N`.
+pub fn cmd_key(key: &str) -> String {
+    if cfg!(target_os = "macos") {
+        format!("{CMD}{key}")
+    } else {
+        format!("{CMD} {key}")
+    }
+}
+
 /// Gives an element a help sentence for the status bar. The element needs an id,
 /// because GPUI keeps hover state per id.
 pub trait HelpExt: StatefulInteractiveElement {

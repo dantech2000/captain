@@ -16,6 +16,7 @@ use crate::inspector::InspectorView;
 use crate::kubernetes::{KubeEvent, kubernetes_model};
 use crate::migration::OpenMigrationAssistant;
 use crate::networks::NetworksView;
+use crate::new_project::{self, NewProject, known_model};
 use crate::palette::{CommandPalette, ToggleCommandPalette};
 use crate::port_forwarding::PortForwardingView;
 use crate::project::{ProjectNotice, ProjectView};
@@ -89,7 +90,9 @@ impl AppShell {
                 window.push_notification(notice.notification(), cx);
             },
         );
-        let mut subscriptions = vec![appearance, observe, notify, project_notify];
+        let known = known_model(cx);
+        let known = cx.observe(&known, |_, _, cx| cx.notify());
+        let mut subscriptions = vec![appearance, observe, notify, project_notify, known];
         subscriptions.extend(settings::toast_file_problems(window, cx));
 
         subscriptions.extend(Self::follow_host(window, cx));
@@ -245,6 +248,9 @@ impl Render for AppShell {
                 this.workspace
                     .update(cx, |workspace, cx| workspace.toggle_sidebar(cx));
             }))
+            .on_action(cx.listener(|this, _: &NewProject, window, cx| {
+                new_project::open(this.workspace.clone(), this.project.clone(), window, cx);
+            }))
             .on_action(cx.listener(|this, _: &OpenMigrationAssistant, window, cx| {
                 crate::migration::open(this.workspace.clone(), window, cx);
             }))
@@ -266,7 +272,7 @@ impl Render for AppShell {
                         &palette,
                     ))
                     .when(!workspace.sidebar_hidden(), |row| {
-                        row.child(sidebar::render(&self.workspace, workspace, &palette))
+                        row.child(sidebar::render(&self.workspace, workspace, &palette, cx))
                     })
                     // The traffic lights are wider than the rail, so a page beside the
                     // rail alone keeps its title clear of them.

@@ -1,7 +1,7 @@
 //! Runs the `docker compose` CLI on a plain thread and hands the result back through
 //! a runtime-neutral future. See docs/adr/0005-compose-via-cli.md.
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::{Command, Output, Stdio};
 use std::time::Duration;
 
@@ -115,6 +115,10 @@ impl ProjectRunner for ComposeCli {
 
     fn apply_up(&self, project: &ComposeProject, build: &[String]) -> EngineFuture<String> {
         self.up_now(project, build)
+    }
+
+    fn project_name(&self, dir: &Path, files: &[PathBuf]) -> EngineFuture<String> {
+        self.read_project_name(dir, files)
     }
 }
 

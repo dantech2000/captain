@@ -208,6 +208,15 @@
       ],
       "default": false,
       "x-captain-group": "Extensions"
+    },
+    "projects_dir": {
+      "description": "The folder for the projects Captain creates, one folder per project. `~/` means your home folder. Captain creates it on first use. Changing it moves nothing. Applies at once.",
+      "type": "string",
+      "examples": [
+        "~/code/captain"
+      ],
+      "default": "~/Captain",
+      "x-captain-group": "Projects"
     }
   },
   "definitions": {

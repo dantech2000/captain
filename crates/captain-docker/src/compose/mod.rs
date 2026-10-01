@@ -8,6 +8,7 @@ mod editor;
 mod labeled;
 mod locate;
 mod output;
+mod project_name;
 mod tasks;
 mod tools;
 

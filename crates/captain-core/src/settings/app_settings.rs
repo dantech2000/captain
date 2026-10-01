@@ -1,3 +1,5 @@
+use std::path::{Path, PathBuf};
+
 use schemars::JsonSchema;
 use serde::{Deserialize, Deserializer, Serialize};
 
@@ -118,6 +120,13 @@ pub struct Settings {
     #[serde(deserialize_with = "lenient")]
     #[schemars(extend("x-captain-group" = "Extensions"), example = true)]
     pub show_extension_containers: bool,
+    /// The folder for the projects Captain creates, one folder per project. `~/`
+    /// means your home folder. Captain creates it on first use. Changing it moves
+    /// nothing. Applies at once.
+    // Feature 0040.
+    #[serde(deserialize_with = "lenient_projects_dir")]
+    #[schemars(extend("x-captain-group" = "Projects"), example = "~/code/captain")]
+    pub projects_dir: String,
 }
 
 impl Default for Settings {
@@ -140,6 +149,7 @@ impl Default for Settings {
             command_line_tools: CliToolsSettings::default(),
             agent_tools: AgentToolsSettings::default(),
             show_extension_containers: false,
+            projects_dir: DEFAULT_PROJECTS_DIR.into(),
         }
     }
 }
@@ -158,6 +168,35 @@ impl Settings {
     pub fn opens_window_at_launch(&self, tray_up: bool) -> bool {
         !(self.start_in_background && tray_up)
     }
+}
+
+/// Where new projects go when `projects_dir` is not set.
+const DEFAULT_PROJECTS_DIR: &str = "~/Captain";
+
+impl Settings {
+    /// `projects_dir` with a leading `~` made `home`. An empty value is the default.
+    pub fn projects_dir_in(&self, home: &Path) -> PathBuf {
+        let dir = match self.projects_dir.trim() {
+            "" => DEFAULT_PROJECTS_DIR,
+            dir => dir,
+        };
+        match dir.strip_prefix('~') {
+            Some("") => home.to_path_buf(),
+            Some(rest) if rest.starts_with(['/', '\\']) => home.join(&rest[1..]),
+            _ => PathBuf::from(dir),
+        }
+    }
+}
+
+/// Reads `projects_dir`, or the default when the value is not a string.
+fn lenient_projects_dir<'de, D>(deserializer: D) -> Result<String, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let value = serde_json::Value::deserialize(deserializer)?;
+    Ok(value
+        .as_str()
+        .map_or_else(|| DEFAULT_PROJECTS_DIR.into(), String::from))
 }
 
 /// Reads a field, or its default when the value has the wrong type or an unknown variant.
