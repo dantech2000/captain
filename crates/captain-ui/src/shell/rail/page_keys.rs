@@ -1,6 +1,9 @@
 //! Keyboard shortcuts for the rail's pages: ⌘1 to ⌘9 in rail order, and ⌘, for
 //! Settings, as in other Mac apps. Ctrl takes the place of ⌘ on Linux and Windows.
+//! They apply only in the shell's key context, and do nothing while a dialog,
+//! a sheet, or the ⌘K palette is open, so those keep ⌘1 and the others.
 
+use gpui_kit::component::WindowExt;
 use gpui_kit::*;
 
 use crate::workspace::{Page, Workspace};
@@ -20,6 +23,10 @@ gpui_kit::actions!(
         ShowSettings
     ]
 );
+
+/// The key context of the shell's root. The kit's dialogs render beside the
+/// shell, not in it, so the page keys never match while a dialog has focus.
+pub const SHELL_CONTEXT: &str = "CaptainShell";
 
 /// The key that goes with ⌘ (or Ctrl) for `page`, if it has one.
 pub fn page_key(page: Page) -> Option<&'static str> {
@@ -41,26 +48,39 @@ pub fn page_key(page: Page) -> Option<&'static str> {
 /// The key bindings, for the app to register: `cmd-` or `ctrl-` and each page key.
 pub fn page_bindings(modifier: &str) -> Vec<KeyBinding> {
     let key = |page| format!("{modifier}-{}", page_key(page).unwrap_or_default());
+    let context = Some(SHELL_CONTEXT);
     vec![
-        KeyBinding::new(&key(Page::Containers), ShowContainers, None),
-        KeyBinding::new(&key(Page::Images), ShowImages, None),
-        KeyBinding::new(&key(Page::Volumes), ShowVolumes, None),
-        KeyBinding::new(&key(Page::Networks), ShowNetworks, None),
-        KeyBinding::new(&key(Page::Snapshots), ShowSnapshots, None),
-        KeyBinding::new(&key(Page::Storage), ShowStorage, None),
-        KeyBinding::new(&key(Page::Extensions), ShowExtensions, None),
-        KeyBinding::new(&key(Page::PortForwarding), ShowPortForwarding, None),
-        KeyBinding::new(&key(Page::Diagnostics), ShowDiagnostics, None),
-        KeyBinding::new(&key(Page::Settings), ShowSettings, None),
+        KeyBinding::new(&key(Page::Containers), ShowContainers, context),
+        KeyBinding::new(&key(Page::Images), ShowImages, context),
+        KeyBinding::new(&key(Page::Volumes), ShowVolumes, context),
+        KeyBinding::new(&key(Page::Networks), ShowNetworks, context),
+        KeyBinding::new(&key(Page::Snapshots), ShowSnapshots, context),
+        KeyBinding::new(&key(Page::Storage), ShowStorage, context),
+        KeyBinding::new(&key(Page::Extensions), ShowExtensions, context),
+        KeyBinding::new(&key(Page::PortForwarding), ShowPortForwarding, context),
+        KeyBinding::new(&key(Page::Diagnostics), ShowDiagnostics, context),
+        KeyBinding::new(&key(Page::Settings), ShowSettings, context),
     ]
 }
 
 /// Adds a handler for each page action to `root`, which switches the page.
 /// Port Forwarding opens only while `forwarding`, as its rail button shows only then.
-pub fn on_page_actions(root: Div, handle: &Entity<Workspace>, forwarding: bool) -> Div {
+/// Nothing switches while `palette_open`, or while a dialog or sheet is open.
+pub fn on_page_actions(
+    root: Div,
+    handle: &Entity<Workspace>,
+    forwarding: bool,
+    palette_open: bool,
+) -> Div {
     let go = |page: Page| {
         let handle = handle.clone();
-        move |cx: &mut App| handle.update(cx, |workspace, cx| workspace.set_page(page, cx))
+        move |window: &mut Window, cx: &mut App| {
+            if palette_open || window.has_active_dialog(cx) {
+                cx.propagate();
+                return;
+            }
+            handle.update(cx, |workspace, cx| workspace.set_page(page, cx))
+        }
     };
     let (c, i, v, n, sn, st, e, d, se) = (
         go(Page::Containers),
@@ -74,20 +94,21 @@ pub fn on_page_actions(root: Div, handle: &Entity<Workspace>, forwarding: bool) 
         go(Page::Settings),
     );
     let pf = go(Page::PortForwarding);
-    root.on_action(move |_: &ShowContainers, _, cx| c(cx))
-        .on_action(move |_: &ShowImages, _, cx| i(cx))
-        .on_action(move |_: &ShowVolumes, _, cx| v(cx))
-        .on_action(move |_: &ShowNetworks, _, cx| n(cx))
-        .on_action(move |_: &ShowSnapshots, _, cx| sn(cx))
-        .on_action(move |_: &ShowStorage, _, cx| st(cx))
-        .on_action(move |_: &ShowExtensions, _, cx| e(cx))
-        .on_action(move |_: &ShowPortForwarding, _, cx| {
+    root.key_context(SHELL_CONTEXT)
+        .on_action(move |_: &ShowContainers, w, cx| c(w, cx))
+        .on_action(move |_: &ShowImages, w, cx| i(w, cx))
+        .on_action(move |_: &ShowVolumes, w, cx| v(w, cx))
+        .on_action(move |_: &ShowNetworks, w, cx| n(w, cx))
+        .on_action(move |_: &ShowSnapshots, w, cx| sn(w, cx))
+        .on_action(move |_: &ShowStorage, w, cx| st(w, cx))
+        .on_action(move |_: &ShowExtensions, w, cx| e(w, cx))
+        .on_action(move |_: &ShowPortForwarding, w, cx| {
             if forwarding {
-                pf(cx)
+                pf(w, cx)
             }
         })
-        .on_action(move |_: &ShowDiagnostics, _, cx| d(cx))
-        .on_action(move |_: &ShowSettings, _, cx| se(cx))
+        .on_action(move |_: &ShowDiagnostics, w, cx| d(w, cx))
+        .on_action(move |_: &ShowSettings, w, cx| se(w, cx))
 }
 
 #[cfg(test)]

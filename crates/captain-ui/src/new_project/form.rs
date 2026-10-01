@@ -21,6 +21,8 @@ pub fn field(
     div()
         .flex()
         .flex_col()
+        // In a scrolling step, a field keeps its height; the step scrolls.
+        .flex_shrink_0()
         .gap(px(6.))
         .child(
             div()
@@ -125,6 +127,7 @@ pub fn view_switch(
 pub fn compose_preview(text: Result<String, String>, palette: &Palette) -> Div {
     match text {
         Ok(text) => div()
+            .flex_shrink_0()
             .p(px(10.))
             .rounded(px(8.))
             .bg(palette.field)

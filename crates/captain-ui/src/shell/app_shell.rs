@@ -173,7 +173,9 @@ impl AppShell {
             let palette = cx.new(|cx| CommandPalette::new(self.workspace.clone(), window, cx));
             cx.subscribe_in(&palette, window, |this, _, _: &DismissEvent, window, cx| {
                 this.palette = None;
-                this.focus_handle.focus(window, cx);
+                if !window.has_active_dialog(cx) {
+                    this.focus_handle.focus(window, cx);
+                }
                 cx.notify();
             })
             .detach();
@@ -235,8 +237,8 @@ impl Render for AppShell {
             _ => Details::None,
         };
 
-        let root = rail::on_page_actions(div(), &self.workspace, forwarding);
-        root.size_full()
+        rail::on_page_actions(div(), &self.workspace, forwarding, self.palette.is_some())
+            .size_full()
             .relative()
             .flex()
             .flex_col()

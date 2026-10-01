@@ -6,6 +6,7 @@ use gpui_kit::*;
 
 use crate::help::HelpExt;
 use crate::icons::glyph;
+use crate::new_project::pick_row::{item, lines};
 use crate::theme::Palette;
 
 /// The template list with search: up and down move, Return picks.
@@ -72,46 +73,26 @@ impl ListDelegate for TemplatePicker {
     ) -> Option<ListItem> {
         let template = self.template(ix)?;
         let palette = Palette::of(cx);
+        let title = div().flex().gap(px(8.)).child(template.title).child(
+            div()
+                .text_color(palette.text3)
+                .font_weight(FontWeight::NORMAL)
+                .child(template.image),
+        );
         let row = div()
             .id(("template-row", ix.row))
-            .h(px(36.))
             .flex_1()
+            .min_w_0()
             .flex()
             .items_center()
             .gap(px(10.))
             .child(glyph(icon(template), px(18.), palette.accent_fg))
-            .child(
-                div()
-                    .flex_1()
-                    .min_w_0()
-                    .flex()
-                    .flex_col()
-                    .child(
-                        div()
-                            .flex()
-                            .gap(px(8.))
-                            .font_weight(FontWeight::SEMIBOLD)
-                            .child(template.title)
-                            .child(
-                                div()
-                                    .text_color(palette.text3)
-                                    .font_weight(FontWeight::NORMAL)
-                                    .child(template.image),
-                            ),
-                    )
-                    .child(
-                        div()
-                            .text_size(px(12.))
-                            .text_color(palette.text2)
-                            .truncate()
-                            .child(template.sentence),
-                    ),
-            )
+            .child(lines(title, template.sentence, &palette))
             .help(format!(
                 "Make a {} project from {}. Return or a click picks it.",
                 template.title, template.image
             ));
-        Some(ListItem::new(("template", ix.row)).child(row))
+        Some(item(("template", ix.row)).child(row))
     }
 
     fn set_selected_index(

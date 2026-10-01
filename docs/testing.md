@@ -271,9 +271,9 @@ Restarts the engine once. The disk steps grow the real disk, so stop at a size y
 Set `"projects_dir": "~/CaptainTest"` in the settings file first, so the tests stay out of `~/Captain`. Back up `~/.captain/projects.json` if you have one.
 
 1. Press ⌘N. Press ⌘N again.
-   - Expect: the New sheet opens once; the second ⌘N does nothing. Up, Down, and Return move and open the cards. Each card shows a help sentence in the status bar.
+   - Expect: the New sheet opens once; the second ⌘N does nothing. Up, Down, and Return move and open the cards. Each card shows a help sentence in the status bar. ⌘1 opens Run an image and the page behind the sheet stays the same. Open the sheet from ⌘K (`new`) and press ⌘3: it opens a template list, not a page.
 2. Choose **Start from a template**, type `post`, and press Return on PostgreSQL.
-   - Expect: the name `postgres` (or `postgres-2` if taken), a free port, and a masked password. **compose.yaml** shows the file with `${POSTGRES_PASSWORD...}` and no password.
+   - Expect: the name `postgres` (or `postgres-2` if taken), a free port, and a masked password. **compose.yaml** shows the file with `${POSTGRES_PASSWORD...}` and no password. Press Escape: the template list shows again. Press Escape again: the four cards show. Press Escape on the cards: the sheet closes. Open the template form again for step 3.
 3. Click **Create project**.
    - Expect: the Project page of `postgres` on the Files tab. `ls -l ~/CaptainTest/postgres` shows `compose.yaml`, `.gitignore`, and `.env` with `-rw-------`. Nothing runs yet.
 4. Click **Save and apply**, then **Apply**.
@@ -283,7 +283,7 @@ Set `"projects_dir": "~/CaptainTest"` in the settings file first, so the tests s
 6. Repeat step 2 with the Web server template. Apply it and open `http://localhost:8080` (or the port shown).
    - Expect: the "It works" page from `site/index.html`.
 7. Choose **Run an image** and type `redis`.
-   - Expect: the engine's images first, then skeleton rows, then Docker Hub results with **Official** on `redis`, and stars and pulls. Turn off Wi-Fi and type `nginx`: Docker Hub shows "not available", and the engine's images still show.
+   - Expect: the engine's images first, then skeleton rows, then Docker Hub results with **Official** on `redis`, and stars and pulls. Rows have space between them. Type `uptime`: louislam/uptime-kuma is among the first Docker Hub rows. Turn off Wi-Fi and type `nginx`: Docker Hub shows "not available", and the engine's images still show.
 8. Pick `redis` from Docker Hub. Click a tag chip such as `8-alpine`, click **Pull**, and wait.
    - Expect: a port row for 6379 with a free host port. Add a volume row `data` to `/data` and an environment row. **compose.yaml** shows the service and a top-level `data` volume.
 9. Click **Create project**, then Save and apply and Apply.
@@ -299,9 +299,10 @@ Set `"projects_dir": "~/CaptainTest"` in the settings file first, so the tests s
       -p 8081:80 -e TZ=UTC -v web-data:/data \
       --privileged --rm nginx:alpine
     ```
-    - Expect: "One service, captain-agent-web, from nginx:alpine.", and warnings for `--privileged` and `--rm`. The name field says `captain-agent-web`. **compose.yaml** has the port, the variable, the volume, and a top-level `web-data` volume. **Create project** opens the Files tab.
+    - Expect: the field shows all three lines in a monospace font. "One service, captain-agent-web, from nginx:alpine.", and warnings for `--privileged` and `--rm`. The name field says `captain-agent-web`. **compose.yaml** has the port, the variable, the volume, and a top-level `web-data` volume. **Create project** opens the Files tab.
 13. Type `docker ps` in the field.
     - Expect: an error that the command is not `docker run`; **Create project** is off.
+    - Click **compose.yaml** and press Escape. Expect: the four cards show.
 14. Make a template project with a name whose folder already has a file.
     - Expect: the form says the folder has files, and **Create project** is off.
 15. Right-click each test project in the sidebar and choose **Remove from Captain**.

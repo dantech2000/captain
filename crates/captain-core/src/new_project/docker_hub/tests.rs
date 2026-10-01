@@ -4,7 +4,7 @@ use super::*;
 fn urls_encode_the_query_and_use_library_for_official_images() {
     assert_eq!(
         search_url(" my db ", 10),
-        "https://hub.docker.com/v2/search/repositories/?query=my%20db&page_size=10"
+        "https://hub.docker.com/v2/search/repositories/?query=my%20db&page_size=10&ordering=-pull_count"
     );
     assert_eq!(
         tags_url("postgres", 50),
@@ -14,7 +14,7 @@ fn urls_encode_the_query_and_use_library_for_official_images() {
 }
 
 #[test]
-fn search_results_put_official_images_first() {
+fn search_results_drop_the_library_namespace() {
     let body = r#"{"count":2,"results":[
         {"repo_name":"bitnami/postgresql","short_description":"Bitnami","star_count":10,"pull_count":5000,"is_official":false},
         {"repo_name":"postgres","short_description":null,"star_count":14000,"pull_count":1000000000,"is_official":true}
@@ -22,9 +22,9 @@ fn search_results_put_official_images_first() {
 
     let repos = parse_search(body).unwrap();
 
-    assert_eq!(repos[0].name, "postgres");
-    assert!(repos[0].official);
-    assert_eq!(repos[1].name, "bitnami/postgresql");
+    assert_eq!(repos[0].name, "bitnami/postgresql");
+    assert_eq!(repos[1].name, "postgres");
+    assert!(repos[1].official);
     assert!(parse_search("<html>").is_err());
 }
 

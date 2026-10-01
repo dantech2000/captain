@@ -31,8 +31,9 @@ impl PasteStep {
         cx: &mut Context<Self>,
     ) -> Self {
         let command = cx.new(|cx| {
+            // Six lines, growing to twelve, then it scrolls.
             TextareaState::new(window, cx)
-                .rows(6)
+                .auto_grow(6, 12)
                 .placeholder("docker run -d -p 8080:80 nginx")
         });
         let name = new_input("Project name", "", window, cx);
@@ -103,7 +104,7 @@ impl PasteStep {
         Ok((name, doc.to_yaml()))
     }
 
-    pub(super) fn back(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+    pub(crate) fn back(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         if let Some(sheet) = self.sheet.upgrade() {
             sheet.update(cx, |sheet, cx| sheet.back(window, cx));
         }

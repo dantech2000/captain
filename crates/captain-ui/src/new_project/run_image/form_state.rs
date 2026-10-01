@@ -211,7 +211,7 @@ impl RunImage {
     }
 
     /// From the form back to the picker; from the picker back to the four cards.
-    pub(super) fn back(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+    pub(crate) fn back(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         if !self.picking {
             self.picking = true;
             self.error = None;

@@ -39,16 +39,18 @@ pub enum HubError {
 
 /// Searches Docker Hub and lists tags. The app gives the HTTPS implementation.
 pub trait DockerHub: Send + Sync + 'static {
-    /// Repositories that match `query`, official images first.
+    /// Repositories that match `query`, in [`rank_search`](super::rank_search) order.
     fn search(&self, query: &str) -> BoxFuture<'static, Result<Vec<HubRepo>, HubError>>;
     /// The newest tags of `repository`.
     fn tags(&self, repository: &str) -> BoxFuture<'static, Result<Vec<String>, HubError>>;
 }
 
-/// The search URL for `query`, with `size` results.
+/// The search URL for `query`, with the `size` most pulled results. The Hub's
+/// default order leaves popular images such as louislam/uptime-kuma off the
+/// first page.
 pub fn search_url(query: &str, size: usize) -> String {
     format!(
-        "{SEARCH}?query={}&page_size={size}",
+        "{SEARCH}?query={}&page_size={size}&ordering=-pull_count",
         percent_encode(query.trim())
     )
 }
@@ -85,11 +87,10 @@ struct SearchResult {
     is_official: bool,
 }
 
-/// The repositories in a search answer, official images first, each group in
-/// Docker Hub's order.
+/// The repositories in a search answer, in Docker Hub's order.
 pub fn parse_search(body: &str) -> Result<Vec<HubRepo>, HubError> {
     let page: SearchPage = serde_json::from_str(body).map_err(unreadable)?;
-    let mut repos: Vec<HubRepo> = page
+    let repos: Vec<HubRepo> = page
         .results
         .into_iter()
         .map(|result| HubRepo {
@@ -104,7 +105,6 @@ pub fn parse_search(body: &str) -> Result<Vec<HubRepo>, HubError> {
             official: result.is_official,
         })
         .collect();
-    repos.sort_by_key(|repo| !repo.official);
     Ok(repos)
 }
 

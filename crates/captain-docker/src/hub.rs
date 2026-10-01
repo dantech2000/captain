@@ -4,7 +4,8 @@
 use std::sync::OnceLock;
 
 use captain_core::new_project::{
-    DockerHub, HubError, HubRepo, parse_search, parse_tags, search_url, status_error, tags_url,
+    DockerHub, HubError, HubRepo, parse_search, parse_tags, rank_search, search_url, status_error,
+    tags_url,
 };
 use futures::FutureExt;
 use futures::future::BoxFuture;
@@ -13,8 +14,9 @@ use tokio::runtime::Runtime;
 use crate::extensions::registry::get;
 use crate::runtime;
 
-/// Results per search.
-const SEARCH_SIZE: usize = 25;
+/// Results per search. A large page lets popular images in, which Captain then
+/// ranks first.
+const SEARCH_SIZE: usize = 50;
 /// Tags per repository, newest first.
 const TAG_SIZE: usize = 50;
 
@@ -25,7 +27,8 @@ pub struct DockerHubClient;
 impl DockerHub for DockerHubClient {
     fn search(&self, query: &str) -> BoxFuture<'static, Result<Vec<HubRepo>, HubError>> {
         let url = search_url(query, SEARCH_SIZE);
-        spawn(async move { parse_search(&fetch(&url).await?) })
+        let query = query.to_string();
+        spawn(async move { Ok(rank_search(&query, parse_search(&fetch(&url).await?)?)) })
     }
 
     fn tags(&self, repository: &str) -> BoxFuture<'static, Result<Vec<String>, HubError>> {

@@ -9,6 +9,7 @@ use gpui_kit::*;
 use super::picker_rows::{hub_row, two_lines};
 use crate::help::HelpExt;
 use crate::new_project::hub;
+use crate::new_project::pick_row::item;
 use crate::theme::Palette;
 
 /// Docker Hub is asked this long after the last key press.
@@ -201,7 +202,7 @@ impl ListDelegate for ImagePicker {
     ) -> Option<ListItem> {
         let palette = Palette::of(cx);
         let id = ("image-pick", ix.section * 1000 + ix.row);
-        let item = ListItem::new(id);
+        let item = item(id);
         let row = |title: SharedString, line: SharedString, help: String| {
             two_lines(ix, title, line, &palette).help(help)
         };
@@ -227,11 +228,10 @@ impl ListDelegate for ImagePicker {
                 )),
                 _ => item.disabled(true).child(
                     div()
-                        .h(px(36.))
+                        .py(px(2.))
                         .flex()
                         .flex_col()
-                        .justify_center()
-                        .gap(px(6.))
+                        .gap(px(5.))
                         .child(Skeleton::new().h(px(12.)).w(px(160.)))
                         .child(Skeleton::new().secondary().h(px(10.)).w(px(260.))),
                 ),

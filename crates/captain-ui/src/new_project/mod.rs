@@ -13,6 +13,7 @@ mod new_sheet;
 mod open_folder;
 mod options;
 mod paste;
+mod pick_row;
 mod remove_dialog;
 mod run_image;
 mod sheet_view;

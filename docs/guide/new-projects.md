@@ -4,7 +4,7 @@ The **New** sheet makes a Compose project in four ways. Open it with the **+** b
 
 Each way ends on the project's **Files** tab with `compose.yaml` open. Nothing starts there. Click **Save and apply** to see what `docker compose up` will create, then click **Apply** to start it. See [Editing a project's files](editing-projects.md).
 
-In the sheet, Up and Down move between the four cards, Return opens one, and ⌘1 to ⌘4 open a card directly. In a form, Tab and Shift Tab move between the fields, ⌘Return runs the main button, and Escape closes the sheet.
+In the sheet, Up and Down move between the four cards, Return opens one, and ⌘1 to ⌘4 open a card directly. In a form, Tab and Shift Tab move between the fields, ⌘Return runs the main button, and Escape goes back one step, like Back. On the four cards, Escape closes the sheet.
 
 ## Where projects go
 

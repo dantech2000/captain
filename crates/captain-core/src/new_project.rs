@@ -6,6 +6,7 @@ mod compose_text;
 mod docker_hub;
 mod docker_run;
 mod free_port;
+mod hub_rank;
 mod project_dir;
 mod project_name;
 mod secret;
@@ -18,6 +19,7 @@ pub use docker_hub::{
 };
 pub use docker_run::{RunConversion, convert_docker_run};
 pub use free_port::{host_port_free, suggest_port};
+pub use hub_rank::rank_search;
 pub use project_dir::{NewFile, NewProjectError, folder_is_free, write_project};
 pub use project_name::{
     image_project_name, project_name_error, to_project_name, unique_project_name,

@@ -108,7 +108,7 @@ impl TemplateStep {
     }
 
     /// From the form back to the list; from the list back to the four cards.
-    pub(super) fn back(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+    pub(crate) fn back(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         if self.form.take().is_some() {
             self.show_compose = false;
             self.error = None;

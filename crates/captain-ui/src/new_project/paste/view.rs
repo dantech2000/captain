@@ -28,7 +28,12 @@ impl Render for PasteStep {
                     "docker run command",
                     div()
                         .id("paste-command")
-                        .child(Textarea::new(&self.command))
+                        .font_family(palette.mono())
+                        .child(
+                            Textarea::new(&self.command)
+                                .font_family(palette.mono())
+                                .text_size(px(12.)),
+                        )
                         .help("Paste a docker run command. Lines that end in \\ are joined."),
                     None,
                     &palette,
@@ -114,6 +119,7 @@ impl PasteStep {
             div()
                 .flex()
                 .flex_col()
+                .flex_shrink_0()
                 .gap(px(4.))
                 .text_size(px(12.))
                 .child(div().text_color(palette.text2).child(summary))

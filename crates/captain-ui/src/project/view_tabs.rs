@@ -1,10 +1,10 @@
 use captain_core::model::count_label;
-use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::*;
 
 use super::ProjectView;
 use crate::help::HelpExt;
 use crate::theme::Palette;
+use crate::widgets::{Segment, segmented};
 
 /// What the Project page shows under its header.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
@@ -27,7 +27,6 @@ pub fn render(
     view: &WeakEntity<ProjectView>,
     palette: &Palette,
 ) -> Div {
-    let shadow = if palette.dark { 0.4 } else { 0.12 };
     let segments = [
         (
             ProjectTab::Overview,
@@ -45,50 +44,24 @@ pub fn render(
             "Edit the Compose files and Dockerfiles of this project, with checks as you type.",
         ),
     ];
-    let control = div()
-        .flex()
-        .p(px(2.))
-        .rounded(px(9.))
-        .bg(palette.field)
-        .children(
-            segments
-                .into_iter()
-                .filter(|(choice, _, _)| files || *choice != ProjectTab::Files)
-                .map(|(choice, label, help)| {
-                    let selected = choice == tab;
-                    let view = view.clone();
-                    div()
-                        .id(SharedString::from(format!("project-tab-{label}")))
-                        .h(px(26.))
-                        .px(px(12.))
-                        .flex()
-                        .items_center()
-                        .rounded(px(7.))
-                        .cursor_pointer()
-                        .text_size(px(12.))
-                        .font_weight(FontWeight::MEDIUM)
-                        .text_color(if selected {
-                            palette.text
-                        } else {
-                            palette.text2
-                        })
-                        .when(selected, |this| {
-                            this.bg(palette.segment).shadow(vec![BoxShadow {
-                                color: hsla(0., 0., 0., shadow),
-                                offset: point(px(0.), px(1.)),
-                                blur_radius: px(2.),
-                                spread_radius: px(0.),
-                                inset: false,
-                            }])
-                        })
-                        .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
-                        .on_click(move |_, _, cx| {
-                            view.update(cx, |view, cx| view.show_tab(choice, cx)).ok();
-                        })
-                        .child(label)
-                        .help(help)
+    let segments = segments
+        .into_iter()
+        .filter(|(choice, _, _)| files || *choice != ProjectTab::Files)
+        .map(|(choice, label, help)| {
+            let view = view.clone();
+            Segment {
+                label: label.into(),
+                selected: choice == tab,
+                help: help.into(),
+                on_click: Box::new(move |_, cx| {
+                    view.update(cx, |view, cx| view.show_tab(choice, cx)).ok();
                 }),
-        );
+            }
+        })
+        .collect();
+    // The header moves the window; a click on a segment must not.
+    let control = segmented("project-tab", segments, palette)
+        .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation());
     let pill = (staged > 0).then(|| {
         let view = view.clone();
         let text = count_label(staged, "staged change");

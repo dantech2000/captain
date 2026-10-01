@@ -1,3 +1,4 @@
+use gpui_kit::base::actions::Cancel;
 use gpui_kit::*;
 
 /// The sheet's key context. Its bindings apply only while the sheet has focus.
@@ -16,8 +17,9 @@ gpui_kit::actions!(
 gpui_kit::actions!(captain, [NewProject]);
 
 /// Binds ⌘N (Ctrl N elsewhere) for the New sheet, and the sheet's keys: up and
-/// down move the highlight, enter opens it, and ⌘1 to ⌘4 open a card. In a form,
-/// Tab and Shift Tab move between fields and ⌘Return submits.
+/// down move the highlight, enter opens it, ⌘1 to ⌘4 open a card, and escape goes
+/// back one step (on the cards, the dialog closes). In a form, Tab and Shift Tab
+/// move between fields and ⌘Return submits.
 pub fn init(cx: &mut App) {
     let context = Some(CONTEXT);
     let form = Some(FORM_CONTEXT);
@@ -25,6 +27,8 @@ pub fn init(cx: &mut App) {
         KeyBinding::new("up", SelectPrev, context),
         KeyBinding::new("down", SelectNext, context),
         KeyBinding::new("enter", Confirm, context),
+        // A text field handles escape first; when it passes it up, this goes back.
+        KeyBinding::new("escape", Cancel, context),
         KeyBinding::new("tab", FocusNext, form),
         KeyBinding::new("shift-tab", FocusPrev, form),
     ];

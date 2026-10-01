@@ -1,4 +1,5 @@
 use captain_core::model::ImageDetail;
+use gpui_kit::base::actions::Cancel;
 use gpui_kit::component::WindowExt;
 use gpui_kit::*;
 
@@ -89,6 +90,8 @@ fn show(sheet: Entity<NewSheet>, window: &mut Window, cx: &mut App) {
             .w(px(580.))
             .margin_top(px(80.))
             .overlay_closable(false)
+            // Return belongs to the sheet's cards and forms; it never closes it.
+            .on_ok(|_, _, _| false)
             .child(sheet.clone())
     });
     // The dialog takes focus as it opens; the sheet takes it back for its keys.
@@ -149,6 +152,25 @@ impl NewSheet {
         cx.notify();
     }
 
+    /// The step's view and its Back, or `None` on the cards.
+    fn step_view(&self) -> Option<(AnyElement, StepBack)> {
+        Some(match &self.step {
+            Step::Choose => return None,
+            Step::Template(step) => (
+                step.clone().into_any_element(),
+                back_of(step, TemplateStep::back),
+            ),
+            Step::RunImage(step) => (
+                step.clone().into_any_element(),
+                back_of(step, RunImage::back),
+            ),
+            Step::Paste(step) => (
+                step.clone().into_any_element(),
+                back_of(step, PasteStep::back),
+            ),
+        })
+    }
+
     fn step(&mut self, by: isize, cx: &mut Context<Self>) {
         let count = NewOption::ALL.len() as isize;
         self.highlight = (self.highlight as isize + by).rem_euclid(count) as usize;
@@ -156,16 +178,30 @@ impl NewSheet {
     }
 }
 
+/// Goes back one step from a step's form or list.
+type StepBack = Box<dyn Fn(&mut Window, &mut App)>;
+
+/// Runs `back` on `step` outside the sheet's update, since the first step's Back
+/// updates the sheet.
+fn back_of<T: 'static>(
+    step: &Entity<T>,
+    back: fn(&mut T, &mut Window, &mut Context<T>),
+) -> StepBack {
+    let step = step.clone();
+    Box::new(move |window, cx| step.update(cx, |step, cx| back(step, window, cx)))
+}
+
 impl Render for NewSheet {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let step = match &self.step {
-            Step::Choose => None,
-            Step::Template(step) => Some(step.clone().into_any_element()),
-            Step::RunImage(step) => Some(step.clone().into_any_element()),
-            Step::Paste(step) => Some(step.clone().into_any_element()),
-        };
-        if let Some(step) = step {
-            return div().child(step);
+        if let Some((step, back)) = self.step_view() {
+            // The sheet's focus stays inside the step: a click outside a field
+            // focuses the sheet, so escape still goes back after the focused
+            // field is gone, as when the compose.yaml preview replaces the form.
+            return div()
+                .track_focus(&self.focus)
+                .key_context(CONTEXT)
+                .on_action(move |_: &Cancel, window, cx| back(window, cx))
+                .child(step);
         }
         let pick = |index: usize| {
             move |this: &mut Self, window: &mut Window, cx: &mut Context<Self>| {
