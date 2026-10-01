@@ -60,7 +60,7 @@ The window has an icon rail at the far left, the sidebar next to it, the page on
 
 From top to bottom:
 
-- **The app icon.** A dot on the icon shows the engine state, in the same color as the dot in the sidebar header. Point at the icon to read the state in the status bar. Click it to open Diagnostics, where you start, stop, or restart the engine.
+- **The app icon.** Click it to open Diagnostics, where you start, stop, or restart the engine. The engine's state shows in the status bar at the bottom of the window.
 - **The sidebar button.** It hides the sidebar, or shows it again. The shortcut is ⌘B.
 - **The page buttons.** Containers, Images, Volumes, Networks, Snapshots, Storage, Extensions, and Port Forwarding (while Kubernetes runs).
 - **Diagnostics and Settings**, at the bottom. Diagnostics shows a red count while a check fails.
@@ -69,7 +69,6 @@ From top to bottom:
 
 From top to bottom:
 
-- **The engine header.** The app name, the engine name, and its state. Click it to open Diagnostics.
 - **The search button.** It opens the command palette. The shortcut is ⌘K.
 - **Projects.** One entry per Compose project, with "Compose · N services", how many containers run, and the published ports. **All containers**, on the same line, shows every container in one list.
 - **Kubernetes namespaces.** One entry per namespace, while **Show Kubernetes containers** is on. See [Kubernetes](kubernetes.md).

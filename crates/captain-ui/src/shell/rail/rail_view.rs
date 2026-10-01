@@ -59,7 +59,7 @@ pub fn render(
         .border_color(palette.sep)
         // The window buttons sit here, over the rail and the sidebar.
         .child(drag_region("rail-drag").w_full().h(px(44.)).flex_shrink_0())
-        .child(app_mark::render(handle, &engine, palette))
+        .child(app_mark::render(handle, &engine))
         .child(toggle_button(handle, workspace.sidebar_hidden(), palette))
         .child(
             div()

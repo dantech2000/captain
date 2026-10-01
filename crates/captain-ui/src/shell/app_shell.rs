@@ -266,12 +266,7 @@ impl Render for AppShell {
                         &palette,
                     ))
                     .when(!workspace.sidebar_hidden(), |row| {
-                        row.child(sidebar::render(
-                            &self.workspace,
-                            workspace,
-                            host.as_ref(),
-                            &palette,
-                        ))
+                        row.child(sidebar::render(&self.workspace, workspace, &palette))
                     })
                     // The traffic lights are wider than the rail, so a page beside the
                     // rail alone keeps its title clear of them.

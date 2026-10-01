@@ -5,8 +5,8 @@ use crate::shell::status_bar::engine_name;
 use crate::theme::Palette;
 use crate::workspace::{Connection, Page, Workspace};
 
-/// Which engine the window talks to and its state, as the sidebar header, the dot
-/// on the rail's app icon, and the Diagnostics page show them.
+/// Which engine the window talks to and its state, for the Diagnostics Engine card
+/// and the help sentence of the rail's app icon.
 pub struct EngineState {
     /// For example `Captain Engine`.
     pub engine: &'static str,
@@ -44,13 +44,8 @@ impl EngineState {
         }
     }
 
-    /// For example `Captain Engine · Running`.
-    pub fn line(&self) -> String {
-        format!("{} · {}", self.engine, self.state)
-    }
-
-    /// The status bar sentence for the engine header and the rail's app icon, which
-    /// open Diagnostics on a click.
+    /// The status bar sentence for the rail's app icon, which opens Diagnostics on a
+    /// click.
     pub fn help(&self) -> String {
         let click = if self.captain {
             "Click to start, stop, or restart it on the Diagnostics page."

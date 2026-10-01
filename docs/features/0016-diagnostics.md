@@ -60,5 +60,5 @@ A user can see what is wrong with Captain, the engine, or this computer, and fix
 5. Click **Show logs**. Finder opens `~/Library/Logs/Captain`, which has `captain.log`.
 6. Turn on **Debug logging**. `captain.log` gets `DEBUG` lines at once. After a restart of Captain the switch is still on.
 7. Click **Show engine files**. Finder opens `~/.captain/lima/captain`.
-8. Click the engine segment in the status bar, the rail's app icon, and the sidebar's engine header. Each opens Diagnostics.
+8. Click the engine segment in the status bar and the rail's app icon. Each opens Diagnostics.
 9. On an Apple silicon Mac without Rosetta for Linux, the Rosetta check warns, and **Copy command** copies the `softwareupdate` command.
