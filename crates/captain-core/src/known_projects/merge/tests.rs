@@ -15,7 +15,13 @@ fn live(name: &str, dir: &str) -> ComposeProject {
     ComposeProject {
         name: name.into(),
         working_dir: Some(dir.into()),
-        config_files: vec![format!("{dir}/compose.yaml")],
+        // Joined as the code joins it, so the separator matches on Windows too.
+        config_files: vec![
+            PathBuf::from(dir)
+                .join("compose.yaml")
+                .display()
+                .to_string(),
+        ],
         services: Vec::new(),
     }
 }
