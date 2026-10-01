@@ -6,6 +6,7 @@ mod sidebar;
 mod status_bar;
 
 pub use app_shell::AppShell;
+pub(crate) use engine_state::EngineState;
 pub use rail::ToggleSidebar;
 pub(crate) use rail::sidebar_help;
 pub(crate) use sidebar::page_help;

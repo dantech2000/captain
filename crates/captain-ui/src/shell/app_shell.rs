@@ -4,7 +4,7 @@ use gpui_kit::*;
 
 use super::details_rail::{self, Details};
 use super::rail::{self, ToggleSidebar};
-use super::sidebar::{self, DiskSummary};
+use super::sidebar;
 use super::status_bar::StatusBar;
 use crate::containers::ContainersView;
 use crate::diagnostics::{DiagnosticsView, diagnostics_model, failures};
@@ -21,7 +21,7 @@ use crate::port_forwarding::PortForwardingView;
 use crate::project::{ProjectNotice, ProjectView};
 use crate::settings::{self, SettingsView};
 use crate::snapshots::SnapshotsView;
-use crate::storage::{StorageView, storage_model};
+use crate::storage::StorageView;
 use crate::theme::Palette;
 use crate::volumes::VolumesView;
 use crate::workspace::{Connection, Connector, Page, Workspace, WorkspaceEvent};
@@ -96,9 +96,6 @@ impl AppShell {
         // The sidebar badge counts failed checks.
         subscriptions
             .extend(diagnostics_model(cx).map(|model| cx.observe(&model, |_, _, cx| cx.notify())));
-        // The sidebar's status line shows the disk use.
-        subscriptions
-            .extend(storage_model(cx).map(|model| cx.observe(&model, |_, _, cx| cx.notify())));
         let focus_handle = cx.focus_handle();
         focus_handle.focus(window, cx);
         // Keys like ⌘K reach the shell only through focus, so when the focused
@@ -118,7 +115,7 @@ impl AppShell {
             snapshots: cx.new(|cx| SnapshotsView::new(workspace.clone(), window, cx)),
             storage: cx.new(|cx| StorageView::new(workspace.clone(), window, cx)),
             forwarding: cx.new(|cx| PortForwardingView::new(workspace.clone(), window, cx)),
-            diagnostics: cx.new(DiagnosticsView::new),
+            diagnostics: cx.new(|cx| DiagnosticsView::new(workspace.clone(), cx)),
             settings: cx.new(|cx| SettingsView::new(workspace.clone(), cx)),
             status_bar: cx.new(|cx| StatusBar::new(workspace.clone(), cx)),
             workspace,
@@ -214,7 +211,6 @@ impl Render for AppShell {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let palette = Palette::of(cx);
         let host = host_summary(cx);
-        let disk = DiskSummary::read(cx);
         // The page shows only while the cluster runs. See feature 0024.
         let forwarding =
             kubernetes_model(cx).is_some_and(|model| model.read(cx).status().is_running());
@@ -274,7 +270,6 @@ impl Render for AppShell {
                             &self.workspace,
                             workspace,
                             host.as_ref(),
-                            disk.as_ref(),
                             &palette,
                         ))
                     })

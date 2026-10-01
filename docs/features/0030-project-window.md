@@ -11,15 +11,15 @@ The main window opens on what the user works on: a project. The sidebar lists Co
 ## In scope
 
 - **Sidebar.**
-  - The engine header on top: "Captain", then "Captain Engine" (or the engine's name) and its state with a state dot. The app icon moved to the icon rail.
+  - The engine header on top: "Captain", then "Captain Engine" (or the engine's name) and its state with a state dot. The app icon moved to the icon rail. A click opens Diagnostics.
   - The search button.
   - "Projects", with an "All containers" link on the same line. One entry per Compose project: a stack glyph in the project's label color, the name, "Compose · N services", a running summary with a state dot, and the published ports as chips.
   - One entry per Kubernetes namespace that has containers, only while "Show Kubernetes containers" is on: a cluster glyph and "Kubernetes · N pods".
   - "Loose containers": the containers in no project and no namespace. The Containers page uses the same name for their card.
-  - The status line at the bottom, 34 px tall under a hairline, with no card around it: the engine's state dot (the colors of the engine header), then CPU, memory, and disk in use as short numbers in tabular figures, separated by a muted "·", for example `● 0% · 55 MB · 1.6 GB`. While the engine is not connected, the state ("Stopped", "Not set up", "Connecting") takes the place of CPU and memory. Each part has its own help sentence with the full figure, such as "CPU: 0.4% of 5 CPUs." or "Memory: 55.4 MB of 6.7 GB.". The disk part is described in feature 0031. With Captain Engine a Lucide `Power` button sits on the right: Stop while the engine runs, Start or Set up while it does not, and a spinner while it starts or stops. Its height never changes, so the entries above it do not move. The status bar and the Containers page tiles show trends, so the line has no gauges.
+  - Nothing under the projects list. CPU, memory, and disk show only in the status bar (feature 0029), and the engine controls are on the Diagnostics page (feature 0016).
 - **Icon rail.** A 56 px column at the far left of the window, with its own `Rail` token (one step darker than the sidebar, see [0027](0027-v3-interface.md)) and a hairline border.
   - A 44 px drag area on top, so the window buttons of the transparent title bar stay clear and the window moves from there.
-  - The app icon, with a dot in the engine's state color. Its help is the engine header's sentence.
+  - The app icon, with a dot in the engine's state color. Its help is the engine header's sentence, and a click opens Diagnostics, as the header does.
   - A button that hides the sidebar (Lucide `PanelLeftClose`) or shows it again (`PanelLeftOpen`). ⌘B (Ctrl-B on Linux and Windows) and the palette's "Toggle sidebar" row do the same. While the sidebar is hidden, only the rail shows and the page gets the width. `Workspace::sidebar_hidden` keeps the choice while Captain runs, as `details_hidden` does for the details panel; it is not in the settings file. The terminal grid frees Ctrl-B for the shell, as it does Ctrl-K.
   - The page buttons, in the order of the old icon row with Containers first: Containers, Images, Volumes, Networks, Snapshots, Storage, Extensions, and Port Forwarding (while the cluster runs). The selected page has the selection background and the action color.
   - Diagnostics (with the failure badge) and Settings pinned at the bottom.
@@ -80,5 +80,5 @@ The main window opens on what the user works on: a project. The sidebar lists Co
 5. Run `docker update --memory 64m --memory-swap 128m` on a service, then make it allocate more memory. Check the red divider in the log and the "Exit 137 · out of memory" note. Click "Raise memory to 512 MB"; check `docker inspect` shows the new limit.
 6. Restart the project. Check that the log keeps the old lines and adds new ones below a divider.
 7. Turn Kubernetes on and show its containers. Check the namespace entry and the `pod/container` names. Hide them; check that the Memory tile and the menu bar count drop.
-8. Stop and start the engine with the power button. Check that the sidebar entries and the status line do not move, that a spinner shows while the engine starts and stops, and that "Captain Engine" shows only in the header.
+8. Click the engine header. Check that Diagnostics opens. Stop and start the engine there. Check that the sidebar entries do not move, and that "Captain Engine" shows only in the header.
 9. Check the icon rail: the window buttons sit clear above the app icon, and a drag there moves the window. Point at each rail button; check its sentence in the status bar. Press ⌘B; check that only the rail shows and the page takes the width. Press ⌘B again, then use the rail button and the palette's "Toggle sidebar" row. Do this at the minimum window size, in all three themes, light and dark.

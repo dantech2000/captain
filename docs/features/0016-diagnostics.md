@@ -11,7 +11,8 @@ A user can see what is wrong with Captain, the engine, or this computer, and fix
 ## In scope
 
 - A **Diagnostics** page. Its sidebar entry sits above Settings, below the resource pages. The entry shows a red count badge while a check fails.
-- Checks. Each has a state (**Passed**, **Warning**, **Failed**, or **Not applicable**), a one-line detail, and a fix button where one exists:
+- An **Engine** card at the top: a state dot and the engine with its state, for example "Captain Engine · Running", "Stopped", "Not set up", or "Starting…". With Captain Engine it has **Start** (stopped or failed), **Set up** (not set up), or **Stop** and **Restart** (running). They call `HostModel::start`, `stop`, and `restart`, as the Settings engine menu does. While the engine starts or stops, a spinner shows and the buttons are off. With another engine, the card shows its name and socket and no engine buttons; **Use Captain Engine** calls `HostModel::use_captain`, as the Settings engine menu does. The app icon in the rail, the sidebar's engine header, and the status bar's engine segment open this page on a click.
+- A **Checks** card under it. Each check has a state (**Passed**, **Warning**, **Failed**, or **Not applicable**), a one-line detail, and a fix button where one exists:
 
   | Check | Passed | Warning or failed | Fix |
   |-------|--------|-------------------|-----|
@@ -54,9 +55,10 @@ A user can see what is wrong with Captain, the engine, or this computer, and fix
 
 1. `cargo test -p captain-core diagnostics` passes. It covers each check's states and fixes.
 2. Open Captain with Captain Engine running. Diagnostics lists seven checks; the engine check shows the Docker and API versions.
-3. Stop Captain Engine from the sidebar. The engine check fails with **Start Captain Engine**, and the sidebar badge shows 1. Click the fix; the engine starts and the badge goes away.
+3. Click **Stop** in the Engine card. A spinner shows, then the card says "Stopped" with **Start**. The engine check fails with **Start Captain Engine**, and the sidebar badge shows 1. Click the fix; the engine starts and the badge goes away.
 4. Choose **Other engine** in Settings. The Lima, Lima log, and Rosetta checks show **Not applicable**.
 5. Click **Show logs**. Finder opens `~/Library/Logs/Captain`, which has `captain.log`.
 6. Turn on **Debug logging**. `captain.log` gets `DEBUG` lines at once. After a restart of Captain the switch is still on.
 7. Click **Show engine files**. Finder opens `~/.captain/lima/captain`.
-8. On an Apple silicon Mac without Rosetta for Linux, the Rosetta check warns, and **Copy command** copies the `softwareupdate` command.
+8. Click the engine segment in the status bar, the rail's app icon, and the sidebar's engine header. Each opens Diagnostics.
+9. On an Apple silicon Mac without Rosetta for Linux, the Rosetta check warns, and **Copy command** copies the `softwareupdate` command.

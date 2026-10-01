@@ -60,7 +60,7 @@ The window has an icon rail at the far left, the sidebar next to it, the page on
 
 From top to bottom:
 
-- **The app icon.** A dot on the icon shows the engine state, in the same color as the dot in the sidebar header. Point at the icon to read the state in the status bar.
+- **The app icon.** A dot on the icon shows the engine state, in the same color as the dot in the sidebar header. Point at the icon to read the state in the status bar. Click it to open Diagnostics, where you start, stop, or restart the engine.
 - **The sidebar button.** It hides the sidebar, or shows it again. The shortcut is ⌘B.
 - **The page buttons.** Containers, Images, Volumes, Networks, Snapshots, Storage, Extensions, and Port Forwarding (while Kubernetes runs).
 - **Diagnostics and Settings**, at the bottom. Diagnostics shows a red count while a check fails.
@@ -69,12 +69,11 @@ From top to bottom:
 
 From top to bottom:
 
-- **The engine header.** The app name, the engine name, and its state.
+- **The engine header.** The app name, the engine name, and its state. Click it to open Diagnostics.
 - **The search button.** It opens the command palette. The shortcut is ⌘K.
 - **Projects.** One entry per Compose project, with "Compose · N services", how many containers run, and the published ports. **All containers**, on the same line, shows every container in one list.
 - **Kubernetes namespaces.** One entry per namespace, while **Show Kubernetes containers** is on. See [Kubernetes](kubernetes.md).
 - **Loose containers.** The containers that are in no project.
-- **The status line.** One line at the bottom: a dot in the engine's state color, then CPU, memory, and disk in use, for example `● 0% · 55 MB · 1.6 GB`. While the engine is not connected, the line shows its state, such as **Stopped**. Point at a number to see the full figure in the status bar. The disk number turns to the warning color when you can free space; click it to open [Storage](storage.md). With Captain Engine, the power button on the right stops, starts, or sets up the engine. A spinner shows while the engine starts or stops.
 
 ### The project page
 
@@ -98,13 +97,13 @@ When the mouse is not over a control, the status bar shows the latest container 
 
 The right side of the status bar shows:
 
-- the engine and its state,
-- the CPU and memory that all containers use,
-- the engine disk use,
-- Kubernetes on, off, starting, or failed (Captain Engine only),
-- the docker context that your terminal uses.
+- The engine and its state. Click it to open Diagnostics, where you start, stop, or restart the engine.
+- The CPU and memory that all containers use.
+- The engine disk use. The number turns to the warning color when you can free space. Click it to open [Storage](storage.md).
+- Kubernetes: on, off, starting, or failed (Captain Engine only).
+- The docker context that your terminal uses.
 
-Hover a segment to read what it means.
+Hover a segment to read the full figures, for example "Memory: 55.4 MB of 6.7 GB, used by all containers."
 
 ### The command palette
 

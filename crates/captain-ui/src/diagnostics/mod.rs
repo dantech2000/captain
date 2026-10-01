@@ -5,6 +5,7 @@
 mod check_row;
 mod diagnostics_model;
 mod diagnostics_view;
+mod engine_card;
 mod engine_probe;
 mod fix;
 mod troubleshooting;

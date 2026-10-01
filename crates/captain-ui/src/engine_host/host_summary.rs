@@ -4,7 +4,7 @@ use gpui_kit::*;
 use super::{HostModel, host_model};
 use crate::theme::Palette;
 
-/// What the sidebar and the tray show about Captain Engine.
+/// What the window and the tray show about Captain Engine.
 #[derive(Clone)]
 pub struct HostSummary {
     pub status: HostStatus,

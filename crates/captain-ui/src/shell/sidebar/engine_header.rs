@@ -2,19 +2,20 @@ use gpui_kit::*;
 
 use crate::engine_host::HostSummary;
 use crate::help::HelpExt;
-use crate::shell::engine_state::EngineState;
+use crate::shell::engine_state::{EngineState, open_diagnostics};
 use crate::theme::Palette;
 use crate::workspace::Workspace;
 
 /// The app name and one line of engine state: for example `Captain Engine ·
 /// Running`. The app icon stands in the rail to the left. Its height never changes.
+/// A click opens Diagnostics.
 pub fn render(
+    handle: &Entity<Workspace>,
     workspace: &Workspace,
     host: Option<&HostSummary>,
     palette: &Palette,
 ) -> Stateful<Div> {
-    // The numbers live in the status line and the status bar; here only which
-    // engine it is and its state.
+    // The numbers live in the status bar; here only which engine it is and its state.
     let engine = EngineState::of(workspace, host, palette);
     div()
         .id("sidebar-engine-header")
@@ -24,6 +25,8 @@ pub fn render(
         .gap(px(2.))
         .px(px(4.))
         .pb(px(12.))
+        .cursor_pointer()
+        .on_click(open_diagnostics(handle))
         .child(
             div()
                 .text_size(px(15.))

@@ -1,6 +1,7 @@
 use captain_core::model::{EngineEvent, EventKind};
 use gpui_kit::assets::IconName;
 use gpui_kit::component::Icon;
+use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::*;
 
 use super::latest_event::LatestEvent;
@@ -126,7 +127,7 @@ impl StatusBar {
 }
 
 /// The Disk segment, once the storage model has read the disk use.
-fn disk_segment(cx: &App) -> Option<Segment> {
+fn disk_segment(palette: &Palette, cx: &App) -> Option<Segment> {
     let model = storage_model(cx)?;
     let model = model.read(cx);
     let breakdown = model.breakdown(cx)?;
@@ -134,11 +135,14 @@ fn disk_segment(cx: &App) -> Option<Segment> {
         breakdown.used,
         breakdown.capacity,
         model.default_bytes(),
+        palette,
     ))
 }
 
-fn segment(segment: Segment, palette: &Palette) -> Stateful<Div> {
+/// One segment; with a page, a click opens it.
+fn segment(segment: Segment, workspace: &Entity<Workspace>, palette: &Palette) -> Stateful<Div> {
     let hover = palette.nav_selected;
+    let workspace = workspace.clone();
     div()
         .id(segment.id)
         .h(px(22.))
@@ -150,6 +154,12 @@ fn segment(segment: Segment, palette: &Palette) -> Stateful<Div> {
         .rounded(px(6.))
         .whitespace_nowrap()
         .hover(move |style| style.bg(hover))
+        .when_some(segment.color, |this, color| this.text_color(color))
+        .when_some(segment.page, |this, page| {
+            this.cursor_pointer().on_click(move |_, _, cx| {
+                workspace.update(cx, |workspace, cx| workspace.set_page(page, cx))
+            })
+        })
         .children(
             segment
                 .dot
@@ -175,7 +185,7 @@ impl Render for StatusBar {
             self.context.as_deref(),
             &palette,
         );
-        if let Some(segment) = disk_segment(cx) {
+        if let Some(segment) = disk_segment(&palette, cx) {
             let at = right
                 .iter()
                 .position(|s| s.id == "status-memory")
@@ -199,6 +209,10 @@ impl Render for StatusBar {
             .text_size(px(11.5))
             .text_color(palette.text2)
             .child(self.left(hint, &palette))
-            .children(right.into_iter().map(|item| segment(item, &palette)))
+            .children(
+                right
+                    .into_iter()
+                    .map(|item| segment(item, &self.workspace, &palette)),
+            )
     }
 }

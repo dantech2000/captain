@@ -7,7 +7,7 @@ use gpui_kit::*;
 
 use crate::engine_host::HostSummary;
 use crate::theme::Palette;
-use crate::workspace::{Connection, Workspace};
+use crate::workspace::{Connection, Page, Workspace};
 
 /// One item on the right of the status bar, with its own help sentence.
 pub struct Segment {
@@ -15,6 +15,10 @@ pub struct Segment {
     pub label: SharedString,
     pub help: SharedString,
     pub dot: Option<Hsla>,
+    /// The label's color, when it is not the bar's.
+    pub color: Option<Hsla>,
+    /// The page a click opens.
+    pub page: Option<Page>,
 }
 
 /// Engine, CPU, memory, Kubernetes, and context, left to right. CPU and memory show
@@ -30,26 +34,34 @@ pub fn segments(
     if let Connection::Connected(info) = workspace.connection() {
         let stats = workspace.stats();
         let cpu = stats.total_cpu() / f64::from(info.cpus.max(1));
+        let cpus = match info.cpus {
+            1 => "1 CPU".to_string(),
+            n => format!("{n} CPUs"),
+        };
+        let memory = format!(
+            "{} of {}",
+            bytes_label(stats.total_memory()),
+            bytes_label(info.memory_bytes)
+        );
         segments.push(Segment {
             id: "status-cpu",
             label: format!("CPU {}", percent_label(cpu)).into(),
             help: format!(
-                "CPU use of all containers, out of the engine's {} CPUs.",
-                info.cpus
+                "CPU: {} of {cpus}, used by all containers.",
+                percent_label(cpu)
             )
             .into(),
             dot: None,
+            color: None,
+            page: None,
         });
         segments.push(Segment {
             id: "status-memory",
-            label: format!(
-                "Memory {} of {}",
-                bytes_label(stats.total_memory()),
-                bytes_label(info.memory_bytes)
-            )
-            .into(),
-            help: "Memory use of all containers, out of what the engine has.".into(),
+            label: format!("Memory {memory}").into(),
+            help: format!("Memory: {memory}, used by all containers.").into(),
             dot: None,
+            color: None,
+            page: None,
         });
     }
     segments.extend(kubernetes.map(|status| kubernetes_segment(status, palette)));
@@ -58,6 +70,8 @@ pub fn segments(
         label: format!("context {name}").into(),
         help: format!("The docker CLI in your terminals uses the context {name}.").into(),
         dot: None,
+        color: None,
+        page: None,
     }));
     segments
 }
@@ -84,52 +98,77 @@ pub fn agent(entry: &Activity, time: &str, palette: &Palette) -> Segment {
         )
         .into(),
         dot: Some(dot),
+        color: None,
+        page: None,
     }
 }
 
 /// "Disk 18.2 GB of 64 GB", or without the size for an engine Captain does not run.
-/// See feature 0031.
-pub fn disk(used: u64, capacity: Option<u64>, freeable: u64) -> Segment {
-    let label = match capacity {
-        Some(capacity) => format!("Disk {} of {}", bytes_label(used), bytes_label(capacity)),
-        None => format!("Disk {}", bytes_label(used)),
+/// It turns the warning text color when a cleanup can free some, and a click opens
+/// Storage. See feature 0031.
+pub fn disk(used: u64, capacity: Option<u64>, freeable: u64, palette: &Palette) -> Segment {
+    let (label, used) = match capacity {
+        Some(capacity) => {
+            let size = format!("{} of {}", bytes_label(used), bytes_label(capacity));
+            (format!("Disk {size}"), size)
+        }
+        None => (
+            format!("Disk {}", bytes_label(used)),
+            format!("{} used", bytes_label(used)),
+        ),
+    };
+    let (color, help) = if freeable > 0 {
+        (
+            Some(palette.warn_text),
+            format!(
+                "Disk: {used}. {} can be freed. Click to review.",
+                bytes_label(freeable)
+            ),
+        )
+    } else {
+        (None, format!("Disk: {used}. Click to open Storage."))
     };
     Segment {
         id: "status-disk",
         label: label.into(),
-        help: format!(
-            "Engine disk use. {} can be freed on the Storage page.",
-            bytes_label(freeable)
-        )
-        .into(),
+        help: help.into(),
         dot: None,
+        color,
+        page: Some(Page::Storage),
     }
 }
+
+/// The end of the engine segment's sentence: a click opens Diagnostics, whose Engine
+/// card has Start, Stop, and Restart.
+const CONTROLS: &str = "Click to start, stop, or restart it on the Diagnostics page.";
+const DIAGNOSTICS: &str = "Click to open Diagnostics.";
 
 fn engine(connection: &Connection, host: Option<&HostSummary>, palette: &Palette) -> Segment {
     if let Some(host) = host {
         let (dot, help) = match &host.status {
             HostStatus::Running => (
                 palette.green,
-                "Captain Engine is running. Stop it with the power button in the sidebar."
-                    .to_string(),
+                format!("Captain Engine is running. {CONTROLS}"),
             ),
             HostStatus::Starting | HostStatus::Stopping => (
                 palette.orange,
-                format!("Captain Engine is {}.", host.status.label().to_lowercase()),
+                format!(
+                    "Captain Engine is {}. {CONTROLS}",
+                    host.status.label().to_lowercase()
+                ),
             ),
             HostStatus::NotCreated => (
                 palette.gray,
-                "Captain Engine is not set up. Set it up with the power button in the sidebar."
+                "Captain Engine is not set up. Click to set it up on the Diagnostics page."
                     .to_string(),
             ),
-            HostStatus::Failed(why) | HostStatus::NotInstalled(why) => {
-                (palette.red, format!("Captain Engine cannot run: {why}"))
-            }
+            HostStatus::Failed(why) | HostStatus::NotInstalled(why) => (
+                palette.red,
+                format!("Captain Engine cannot run: {why} {DIAGNOSTICS}"),
+            ),
             HostStatus::Stopped => (
                 palette.red,
-                "Captain Engine is stopped. Start it with the power button in the sidebar."
-                    .to_string(),
+                format!("Captain Engine is stopped. {CONTROLS}"),
             ),
         };
         return Segment {
@@ -137,23 +176,25 @@ fn engine(connection: &Connection, host: Option<&HostSummary>, palette: &Palette
             label: "Captain Engine".into(),
             help: help.into(),
             dot: Some(dot),
+            color: None,
+            page: Some(Page::Diagnostics),
         };
     }
     let (label, dot, help) = match connection {
         Connection::Connecting => (
             "Engine".to_string(),
             palette.orange,
-            "Captain is connecting to the engine.".to_string(),
+            format!("Captain is connecting to the engine. {DIAGNOSTICS}"),
         ),
         Connection::Connected(info) => {
             let name = engine_name(&info.endpoint);
-            let help = format!("Captain uses {name} at {}.", info.endpoint);
+            let help = format!("Captain uses {name} at {}. {DIAGNOSTICS}", info.endpoint);
             (name.to_string(), palette.green, help)
         }
         Connection::Failed(error) => (
             "Engine".to_string(),
             palette.red,
-            format!("Captain cannot reach the engine: {error}"),
+            format!("Captain cannot reach the engine: {error} {DIAGNOSTICS}"),
         ),
     };
     Segment {
@@ -161,6 +202,8 @@ fn engine(connection: &Connection, host: Option<&HostSummary>, palette: &Palette
         label: label.into(),
         help: help.into(),
         dot: Some(dot),
+        color: None,
+        page: Some(Page::Diagnostics),
     }
 }
 
@@ -192,6 +235,8 @@ fn kubernetes_segment(status: &KubernetesStatus, palette: &Palette) -> Segment {
         label: label.into(),
         help: help.into(),
         dot: Some(dot),
+        color: None,
+        page: None,
     }
 }
 

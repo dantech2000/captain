@@ -3,16 +3,18 @@ use gpui_kit::*;
 use crate::engine_host::HostSummary;
 use crate::shell::status_bar::engine_name;
 use crate::theme::Palette;
-use crate::workspace::{Connection, Workspace};
+use crate::workspace::{Connection, Page, Workspace};
 
-/// Which engine the window talks to and its state, as the sidebar header and the
-/// dot on the rail's app icon show them.
+/// Which engine the window talks to and its state, as the sidebar header, the dot
+/// on the rail's app icon, and the Diagnostics page show them.
 pub struct EngineState {
     /// For example `Captain Engine`.
     pub engine: &'static str,
     /// For example `Running`.
     pub state: &'static str,
     pub color: Hsla,
+    /// True for Captain Engine, which Captain can start and stop.
+    pub captain: bool,
 }
 
 impl EngineState {
@@ -38,6 +40,7 @@ impl EngineState {
             engine,
             state,
             color,
+            captain: host.is_some(),
         }
     }
 
@@ -46,12 +49,27 @@ impl EngineState {
         format!("{} · {}", self.engine, self.state)
     }
 
-    /// The status bar sentence for the engine header and the rail's app icon.
+    /// The status bar sentence for the engine header and the rail's app icon, which
+    /// open Diagnostics on a click.
     pub fn help(&self) -> String {
-        format!(
-            "{}: {}. The line at the bottom of the sidebar shows its CPU, memory, and disk.",
-            self.engine,
-            self.state.to_lowercase()
-        )
+        let click = if self.captain {
+            "Click to start, stop, or restart it on the Diagnostics page."
+        } else {
+            "Click to open Diagnostics."
+        };
+        format!("{}: {}. {click}", self.engine, self.state.to_lowercase())
+    }
+}
+
+/// A click handler that opens the Diagnostics page, where the Engine card has the
+/// engine's controls. See feature 0016.
+pub fn open_diagnostics(
+    handle: &Entity<Workspace>,
+) -> impl Fn(&ClickEvent, &mut Window, &mut App) + 'static {
+    let handle = handle.clone();
+    move |_, _, cx| {
+        handle.update(cx, |workspace, cx| {
+            workspace.set_page(Page::Diagnostics, cx)
+        })
     }
 }

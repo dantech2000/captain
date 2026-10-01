@@ -9,8 +9,7 @@ use crate::theme::Palette;
 use crate::workspace::{Page, Workspace};
 
 /// "Projects" with an "All containers" link, then one entry per Compose project,
-/// Kubernetes namespace, and the loose containers. It scrolls when it is long, so
-/// the entries below it stay in place.
+/// Kubernetes namespace, and the loose containers. It scrolls when it is long.
 pub fn render(
     handle: &Entity<Workspace>,
     workspace: &Workspace,

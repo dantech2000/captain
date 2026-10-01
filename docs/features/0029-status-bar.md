@@ -16,9 +16,10 @@ Every control says what it does. A 30 px bar at the bottom of the main window sh
   - A container that exits on its own is notable. A `docker stop`, `docker kill`, or `docker restart` is not: Docker sends `kill` before `die` for those, and only `die` for a crash or an out-of-memory kill ([docker events](https://docs.docker.com/reference/cli/docker/system/events/)).
   - A `start` after such an exit counts as a restart. The time is when Captain received the event, because `EngineEvent` has no time.
 - **Right side:** segments, each with its own help sentence.
-  - The engine: a colored dot and "Captain Engine", or the name of the external engine from its socket (Docker Desktop, OrbStack, Colima, Rancher Desktop, Podman, Docker Engine, or Remote engine).
-  - CPU and memory use of all containers, against the engine's CPUs and memory. They show only while connected.
-  - The engine disk use, from feature 0031.
+  - The engine: a colored dot and "Captain Engine", or the name of the external engine from its socket (Docker Desktop, OrbStack, Colima, Rancher Desktop, Podman, Docker Engine, or Remote engine). A click opens Diagnostics, whose Engine card starts, stops, and restarts Captain Engine (feature 0016). The help says so: "Captain Engine is running. Click to start, stop, or restart it on the Diagnostics page."
+  - CPU and memory use of all containers, against the engine's CPUs and memory. They show only while connected. The help sentences give the full figures: "CPU: 0.4% of 5 CPUs, used by all containers." and "Memory: 55.4 MB of 6.7 GB, used by all containers."
+  - The engine disk use, from feature 0031. In the warning text color when a cleanup can free space; a click opens Storage.
+  - CPU, memory, and disk show only here, not in the sidebar.
   - Kubernetes on, off, starting, or failed. It shows only with Captain Engine.
   - The docker CLI's current context. Captain reads it again when the engine endpoint changes.
 - **The hover API** (`crate::help`):
@@ -28,7 +29,7 @@ Every control says what it does. A 30 px bar at the bottom of the main window sh
   - Only the status bar observes `HoverHelp`, so a new hint redraws the bar and nothing else.
   - A mouse down anywhere in the window clears the hint, because a click can remove the control under the mouse, and a removed control never reports its hover-out.
   - An element that disappears without a click (a list refresh, a cleanup) never reports its hover-out either. Each hint's hover listener holds a token (`help/liveness.rs`); GPUI drops the listener after the first frame without the element. After each frame with a hint, `hover_batch` drops the hints whose element has no live token.
-- **Help sentences** on: the sidebar pages, projects, search button, and the parts of the status line; container row buttons and ports; Compose card buttons; the inspector buttons and tabs; the log, file, and image inspector tools; the toolbars of Images, Volumes, Networks, Snapshots, Extensions, Port Forwarding, and Diagnostics; the engine start and set-up screens.
+- **Help sentences** on: the sidebar pages, projects, search button, and engine header; container row buttons and ports; Compose card buttons; the inspector buttons and tabs; the log, file, and image inspector tools; the toolbars of Images, Volumes, Networks, Snapshots, Extensions, Port Forwarding, and Diagnostics; the engine start and set-up screens.
 - `icon_button`, `action_button`, and `primary_button` take a help argument, so each of their buttons has a sentence.
 - **More help sentences** (the polish pass):
   - Each choice of a segmented control: the container, image, volume, and network filters, the scan severities, Appearance, the engine choice, the Run dialog's restart policy, and the Migration Assistant's image choice. `Segment` has a `help` field.

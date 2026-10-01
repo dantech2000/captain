@@ -31,26 +31,5 @@ pub fn percent_label(percent: f64) -> String {
     }
 }
 
-/// A byte count for a tight line: one decimal below 10, else none, for example
-/// `55 MB` or `1.6 GB`.
-pub fn short_bytes_label(bytes: u64) -> String {
-    let mut value = bytes as f64;
-    let mut unit = 0;
-    while value >= 1024.0 && unit < UNITS.len() - 1 {
-        value /= 1024.0;
-        unit += 1;
-    }
-    if unit == 0 || value >= 10.0 {
-        format!("{value:.0} {}", UNITS[unit])
-    } else {
-        format!("{value:.1} {}", UNITS[unit])
-    }
-}
-
-/// A whole percent for a tight line, for example `0%` or `42%`.
-pub fn short_percent_label(percent: f64) -> String {
-    format!("{:.0}%", percent.max(0.0))
-}
-
 #[cfg(test)]
 mod tests;

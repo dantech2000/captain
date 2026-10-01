@@ -1,30 +1,37 @@
 use captain_core::diagnostics::CheckState;
 use gpui_kit::*;
 
-use super::{DiagnosticsModel, check_row, diagnostics_model, troubleshooting};
+use super::{DiagnosticsModel, check_row, diagnostics_model, engine_card, troubleshooting};
+use crate::engine_host::{host_model, summary as host_summary};
 use crate::help::HelpExt;
 use crate::settings;
 use crate::theme::Palette;
 use crate::widgets::{ButtonTone, inline_notice, page_header, settings_card, text_button};
+use crate::workspace::Workspace;
 
-/// The Diagnostics page: the checks with their fixes, "Run again", and the
-/// troubleshooting actions.
+/// The Diagnostics page: the engine with its controls, the checks with their fixes,
+/// "Run again", and the troubleshooting actions.
 pub struct DiagnosticsView {
+    workspace: Entity<Workspace>,
     model: Option<Entity<DiagnosticsModel>>,
     _subscriptions: Vec<Subscription>,
 }
 
 impl DiagnosticsView {
-    pub fn new(cx: &mut Context<Self>) -> Self {
+    pub fn new(workspace: Entity<Workspace>, cx: &mut Context<Self>) -> Self {
         let model = diagnostics_model(cx);
-        let mut subscriptions =
-            vec![cx.observe_global::<settings::SettingsStore>(|_, cx| cx.notify())];
+        let mut subscriptions = vec![
+            cx.observe_global::<settings::SettingsStore>(|_, cx| cx.notify()),
+            cx.observe(&workspace, |_, _, cx| cx.notify()),
+        ];
         subscriptions.extend(
             model
                 .as_ref()
                 .map(|model| cx.observe(model, |_, _, cx| cx.notify())),
         );
+        subscriptions.extend(host_model(cx).map(|host| cx.observe(&host, |_, _, cx| cx.notify())));
         Self {
+            workspace,
             model,
             _subscriptions: subscriptions,
         }
@@ -71,6 +78,12 @@ impl Render for DiagnosticsView {
                 .p(px(24.))
                 .child(inline_notice("Diagnostics are not available.", &palette));
         };
+        let engine = engine_card::render(
+            self.workspace.read(cx),
+            host_summary(cx).as_ref(),
+            host_model(cx),
+            &palette,
+        );
         let model = handle.read(cx);
         let debug_logging = settings::current(cx).debug_logging;
         let engine_dir = model.setup.engine_dir.clone();
@@ -117,6 +130,7 @@ impl Render for DiagnosticsView {
                             .flex()
                             .flex_col()
                             .gap(px(22.))
+                            .child(engine)
                             .child(settings_card("Checks", rows, &palette))
                             .child(troubleshooting::render(model, debug_logging, &palette)),
                     ),

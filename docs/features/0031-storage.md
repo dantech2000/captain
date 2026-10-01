@@ -29,8 +29,7 @@ A user sees what fills the engine's disk, who uses each large item, and frees sp
 - The total updates as the user checks groups. "Review N items, free X" opens a dialog that lists every item by group. "Remove N items and free X" runs the cleanup; a toast reports the bytes freed and any item the engine refused.
 - **Take a snapshot first** (Captain Engine only, on by default). It stops the engine, saves a snapshot named "Before cleanup <date>", starts the engine, waits up to 3 minutes for the workspace to connect again, then removes the items. If the snapshot fails or the engine does not come back, nothing is removed.
 - **Weekly build-cache cleanup.** A checkbox sets `weekly_build_cache_cleanup` (off by default). The app checks each hour; when the engine is connected and 7 days have passed since `build_cache_cleaned_at`, it prunes build cache older than 14 days and saves the time. The run is logged, not shown.
-- **The disk in the sidebar status line** (feature 0030): the disk in use as a short number, such as "18 GB", in the warning text color when a cleanup can free something. A click opens Storage. It shows once the storage model has read the disk use. Its help sentence has the full figure and what can be freed: "Disk: 18.2 GB of 64.0 GB. 6.1 GB can be freed. Click to review."
-- **A Disk segment in the status bar**: "Disk 18.2 GB of 64 GB", with the help sentence "Engine disk use. 6.1 GB can be freed on the Storage page." The data is read on connect, when the Storage page opens, after a cleanup, 3 seconds after the last engine event that adds or removes data (an image pull, tag, or removal; a volume or container created or removed; a prune), and every 10 minutes. The sidebar status line uses the same data.
+- **A Disk segment in the status bar**: "Disk 18.2 GB of 64 GB", in the warning text color when a cleanup can free something. A click opens Storage. It shows once the storage model has read the disk use. Its help sentence has what can be freed: "Disk: 18.2 GB of 64.0 GB. 6.1 GB can be freed. Click to review.", or "Disk: 18.2 GB of 64.0 GB. Click to open Storage." when nothing can be freed. The data is read on connect, when the Storage page opens, after a cleanup, 3 seconds after the last engine event that adds or removes data (an image pull, tag, or removal; a volume or container created or removed; a prune), and every 10 minutes.
 
 ## Out of scope
 
@@ -63,6 +62,6 @@ A user sees what fills the engine's disk, who uses each large item, and frees sp
 6. Check and uncheck groups. Check that the total and the button text change.
 7. Click Review. Check that the dialog lists every item. Cancel.
 8. Turn on the weekly option. Check that `weekly_build_cache_cleanup` is `true` in the settings file.
-9. Hover the Disk segment in the status bar and the disk number in the sidebar status line. Check the sentences. Click the disk number; check that Storage opens.
+9. Hover the Disk segment in the status bar. Check the sentence and the warning color. Click it; check that Storage opens.
 10. Press ⌘K, type `disk`, and press Return. Check that Storage opens.
 11. Switch to another engine. Check that the header shows only the bytes in use and that the snapshot option is gone.

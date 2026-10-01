@@ -6,7 +6,17 @@ Start with the Diagnostics page. Click the Diagnostics button at the bottom of t
 
 ## The Diagnostics page
 
-Each check has a state:
+The **Engine** card at the top shows the engine and its state, for example "Captain Engine · Running". With Captain Engine it has the engine's controls:
+
+- **Start**, while the engine is stopped or failed.
+- **Set up**, while the engine is not set up. Captain downloads and creates its VM.
+- **Stop** and **Restart**, while the engine runs. Running containers stop with it.
+
+A spinner shows while the engine starts or stops. With another engine, the card shows its name and socket, and **Use Captain Engine** switches to Captain Engine. Captain does not start or stop another engine.
+
+To open Diagnostics, you can also click the app icon in the icon rail, the engine header in the sidebar, or the engine segment in the status bar.
+
+The **Checks** card is under the Engine card. Each check has a state:
 
 - **Passed**: nothing to do.
 - **Warning**: something works less well, or may fail later.
