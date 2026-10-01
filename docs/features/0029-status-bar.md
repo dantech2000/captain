@@ -37,7 +37,7 @@ Every control says what it does. A 30 px bar at the bottom of the main window sh
   - Every Settings row with a control, on the whole row, and each theme card.
   - Cancel and the confirm button of the alert dialogs that remove or reset something: delete container, delete selected containers, Down, delete and prune volumes, delete snapshot, remove extension, reset Captain Engine and Kubernetes, the socket link, and the migration switch-over. `danger_footer` builds their footer from gpui-kit's `DialogClose` and `DialogAction`, because the default footer's buttons take no help.
   - The Create snapshot, Restore snapshot, and Storage review dialogs' own buttons.
-- All `Tooltip` uses are gone.
+- All `Tooltip` uses are gone, except the rail's icon-only buttons, which show their name in a tooltip because they have no label.
 
 ## Out of scope
 
@@ -61,7 +61,7 @@ Every control says what it does. A 30 px bar at the bottom of the main window sh
 5. Hover a Compose card's Down button. Check that the sentence names the project and its container count.
 6. Run `docker run -d --name captain-agent-crash --restart on-failure:3 alpine sh -c 'sleep 2; exit 1'`. Wait ten seconds. Check that the bar shows "captain-agent-crash exited again at …, after 3 restarts". Remove the container.
 7. Stop a container with its Stop button. Check that the bar does not show it as an event.
-8. Check that no tooltip bubble appears anywhere in the main window.
+8. Check that no tooltip bubble appears in the main window, except the name tooltips on the rail's buttons.
 9. Hover each segment of the Containers filter, then "Show Kubernetes containers". Check the sentences.
 10. In Settings, hover a row, then its switch or button, then the row again. Check that the row's sentence comes back.
 11. Open the Delete dialog of a container. Hover Cancel and Delete. Check the sentences. Click Delete; check that the container goes. Open it again and press Escape; check that nothing changes.

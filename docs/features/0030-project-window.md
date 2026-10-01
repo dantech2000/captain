@@ -23,7 +23,7 @@ The main window opens on what the user works on: a project. The sidebar lists Co
   - A button that hides the sidebar (Lucide `PanelLeftClose`) or shows it again (`PanelLeftOpen`). ⌘B (Ctrl-B on Linux and Windows) and the palette's "Toggle sidebar" row do the same. While the sidebar is hidden, only the rail shows and the page gets the width. `Workspace::sidebar_hidden` keeps the choice while Captain runs, as `details_hidden` does for the details panel; it is not in the settings file. The terminal grid frees Ctrl-B for the shell, as it does Ctrl-K.
   - The page buttons, in the order of the old icon row with Containers first: Containers, Images, Volumes, Networks, Snapshots, Storage, Extensions, and Port Forwarding (while the cluster runs). The selected page has the selection background and the action color.
   - Diagnostics (with the failure badge) and Settings pinned at the bottom.
-  - Each button has its page's help sentence in the status bar; no tooltips.
+  - Each button has its page's help sentence in the status bar, and a tooltip with its name (and ⌘B on the sidebar button), because the rail has no labels.
 - **Project page** (`Page::Project`, for the sidebar entry in `Workspace::focus`). It works for all three kinds of entries. The header buttons, the Open row, and tasks need a Compose project.
   1. **Header.** The working folder and Compose file in mono, the name in large type, then Open folder, Terminal, Down, and a primary Restart project (Up while nothing runs).
   2. **Open row.** One pill per published port: the service and `localhost:PORT`. A click opens `http://localhost:PORT`. Well-known ports of databases and brokers (5432, 3306, 6379, 27017, 9092, and a few more) copy the address instead, and the help says so.

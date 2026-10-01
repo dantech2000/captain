@@ -91,7 +91,7 @@ Click a project in the sidebar to open its page. The page has five parts.
 
 ### The status bar
 
-Move the mouse over a control. The status bar shows a sentence that says what the control does, and its shortcut keys if it has any. Captain has no tooltips. The status bar does their job.
+Move the mouse over a control. The status bar shows a sentence that says what the control does, and its shortcut keys if it has any. The icon-only buttons in the rail also show their name in a small tooltip.
 
 When the mouse is not over a control, the status bar shows the latest container crash, for example "worker restarted 3 times · last at 12:07:11". With no crash, it shows "Ready · hover anything for help".
 

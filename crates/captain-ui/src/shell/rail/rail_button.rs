@@ -1,5 +1,7 @@
 use gpui_kit::assets::IconName;
 use gpui_kit::component::Icon;
+use gpui_kit::component::kbd::Kbd;
+use gpui_kit::component::tooltip::Tooltip;
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::*;
 
@@ -46,6 +48,7 @@ pub fn page_button(
                 .font_weight(FontWeight::BOLD)
                 .child(count.to_string())
         }))
+        .tooltip(move |window, cx| Tooltip::new(page.label()).build(window, cx))
         .help(page_help(page, count))
 }
 
@@ -61,6 +64,21 @@ pub fn toggle_button(handle: &Entity<Workspace>, hidden: bool, palette: &Palette
         .text_color(palette.text2)
         .on_click(move |_, _, cx| handle.update(cx, |workspace, cx| workspace.toggle_sidebar(cx)))
         .child(Icon::new(icon).size(px(18.)))
+        .tooltip(move |window, cx| {
+            let label = if hidden {
+                "Show sidebar"
+            } else {
+                "Hide sidebar"
+            };
+            // Both cmd-b and ctrl-b are bound; show the one this platform uses.
+            let keys = if cfg!(target_os = "macos") {
+                "cmd-b"
+            } else {
+                "ctrl-b"
+            };
+            let kbd = Keystroke::parse(keys).ok().map(Kbd::new);
+            Tooltip::new(label).key_binding(kbd).build(window, cx)
+        })
         .help_keys(sidebar_help(hidden), &[CMD, "B"])
 }
 
@@ -73,7 +91,8 @@ pub fn sidebar_help(hidden: bool) -> &'static str {
     }
 }
 
-/// The square that every rail entry shares.
+/// The square that every rail entry shares. Icon-only buttons also get a short
+/// tooltip with their name; the status bar keeps the longer sentence.
 fn button(id: impl Into<ElementId>, palette: &Palette) -> Stateful<Div> {
     let hover = palette.nav_selected;
     div()
