@@ -1,6 +1,7 @@
 use bollard::models::{ContainerSummary, PortSummary};
 use std::collections::HashMap;
 
+use captain_core::extension::{EXTENSION_LABEL, backend_extension};
 use captain_core::model::{ComposeLabels, Container, ContainerState, Health, PortMapping};
 
 const COMPOSE_PROJECT_LABEL: &str = "com.docker.compose.project";
@@ -35,6 +36,11 @@ pub fn container(summary: ContainerSummary) -> Container {
         .and_then(|status| Health::parse(status.as_ref()));
 
     let mut labels = summary.labels.unwrap_or_default();
+    let compose_project = labels.remove(COMPOSE_PROJECT_LABEL);
+    let extension = backend_extension(
+        labels.get(EXTENSION_LABEL).map(String::as_str),
+        compose_project.as_deref(),
+    );
     Container {
         id: summary.id.unwrap_or_default(),
         name,
@@ -43,10 +49,11 @@ pub fn container(summary: ContainerSummary) -> Container {
         status: summary.status.unwrap_or_default(),
         ports,
         created: summary.created.unwrap_or_default(),
-        compose_project: labels.remove(COMPOSE_PROJECT_LABEL),
+        compose_project,
         compose: compose_labels(&mut labels),
         health,
         kube_namespace: labels.remove(KUBE_NAMESPACE_LABEL),
+        extension,
     }
 }
 

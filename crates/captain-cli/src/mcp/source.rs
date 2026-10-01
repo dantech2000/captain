@@ -27,6 +27,9 @@ pub type Connect = Arc<dyn Fn() -> Result<Connected, String> + Send + Sync>;
 /// change in Captain applies at once.
 pub type ReadSettings = Arc<dyn Fn() -> AgentToolsSettings + Send + Sync>;
 
+/// Reads `show_extension_containers` on every request, like [`ReadSettings`].
+pub type ReadShowExtensions = Arc<dyn Fn() -> bool + Send + Sync>;
+
 pub struct Source {
     /// `Captain Engine` or `Other engine`.
     pub label: &'static str,
@@ -37,6 +40,7 @@ pub struct Source {
     pub kubernetes: bool,
     engine: Mutex<Option<Connected>>,
     settings: ReadSettings,
+    show_extensions: ReadShowExtensions,
     /// `~/.captain/agent-activity.jsonl`, or `None` to keep no log.
     activity: Option<PathBuf>,
     crashes: Arc<Mutex<CrashTracker>>,
@@ -57,6 +61,7 @@ impl Source {
             kubernetes,
             engine: Mutex::new(None),
             settings: Arc::new(AgentToolsSettings::default),
+            show_extensions: Arc::new(|| false),
             activity: None,
             crashes: Arc::default(),
             follower: Mutex::new(None),
@@ -68,6 +73,18 @@ impl Source {
     pub fn with_settings(mut self, read: ReadSettings) -> Self {
         self.settings = read;
         self
+    }
+
+    /// Reads whether the tools list extension backends with `read`. Without it,
+    /// they leave them out, as the app does by default.
+    pub fn with_extension_containers(mut self, read: ReadShowExtensions) -> Self {
+        self.show_extensions = read;
+        self
+    }
+
+    /// True if the tools list the containers of extension backends.
+    pub fn shows_extension_containers(&self) -> bool {
+        (self.show_extensions)()
     }
 
     /// Writes an entry for each tool call to `path`.

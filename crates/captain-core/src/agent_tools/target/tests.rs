@@ -14,6 +14,7 @@ fn container(name: &str, id: &str, project: Option<&str>) -> Container {
         compose: Default::default(),
         health: None,
         kube_namespace: None,
+        extension: None,
     }
 }
 

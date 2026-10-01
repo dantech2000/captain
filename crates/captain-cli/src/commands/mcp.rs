@@ -12,7 +12,7 @@ use rmcp::ServiceExt;
 use tracing_subscriber::EnvFilter;
 
 use crate::context::Context;
-use crate::mcp::{CaptainServer, Connect, Connected, ReadSettings, Source};
+use crate::mcp::{CaptainServer, Connect, Connected, ReadSettings, ReadShowExtensions, Source};
 
 pub fn run(context: &Context) -> Result<()> {
     // `CAPTAIN_LOG=debug` shows more; stdout must stay clean for the protocol.
@@ -72,13 +72,18 @@ fn source(context: &Context) -> Source {
             .map(|settings| settings.agent_tools)
             .unwrap_or_default()
     });
+    let path = context.settings_path.clone();
+    let show_extensions: ReadShowExtensions = Arc::new(move || {
+        Settings::load(&path).is_ok_and(|settings| settings.show_extension_containers)
+    });
     let source = Source::new(
         choice.label(),
         host,
         connect,
         choice == EngineChoice::Captain && settings.kubernetes.enabled,
     )
-    .with_settings(read);
+    .with_settings(read)
+    .with_extension_containers(show_extensions);
     match dirs::home_dir() {
         Some(home) => source.with_activity(activity_path(&home)),
         None => source,

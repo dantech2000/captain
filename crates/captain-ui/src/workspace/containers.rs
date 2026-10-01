@@ -49,7 +49,7 @@ impl Workspace {
     }
 
     /// Selects the first container in list order if nothing valid is selected.
-    fn keep_selection_valid(&mut self) {
+    pub(super) fn keep_selection_valid(&mut self) {
         let valid = self
             .selected
             .as_deref()

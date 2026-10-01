@@ -19,6 +19,14 @@ If the install fails, Captain removes what it made, and the image if it pulled i
 
 The extension's files go in `~/.captain/extensions`. A backend runs as a Compose project in the engine.
 
+## Extension containers
+
+Captain hides the containers that run extension backends, as Docker Desktop does. They do not show in the sidebar, on the Containers page, in the counts, in the menu bar, in ⌘K, or in the AI agent tools.
+
+To show them, check **Show extension containers** on the Extensions page. Each backend then shows as a Compose project named `captain-ext-<id>`. The setting is `show_extension_containers` in the [settings file](settings.md).
+
+Storage counts the images and volumes of a backend as in use, so a cleanup never removes them. The `docker` CLI lists extension containers either way.
+
 Captain lists the extensions of the engine it is connected to.
 
 ## Open an extension

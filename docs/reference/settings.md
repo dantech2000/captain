@@ -197,6 +197,16 @@ The actions agents may run: `start`, `stop`, `restart`, `run_task` (only the tas
 - Default: `[]`
 - Example: `"agent_tools": { "actions": ["restart","run_task"] }`
 
+## Extensions
+
+### `show_extension_containers`
+
+Show the containers that run extension backends in the container lists, the sidebar, the counts, ⌘K, and the AI agent tools. Off, as in Docker Desktop. Storage counts their images and volumes as in use either way. Applies at once.
+
+- Type: true or false
+- Default: `false`
+- Example: `"show_extension_containers": true`
+
 ## Storage
 
 ### `weekly_build_cache_cleanup`

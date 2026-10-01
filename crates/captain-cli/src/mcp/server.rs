@@ -59,14 +59,23 @@ impl CaptainServer {
         HelpReport::new(tools)
     }
 
-    /// The engine and its containers, or why the engine does not answer.
+    /// The engine and the containers the tools show, or why the engine does not
+    /// answer.
     pub(super) async fn containers(&self) -> Result<(Arc<dyn Engine>, Vec<Container>), String> {
         let engine = self.source.engine().await?;
         let containers = engine
             .list_containers()
             .await
             .map_err(|error| self.source.failed(error))?;
-        Ok((engine, containers))
+        Ok((engine, self.shown(containers)))
+    }
+
+    /// `containers` without extension backends, unless the settings show them.
+    pub(super) fn shown(&self, mut containers: Vec<Container>) -> Vec<Container> {
+        if !self.source.shows_extension_containers() {
+            containers.retain(|c| !c.is_extension());
+        }
+        containers
     }
 
     /// `inspect` of each container that restarts, crashed lately, or fails its

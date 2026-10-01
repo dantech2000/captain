@@ -19,6 +19,7 @@ fn engine_with(state: ContainerState) -> FakeEngine {
             compose: Default::default(),
             health: None,
             kube_namespace: None,
+            extension: None,
         }],
         ..FakeEngine::default()
     }

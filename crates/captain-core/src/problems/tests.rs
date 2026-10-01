@@ -16,6 +16,7 @@ fn container(name: &str, state: ContainerState, health: Option<Health>) -> Conta
         compose_project: None,
         health,
         kube_namespace: None,
+        extension: None,
         compose: Default::default(),
     }
 }

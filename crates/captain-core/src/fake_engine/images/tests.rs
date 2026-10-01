@@ -94,6 +94,7 @@ fn run_needs_a_known_image_and_a_free_name() {
         compose: Default::default(),
         health: None,
         kube_namespace: None,
+        extension: None,
     }];
     let spec = |image: &str, name: Option<&str>| RunSpec {
         image: image.into(),

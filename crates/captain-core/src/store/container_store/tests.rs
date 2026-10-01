@@ -15,6 +15,7 @@ fn container(name: &str, state: ContainerState) -> Container {
         compose: Default::default(),
         health: None,
         kube_namespace: None,
+        extension: None,
     }
 }
 
@@ -99,6 +100,7 @@ fn projects_skip_standalone_containers() {
 fn in_namespace(name: &str, namespace: &str) -> Container {
     Container {
         kube_namespace: Some(namespace.into()),
+        extension: None,
         ..container(name, ContainerState::Running)
     }
 }
@@ -135,4 +137,26 @@ fn kubernetes_containers_hide_or_group_by_namespace() {
         ]
     );
     assert_eq!(shown[2].containers.len(), 2);
+}
+
+#[test]
+fn extension_backends_hide_until_shown() {
+    let mut backend = in_project(
+        "portainer",
+        Some("captain-ext-acme"),
+        ContainerState::Running,
+    );
+    backend.extension = Some("acme".into());
+    let mut store = ContainerStore::default();
+    store.replace(vec![backend, container("web", ContainerState::Running)]);
+    let names = |store: &ContainerStore| -> Vec<String> {
+        store.containers().iter().map(|c| c.name.clone()).collect()
+    };
+    assert_eq!(names(&store), ["web"]);
+    assert_eq!((store.active_count(), store.projects().len()), (1, 0));
+    assert!(store.is_hidden("portainer-0123456789abcdef", None));
+    assert!(store.is_hidden("new", Some("captain-ext-acme-backend-1")));
+    store.set_show_extensions(true);
+    assert_eq!(names(&store), ["portainer", "web"]);
+    assert!(!store.is_hidden("portainer-0123456789abcdef", None));
 }

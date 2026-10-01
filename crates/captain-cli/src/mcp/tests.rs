@@ -45,6 +45,7 @@ fn container(name: &str, service: &str, health: Option<Health>) -> Container {
         },
         health,
         kube_namespace: None,
+        extension: None,
     }
 }
 

@@ -38,6 +38,7 @@ pub fn fleet(count: usize) -> Vec<Container> {
                 },
                 health: Some(Health::Healthy),
                 kube_namespace: None,
+                extension: None,
             }
         })
         .collect()

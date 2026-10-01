@@ -106,6 +106,7 @@ fn old_files_get_the_behavior_defaults() {
     let settings = Settings::from_json(r#"{"version": 1, "show_menu_bar_icon": "no"}"#).unwrap();
     assert!(!settings.start_in_background);
     assert!(settings.show_menu_bar_icon);
+    assert!(!settings.show_extension_containers);
 }
 
 #[test]

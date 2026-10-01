@@ -77,6 +77,8 @@ pub struct Workspace {
     pub(super) log_filter: Option<LogFilter>,
     /// The image or volume an extension asked to show, until its page takes it.
     pub(super) reveal: Option<Reveal>,
+    /// Follows `show_extension_containers` in the settings.
+    pub(super) settings: Option<Subscription>,
 }
 
 impl EventEmitter<WorkspaceEvent> for Workspace {}
@@ -115,6 +117,30 @@ impl Workspace {
             inspector_tab: None,
             log_filter: None,
             reveal: None,
+            settings: None,
+        }
+    }
+
+    /// A workspace that shows extension backends when `show_extension_containers`
+    /// is on, now and after each settings change.
+    pub fn following_settings(cx: &mut Context<Self>) -> Self {
+        let mut workspace = Self::new();
+        workspace.apply_settings(cx);
+        workspace.settings = Some(cx.observe_global::<crate::settings::SettingsStore>(
+            |this: &mut Self, cx| this.apply_settings(cx),
+        ));
+        workspace
+    }
+
+    fn apply_settings(&mut self, cx: &mut Context<Self>) {
+        let show = crate::settings::current(cx).show_extension_containers;
+        if show != self.store.shows_extensions() {
+            self.store.set_show_extensions(show);
+            self.keep_selection_valid();
+            let store = &self.store;
+            self.checked.retain(|id| store.find(id).is_some());
+            self.sync_stats(cx);
+            cx.notify();
         }
     }
 

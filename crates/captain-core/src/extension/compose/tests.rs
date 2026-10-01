@@ -1,6 +1,6 @@
 use serde_json::json;
 
-use super::{GUEST_SERVICES, PROXY_SERVICE, image_project, with_guest_services};
+use super::{EXTENSION_LABEL, GUEST_SERVICES, PROXY_SERVICE, image_project, with_guest_services};
 
 #[test]
 fn an_image_backend_gets_the_volume_and_the_proxy() {
@@ -15,6 +15,8 @@ fn an_image_backend_gets_the_volume_and_the_proxy() {
         "UNIX-CONNECT:/run/guest-services/api.sock"
     );
     assert_eq!(proxy["ports"][0], "127.0.0.1::8080");
+    assert_eq!(backend["labels"][EXTENSION_LABEL], "acme");
+    assert_eq!(proxy["labels"][EXTENSION_LABEL], "acme");
 }
 
 #[test]

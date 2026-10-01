@@ -199,6 +199,15 @@
           "$ref": "#/definitions/AgentToolsSettings"
         }
       ]
+    },
+    "show_extension_containers": {
+      "description": "Show the containers that run extension backends in the container lists, the sidebar, the counts, ⌘K, and the AI agent tools. Off, as in Docker Desktop. Storage counts their images and volumes as in use either way. Applies at once.",
+      "type": "boolean",
+      "examples": [
+        true
+      ],
+      "default": false,
+      "x-captain-group": "Extensions"
     }
   },
   "definitions": {

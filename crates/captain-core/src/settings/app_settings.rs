@@ -110,6 +110,14 @@ pub struct Settings {
     #[serde(deserialize_with = "lenient")]
     #[schemars(extend("x-captain-group" = "AI agents"))]
     pub agent_tools: AgentToolsSettings,
+    /// Show the containers that run extension backends in the container lists,
+    /// the sidebar, the counts, ⌘K, and the AI agent tools. Off, as in Docker
+    /// Desktop. Storage counts their images and volumes as in use either way.
+    /// Applies at once.
+    // Feature 0025.
+    #[serde(deserialize_with = "lenient")]
+    #[schemars(extend("x-captain-group" = "Extensions"), example = true)]
+    pub show_extension_containers: bool,
 }
 
 impl Default for Settings {
@@ -131,6 +139,7 @@ impl Default for Settings {
             build_cache_cleaned_at: None,
             command_line_tools: CliToolsSettings::default(),
             agent_tools: AgentToolsSettings::default(),
+            show_extension_containers: false,
         }
     }
 }

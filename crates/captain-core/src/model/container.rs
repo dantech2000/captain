@@ -22,12 +22,21 @@ pub struct Container {
     /// The Kubernetes namespace of a pod container, from the
     /// `io.kubernetes.pod.namespace` label that cri-dockerd sets.
     pub kube_namespace: Option<String>,
+    /// The ID of the extension whose backend runs the container. See
+    /// [`crate::extension::backend_extension`].
+    pub extension: Option<String>,
 }
 
 impl Container {
     /// True for a container that Kubernetes runs for a pod.
     pub fn is_kubernetes(&self) -> bool {
         self.kube_namespace.is_some()
+    }
+
+    /// True for a container of an extension's backend. Lists hide it unless the
+    /// `show_extension_containers` setting is on.
+    pub fn is_extension(&self) -> bool {
+        self.extension.is_some()
     }
 
     /// True for the pause container that holds a Kubernetes pod's namespaces. It has

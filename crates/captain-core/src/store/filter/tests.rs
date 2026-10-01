@@ -14,6 +14,7 @@ fn container(state: ContainerState) -> Container {
         compose: Default::default(),
         health: None,
         kube_namespace: None,
+        extension: None,
     }
 }
 

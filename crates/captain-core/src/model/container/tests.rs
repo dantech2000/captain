@@ -39,6 +39,7 @@ fn short_id_and_ports_label() {
         compose: Default::default(),
         health: None,
         kube_namespace: None,
+        extension: None,
     };
 
     assert_eq!(container.short_id(), "0123456789ab");
@@ -68,6 +69,7 @@ fn published_ports_skip_unpublished_and_duplicates() {
         compose: Default::default(),
         health: None,
         kube_namespace: None,
+        extension: None,
     };
 
     assert_eq!(container.published_ports(), [8080]);
@@ -86,6 +88,7 @@ fn with_image(image: &str) -> Container {
         compose: Default::default(),
         health: None,
         kube_namespace: None,
+        extension: None,
     }
 }
 

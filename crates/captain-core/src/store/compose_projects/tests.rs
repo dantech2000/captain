@@ -24,6 +24,7 @@ fn member(name: &str, project: Option<&str>, service: Option<&str>, running: boo
         },
         health: None,
         kube_namespace: None,
+        extension: None,
     }
 }
 

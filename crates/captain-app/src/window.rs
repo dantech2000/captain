@@ -29,7 +29,7 @@ pub fn init(
 ) {
     let connect_now = engine.connects_elsewhere();
     let workspace = cx.new(|cx| {
-        let mut workspace = Workspace::new();
+        let mut workspace = Workspace::following_settings(cx);
         if connect_now {
             workspace.connect(connect::docker(endpoint), cx);
         }

@@ -8,7 +8,7 @@ use super::overrides::defaults;
 use super::settings_schema;
 
 /// The headings of the reference, in order.
-pub const GROUPS: [&str; 9] = [
+pub const GROUPS: [&str; 10] = [
     "Appearance",
     "Engine",
     "Docker daemon",
@@ -16,6 +16,7 @@ pub const GROUPS: [&str; 9] = [
     "Startup",
     "Terminal",
     "AI agents",
+    "Extensions",
     "Storage",
     "Diagnostics",
 ];

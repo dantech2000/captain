@@ -1,11 +1,11 @@
 //! The Compose project that runs an extension's backend. Captain writes it as JSON,
 //! which Compose reads like YAML. Every service gets the `/run/guest-services`
-//! volume, and a proxy service publishes the backend's socket on `127.0.0.1`, as in
-//! Rancher Desktop. See docs/adr/0011-extensions.md.
+//! volume and the [`EXTENSION_LABEL`], and a proxy service publishes the backend's
+//! socket on `127.0.0.1`, as in Rancher Desktop. See docs/adr/0011-extensions.md.
 
 use serde_json::{Map, Value, json};
 
-use super::project_name;
+use super::{EXTENSION_LABEL, project_name};
 
 /// Where backends put their sockets.
 pub const GUEST_SERVICES: &str = "/run/guest-services";
@@ -26,7 +26,7 @@ pub fn image_project(id: &str, image: &str, socket: Option<&str>) -> Value {
 }
 
 /// Takes a project from `docker compose config --format json` and adds the name, the
-/// volume, the proxy, and a restart policy, so the backend comes back when the
+/// volume, the extension label, the proxy, and a restart policy, so the backend comes back when the
 /// engine restarts. It also turns each `$$` into `$`: Docker Desktop resolves an
 /// extension's Compose file once before Compose does, so extensions write a
 /// literal `$` as `$$$$` (Portainer's `--admin-password` hash does).
@@ -42,12 +42,13 @@ pub fn with_guest_services(mut config: Value, id: &str, socket: Option<&str>) ->
     if let Some(services) = services.as_object_mut() {
         for service in services.values_mut().filter_map(Value::as_object_mut) {
             add_volume(service);
+            add_label(service, id);
             service
                 .entry("restart")
                 .or_insert_with(|| "unless-stopped".into());
         }
         if let Some(socket) = socket {
-            services.insert(PROXY_SERVICE.into(), proxy(socket));
+            services.insert(PROXY_SERVICE.into(), proxy(socket, id));
         }
     }
     let volumes = project
@@ -86,11 +87,26 @@ fn add_volume(service: &mut Map<String, Value>) {
     }
 }
 
+/// Sets [`EXTENSION_LABEL`] to `id`. `compose config` gives labels as a map; a
+/// list of `key=value` works too.
+fn add_label(service: &mut Map<String, Value>, id: &str) {
+    let labels = service
+        .entry("labels")
+        .or_insert_with(|| Value::Object(Map::new()));
+    match labels {
+        Value::Object(labels) => {
+            labels.insert(EXTENSION_LABEL.into(), id.into());
+        }
+        Value::Array(labels) => labels.push(format!("{EXTENSION_LABEL}={id}").into()),
+        other => *other = json!({ EXTENSION_LABEL: id }),
+    }
+}
+
 fn guest_volume() -> Value {
     json!({ "type": "volume", "source": VOLUME, "target": GUEST_SERVICES })
 }
 
-fn proxy(socket: &str) -> Value {
+fn proxy(socket: &str, id: &str) -> Value {
     json!({
         "image": PROXY_IMAGE,
         "command": [
@@ -99,6 +115,7 @@ fn proxy(socket: &str) -> Value {
         ],
         "ports": [format!("127.0.0.1::{PROXY_PORT}")],
         "volumes": [guest_volume()],
+        "labels": { EXTENSION_LABEL: id },
         "restart": "unless-stopped",
     })
 }

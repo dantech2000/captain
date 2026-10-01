@@ -50,7 +50,7 @@ impl AppShell {
     /// A shell with its own workspace, which connects with `connect`.
     pub fn new(connect: Connector, window: &mut Window, cx: &mut Context<Self>) -> Self {
         let workspace = cx.new(|cx| {
-            let mut workspace = Workspace::new();
+            let mut workspace = Workspace::following_settings(cx);
             workspace.connect(connect, cx);
             workspace
         });

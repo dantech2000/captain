@@ -82,9 +82,11 @@ impl StatusBar {
         if event.kind != EventKind::Container {
             return;
         }
-        let name = workspace
-            .read(cx)
-            .store()
+        let store = workspace.read(cx).store();
+        if store.is_hidden(&event.id, event.name.as_deref()) {
+            return;
+        }
+        let name = store
             .find(&event.id)
             .map(|container| container.name.clone())
             .unwrap_or_else(|| event.id.chars().take(12).collect());

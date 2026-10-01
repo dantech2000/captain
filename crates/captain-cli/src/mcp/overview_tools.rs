@@ -36,6 +36,7 @@ impl CaptainServer {
         let host = self.source.host_status().await;
         let answer: EngineAnswer = match self.source.engine().await {
             Ok(engine) => futures::try_join!(engine.info(), engine.list_containers())
+                .map(|(info, containers)| (info, self.shown(containers)))
                 .map_err(|error| self.source.failed(error)),
             Err(why) => Err(why),
         };

@@ -1,5 +1,6 @@
 use gpui_kit::component::Sizable;
 use gpui_kit::component::WindowExt;
+use gpui_kit::component::checkbox::Checkbox;
 use gpui_kit::component::input::{Input, InputEvent, InputState};
 use gpui_kit::component::spinner::Spinner;
 use gpui_kit::*;
@@ -7,6 +8,7 @@ use gpui_kit::*;
 use super::{ExtensionEvent, ExtensionsModel, extension_row, install_dialog};
 use crate::help::HelpExt;
 use crate::icons::CaptainIcon;
+use crate::settings::{self, SettingsStore};
 use crate::theme::Palette;
 use crate::widgets::{
     ButtonTone, empty_note, inline_error, page_header, settings_card, text_button,
@@ -60,6 +62,7 @@ impl ExtensionsView {
                     this.install(cx);
                 }
             }),
+            cx.observe_global::<SettingsStore>(|_, cx| cx.notify()),
             cx.observe(&workspace, |view: &mut Self, workspace, cx| {
                 let showing = workspace.read(cx).page() == Page::Extensions;
                 if showing && !view.showing {
@@ -83,6 +86,27 @@ impl ExtensionsView {
                 .update(cx, |model, cx| model.prepare(reference, cx));
         }
     }
+}
+
+/// The checkbox for `show_extension_containers`.
+fn containers_option(cx: &App) -> AnyElement {
+    let shown = settings::current(cx).show_extension_containers;
+    div()
+        .id("extension-containers-row")
+        .px(px(14.))
+        .py(px(12.))
+        .text_size(px(12.))
+        .child(
+            Checkbox::new("extension-containers")
+                .label("Show extension containers")
+                .checked(shown)
+                .on_click(|checked, _, cx| {
+                    let on = *checked;
+                    settings::update(cx, |settings| settings.show_extension_containers = on);
+                }),
+        )
+        .help("Show the containers that run extension backends in the lists, counts, ⌘K, and agent tools.")
+        .into_any_element()
 }
 
 /// "2 extensions", or the step that runs now.
@@ -188,7 +212,12 @@ impl Render for ExtensionsView {
                             .flex_col()
                             .gap(px(20.))
                             .child(settings_card("Install", [install], &palette))
-                            .child(list),
+                            .child(list)
+                            .child(settings_card(
+                                "Containers",
+                                [containers_option(cx)],
+                                &palette,
+                            )),
                     ),
             )
     }

@@ -34,6 +34,7 @@ fn container(
         },
         health: None,
         kube_namespace: None,
+        extension: None,
     }
 }
 

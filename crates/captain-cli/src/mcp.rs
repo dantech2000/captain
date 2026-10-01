@@ -14,7 +14,7 @@ mod source;
 
 pub use reference::markdown as reference_markdown;
 pub use server::CaptainServer;
-pub use source::{Connect, Connected, ReadSettings, Source};
+pub use source::{Connect, Connected, ReadSettings, ReadShowExtensions, Source};
 
 #[cfg(test)]
 mod tests;
