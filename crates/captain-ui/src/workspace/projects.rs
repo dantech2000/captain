@@ -31,6 +31,11 @@ impl Workspace {
         compose_projects(self.store.containers())
     }
 
+    /// The Compose project `name`, from the container labels.
+    pub fn compose_project(&self, name: &str) -> Option<ComposeProject> {
+        compose_project(self.store.containers(), name)
+    }
+
     /// Runs a `docker compose` command on the project `name`. The event stream
     /// reloads the list as containers change. It emits a [`WorkspaceEvent`] when the
     /// command ends.

@@ -36,6 +36,7 @@ pub fn run_body(spec: &RunSpec) -> ContainerCreateBody {
         exposed_ports: (!exposed_ports.is_empty()).then_some(exposed_ports),
         host_config: Some(HostConfig {
             port_bindings: (!port_bindings.is_empty()).then_some(port_bindings),
+            binds: (!spec.volumes.is_empty()).then(|| spec.volumes.clone()),
             auto_remove: Some(spec.auto_remove),
             restart_policy: Some(EngineRestart {
                 name: Some(restart_name(spec.restart)),

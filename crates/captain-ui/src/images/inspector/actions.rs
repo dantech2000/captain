@@ -2,7 +2,8 @@ use captain_core::model::Image;
 use gpui_kit::assets::IconName;
 use gpui_kit::*;
 
-use crate::images::{ImagesState, push_dialog, run_dialog, scan_dialog, tag_dialog};
+use crate::images::{ImagesState, push_dialog, scan_dialog, tag_dialog};
+use crate::new_project;
 use crate::theme::Palette;
 use crate::widgets::action_button;
 
@@ -36,8 +37,9 @@ pub fn render(
             detail.is_some(),
             palette,
             move |window, cx| {
-                if let Some(detail) = &detail {
-                    run_dialog::open(handle.clone(), reference.clone(), detail, window, cx);
+                if let (Some(detail), Some(host)) = (&detail, new_project::host(cx)) {
+                    let (image, detail) = (reference.clone(), detail.clone());
+                    new_project::open_run_image(host, image, detail, handle.clone(), window, cx);
                 }
             },
         )

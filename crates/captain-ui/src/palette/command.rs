@@ -7,7 +7,7 @@ use super::run_action;
 use crate::containers::down_dialog;
 use crate::icons::Glyph;
 use crate::migration::OpenMigrationAssistant;
-use crate::new_project::NewProject;
+use crate::new_project::{NewProject, known_projects};
 use crate::workspace::{Page, Workspace};
 
 /// The group a command is listed under.
@@ -110,7 +110,17 @@ pub(super) fn run_project(
     cx: &mut App,
 ) {
     if action != ProjectAction::Down {
-        workspace.update(cx, |w, cx| w.run_project_action(project, action, cx));
+        // A known project with no containers starts from its folder.
+        let known = known_projects(cx)
+            .into_iter()
+            .find(|known| known.name == project)
+            .map(|known| known.compose_project());
+        workspace.update(cx, |w, cx| {
+            match known.filter(|_| w.compose_project(&project).is_none()) {
+                Some(stopped) => w.run_project_action_on(stopped, action, cx),
+                None => w.run_project_action(project, action, cx),
+            }
+        });
         return;
     }
     let Some(window) = cx.active_window() else {

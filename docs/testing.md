@@ -266,6 +266,49 @@ Restarts the engine once. The disk steps grow the real disk, so stop at a size y
 7. Quit Captain. Run `captain set disk 16`.
    - Expect: "Captain Engine's disk is N GiB, and a disk cannot shrink. Use N GiB or more."
 
+## 17. New projects (M33)
+
+Set `"projects_dir": "~/CaptainTest"` in the settings file first, so the tests stay out of `~/Captain`. Back up `~/.captain/projects.json` if you have one.
+
+1. Press ⌘N. Press ⌘N again.
+   - Expect: the New sheet opens once; the second ⌘N does nothing. Up, Down, and Return move and open the cards. Each card shows a help sentence in the status bar.
+2. Choose **Start from a template**, type `post`, and press Return on PostgreSQL.
+   - Expect: the name `postgres` (or `postgres-2` if taken), a free port, and a masked password. **compose.yaml** shows the file with `${POSTGRES_PASSWORD...}` and no password.
+3. Click **Create project**.
+   - Expect: the Project page of `postgres` on the Files tab. `ls -l ~/CaptainTest/postgres` shows `compose.yaml`, `.gitignore`, and `.env` with `-rw-------`. Nothing runs yet.
+4. Click **Save and apply**, then **Apply**.
+   - Expect: the preview lists the service and the volume; after Apply, the container runs. The **databases** task lists `postgres`.
+5. Click **Down**.
+   - Expect: the project stays in the sidebar as Stopped. In ⌘K, `up po` offers `up postgres`, and Return starts it.
+6. Repeat step 2 with the Web server template. Apply it and open `http://localhost:8080` (or the port shown).
+   - Expect: the "It works" page from `site/index.html`.
+7. Choose **Run an image** and type `redis`.
+   - Expect: the engine's images first, then skeleton rows, then Docker Hub results with **Official** on `redis`, and stars and pulls. Turn off Wi-Fi and type `nginx`: Docker Hub shows "not available", and the engine's images still show.
+8. Pick `redis` from Docker Hub. Click a tag chip such as `8-alpine`, click **Pull**, and wait.
+   - Expect: a port row for 6379 with a free host port. Add a volume row `data` to `/data` and an environment row. **compose.yaml** shows the service and a top-level `data` volume.
+9. Click **Create project**, then Save and apply and Apply.
+   - Expect: as in steps 3 and 4.
+10. Open **Run an image** again, pick `busybox`, and turn **Save as a project** off. Set the name `captain-agent-run`, remove the ports, and click **Run**.
+    - Expect: a "Started" toast, and the container in the Containers list. No folder is written. Remove it afterwards.
+11. On the Images page, select an image and click **Run**.
+    - Expect: the New sheet at Run an image with that image and its ports filled in.
+12. Choose **Paste a docker run command** and paste:
+
+    ```
+    docker run -d --name captain-agent-web \
+      -p 8081:80 -e TZ=UTC -v web-data:/data \
+      --privileged --rm nginx:alpine
+    ```
+    - Expect: "One service, captain-agent-web, from nginx:alpine.", and warnings for `--privileged` and `--rm`. The name field says `captain-agent-web`. **compose.yaml** has the port, the variable, the volume, and a top-level `web-data` volume. **Create project** opens the Files tab.
+13. Type `docker ps` in the field.
+    - Expect: an error that the command is not `docker run`; **Create project** is off.
+14. Make a template project with a name whose folder already has a file.
+    - Expect: the form says the folder has files, and **Create project** is off.
+15. Right-click each test project in the sidebar and choose **Remove from Captain**.
+    - Expect: the entries go; `~/CaptainTest` keeps the folders.
+
+Clean up: `docker compose down -v` in each folder under `~/CaptainTest`, `rm -rf ~/CaptainTest`, and remove the `projects_dir` line.
+
 ## Last run
 
 2026-09-29, commit c656372, macOS, on the real Captain Engine. Tests 1–3 ran first through the `captain` CLI (the same host code as the app), then the UI steps in the app.

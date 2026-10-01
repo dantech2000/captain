@@ -26,6 +26,9 @@ clap = { version = "4.6", features = ["derive", "env"] }
 clap_complete = "4.6"
 dirs = "6"
 futures = "0.3"
+# Passwords for new projects from templates; see docs/features/0040-new-projects.md.
+# ring and others already build this version.
+getrandom = "0.3"
 # Reads and edits settings.json with its comments; see docs/adr/0013-settings-file-and-docs.md.
 jsonc-parser = { version = "0.34", features = ["cst", "serde", "serde_json"] }
 gpui-kit = "0.7"

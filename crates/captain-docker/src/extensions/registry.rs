@@ -84,8 +84,9 @@ async fn token(response: &HttpResponse) -> Result<String, String> {
     })
 }
 
-/// One HTTPS `GET`, with `Connection: close`, read to the end.
-async fn get(url: &str, bearer: Option<&str>) -> Result<HttpResponse, String> {
+/// One HTTPS `GET`, with `Connection: close`, read to the end. Docker Hub search
+/// uses it too.
+pub(crate) async fn get(url: &str, bearer: Option<&str>) -> Result<HttpResponse, String> {
     let rest = url
         .strip_prefix("https://")
         .ok_or_else(|| format!("{url} is not an https URL"))?;

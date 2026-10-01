@@ -9,7 +9,7 @@ mod files;
 mod install;
 mod manager;
 mod process;
-mod registry;
+pub(crate) mod registry;
 mod swap;
 mod tags;
 mod update;

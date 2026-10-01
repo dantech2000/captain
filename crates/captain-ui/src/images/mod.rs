@@ -1,5 +1,5 @@
 //! The Images page. [`ImagesState`] holds the image list, the selected image's
-//! details, and runs remove, prune, pull, run, tag, push, and build and scan dialogs. It follows engine events on its own,
+//! details, and runs remove, prune, pull, tag, push, and build and scan dialogs. Run opens the New sheet at Run an image. It follows engine events on its own,
 //! so `workspace` stays about containers.
 
 mod actions;
@@ -17,7 +17,6 @@ mod loading;
 mod pull_status;
 mod push;
 mod push_dialog;
-mod run_dialog;
 mod scan_dialog;
 mod started;
 mod started_notice;

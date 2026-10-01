@@ -47,7 +47,7 @@ pub use pull_tracker::PullTracker;
 pub use push_tracker::PushTracker;
 pub use resource_events::{changes_network_list, changes_volume_list};
 pub use resource_group::{ResourceGroup, group_by_project};
-pub use run_form::{PortRow, RunForm, RunFormError};
+pub use run_form::{PortRow, RunForm, RunFormError, VolumeRow};
 pub use stats_board::StatsBoard;
 pub use stats_history::{HISTORY_LEN, StatsHistory};
 pub use task_runs::{ProjectRun, TaskRuns};

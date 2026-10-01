@@ -17,6 +17,8 @@ pub struct Catalog {
     pub kubernetes: bool,
     /// True if `docker compose` is installed, so project commands work.
     pub compose: bool,
+    /// The projects Captain knows that have no containers, for `up`.
+    pub stopped_projects: Vec<String>,
 }
 
 /// What a name stands for.
@@ -172,6 +174,9 @@ impl Catalog {
         if kinds.project && self.projects().contains(&word) {
             found.push(Target::Project(word.into()));
         }
+        if kinds.stopped && self.stopped_projects.iter().any(|name| name == word) {
+            found.push(Target::Project(word.into()));
+        }
         Resolution::of(found)
     }
 
@@ -245,6 +250,11 @@ impl Catalog {
         if kinds.project {
             for project in self.projects() {
                 push(project.to_string(), Target::Project(project.into()));
+            }
+        }
+        if kinds.stopped {
+            for project in &self.stopped_projects {
+                push(project.clone(), Target::Project(project.clone()));
             }
         }
         if kinds.port && kinds.container {

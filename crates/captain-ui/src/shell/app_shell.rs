@@ -83,6 +83,7 @@ impl AppShell {
             },
         );
         let project = cx.new(|cx| ProjectView::new(workspace.clone(), cx));
+        new_project::set_host(&workspace, &project, cx);
         let project_notify = cx.subscribe_in(
             &project,
             window,

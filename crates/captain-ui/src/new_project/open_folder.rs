@@ -3,10 +3,10 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use captain_core::EngineError;
 use captain_core::known_projects::{KnownProject, compose_files_in};
-use captain_core::store::GroupKey;
 use gpui_kit::component::WindowExt;
 use gpui_kit::*;
 
+use super::finish::open_project;
 use super::known_model;
 use super::new_sheet::{NewSheet, SheetStatus};
 
@@ -49,7 +49,7 @@ impl NewSheet {
             );
             return;
         };
-        let Some(runner) = self.workspace.read(cx).project_runner() else {
+        let Some(runner) = self.host.workspace.read(cx).project_runner() else {
             self.fail(
                 "Captain needs docker compose to open a project. Diagnostics shows why it is missing.".into(),
                 cx,
@@ -96,10 +96,7 @@ impl NewSheet {
             return self.fail(error, cx);
         }
         window.close_dialog(cx);
-        self.workspace.update(cx, |workspace, cx| {
-            workspace.open_group(GroupKey::Project(name), cx)
-        });
-        self.project.update(cx, |view, cx| view.show_files(cx));
+        open_project(&self.host, name, cx);
     }
 
     fn fail(&mut self, error: String, cx: &mut Context<Self>) {

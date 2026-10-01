@@ -19,6 +19,7 @@ pub mod kubernetes;
 pub mod link_target;
 pub mod migration;
 pub mod model;
+pub mod new_project;
 pub mod problems;
 pub mod process_lock;
 pub mod project_files;

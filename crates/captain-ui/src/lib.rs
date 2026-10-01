@@ -38,7 +38,7 @@ pub use icons::{CaptainAssets, CaptainIcon, cap_icon};
 pub use kubernetes::{init as kubernetes_init, kubernetes_model};
 pub use menu_bar::{observe_problem_count, open_float_log};
 pub use migration::OpenMigrationAssistant;
-pub use new_project::{NewProject, init as new_project_init};
+pub use new_project::{NewProject, init as new_project_init, set_docker_hub};
 pub use palette::{ToggleCommandPalette, init as palette_init};
 pub use port_forwarding::init as port_forwarding_init;
 pub use settings::{

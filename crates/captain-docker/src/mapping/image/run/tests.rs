@@ -12,12 +12,13 @@ fn port(host: u16, container: u16, protocol: &str) -> PublishPort {
 }
 
 #[test]
-fn maps_ports_env_and_policies() {
+fn maps_ports_env_volumes_and_policies() {
     let spec = RunSpec {
         image: "nginx:1.27".into(),
         name: Some("web".into()),
         ports: vec![port(8080, 80, "tcp"), port(8443, 443, "tcp")],
         env: vec![EnvVar::parse("A=1"), EnvVar::parse("B=x=y")],
+        volumes: vec!["data:/data".into()],
         auto_remove: false,
         restart: RestartPolicy::UnlessStopped,
     };
@@ -38,6 +39,7 @@ fn maps_ports_env_and_policies() {
             host_port: Some("8080".into()),
         }])
     );
+    assert_eq!(host.binds, Some(vec!["data:/data".into()]));
     assert_eq!(host.auto_remove, Some(false));
     assert_eq!(
         host.restart_policy.and_then(|p| p.name),

@@ -10,6 +10,8 @@ pub struct RunSpec {
     pub name: Option<String>,
     pub ports: Vec<PublishPort>,
     pub env: Vec<EnvVar>,
+    /// Mounts as `docker run -v` takes them: `name:/path` or `/host/path:/path`.
+    pub volumes: Vec<String>,
     /// Remove the container when it exits, like `--rm`.
     pub auto_remove: bool,
     pub restart: RestartPolicy,

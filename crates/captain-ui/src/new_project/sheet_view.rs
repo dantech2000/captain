@@ -11,7 +11,7 @@ use crate::help::{HelpExt, cmd_key};
 use crate::icons::glyph;
 use crate::palette::key_hint;
 use crate::theme::Palette;
-use crate::widgets::{ButtonTone, pill, text_button};
+use crate::widgets::{ButtonTone, text_button};
 
 /// The sheet's title, the four option cards, the status of an open, and where new
 /// projects go.
@@ -61,7 +61,6 @@ pub fn render(sheet: &NewSheet, cx: &mut Context<NewSheet>) -> Div {
 }
 
 fn card(option: NewOption, index: usize, highlighted: bool, palette: &Palette) -> Stateful<Div> {
-    let ready = option.ready();
     let hover = palette.hover;
     div()
         .id(SharedString::from(format!("new-option-{index}")))
@@ -80,7 +79,7 @@ fn card(option: NewOption, index: usize, highlighted: bool, palette: &Palette) -
                 .bg(palette.card)
                 .hover(move |style| style.bg(hover))
         })
-        .when(ready, |this| this.cursor_pointer())
+        .cursor_pointer()
         .child(
             div()
                 .size(px(38.))
@@ -99,17 +98,13 @@ fn card(option: NewOption, index: usize, highlighted: bool, palette: &Palette) -
                 .flex()
                 .flex_col()
                 .gap(px(2.))
-                .when(!ready, |this| this.opacity(0.55))
                 .child(
                     div()
                         .flex()
                         .items_center()
                         .gap(px(8.))
                         .font_weight(FontWeight::SEMIBOLD)
-                        .child(option.title())
-                        .when(!ready, |this| {
-                            this.child(pill("Coming next", palette.text2, palette.field))
-                        }),
+                        .child(option.title()),
                 )
                 .child(
                     div()

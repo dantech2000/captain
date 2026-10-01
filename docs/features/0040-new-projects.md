@@ -1,7 +1,7 @@
 # Feature 0040: New projects
 
 - Milestone: M33
-- Status: Phase 1 built in code (2026-10-01): the known-projects store, stopped projects in the sidebar with Up, Remove from Captain, the New sheet, Open a folder, and the `projects_dir` setting. Phases 2–4 are open. Research done on 2026-10-01; sources are linked in each section.
+- Status: Built in code (2026-10-01), all four phases: the known-projects store, stopped projects in the sidebar with Up, Remove from Captain, the New sheet with all four ways, templates, Run an image with Docker Hub search, Paste a docker run command, and the guide ([new-projects.md](../guide/new-projects.md)). The hand checks in [testing.md](../testing.md) test 17 are not run yet. Research done on 2026-10-01; sources are linked in each section.
 
 ## Goal
 
@@ -26,19 +26,25 @@ None of them keeps a project that is down, or turns a `docker run` into a file.
 ### One entry point: New
 
 - A **+** button beside "Projects" in the sidebar, **⌘N** (Ctrl N on Linux and Windows), and `new` in the ⌘K palette ("New project…") all open the **New** sheet.
-- The sheet has four option cards, each with an icon, a title, and one sentence. Up and Down move the highlight, Return opens the highlighted card, and ⌘1 to ⌘4 open a card directly:
+- ⌘N does nothing while a sheet or dialog is open, so it never stacks a second sheet.
+- The sheet has four option cards, each with an icon, a title, and one sentence. Up and Down move the highlight, Return opens the highlighted card, and ⌘1 to ⌘4 open a card directly. A card's form replaces the cards in the same sheet; **Back** returns to them:
   1. **Run an image** — pick an image from this engine or Docker Hub, set ports, environment, and volumes.
   2. **Start from a template** — Postgres, MySQL, Redis, MongoDB, RabbitMQ, or a web server for a folder.
   3. **Open a folder** — a folder or a Compose file that is already on this computer.
   4. **Paste a docker run command** — Captain turns it into a Compose file.
 - The footer says where new projects go (`~/Captain`, from the `projects_dir` setting) with **Show folder**.
-- All four end on the Project page's **Files** tab, with the Compose file open, and **Save and apply** runs the `up --dry-run` preview first ([0039](0039-compose-and-dockerfile-editor.md)).
+- All four end on the Project page's **Files** tab, with the Compose file open, and **Save and apply** runs the `up --dry-run` preview first ([0039](0039-compose-and-dockerfile-editor.md)). The one exception is Run an image with Save as a project off, which runs a plain container at once.
+- The project name is the folder name. It follows Compose's rule (lowercase letters, digits, `-`, `_`, starting with a letter or digit), and it must not be a known or running project or an existing folder with files. Captain suggests a free one: `postgres`, then `postgres-2`.
+- In a form, Tab and Shift Tab move between fields and ⌘Return runs the main button. Escape closes the sheet.
 
 ### Run an image
 
 - The image picker searches the engine's images first, then Docker Hub (see [Docker Hub search](#docker-hub-search)). Official images get a badge. Tags load when an image is chosen.
-- The form has the Run dialog's fields (name, ports, environment) and adds volumes. Ports, environment, and volumes are rows with add and remove.
-- **Save as a project** is on by default. On: Captain writes `~/Captain/<name>/compose.yaml` with one service, records the project, and opens the editor. Off: a plain `docker run -d`, as the Images page's Run dialog does today, and the container is loose.
+- The picker's first row offers the typed text as an image name, for images the search does not find, such as a private registry.
+- The form replaces the old Run dialog (its code moved from `images/run_dialog` to `new_project/run_image`), and the Images page's **Run** opens the New sheet at this form with the image chosen. Ports, environment, and volumes are rows with add and remove; the restart policy is a segmented control.
+- When the engine has the image, Captain inspects it and adds a port row for each `ExposedPorts` entry, with a free host port (`suggest_port`: the first port from the preferred one that no container publishes and that binds on this computer; ports below 1024 start at 8000 plus the port). When it does not, **Pull** pulls it and fills the rows. The image's environment stays in the image; the form does not copy it.
+- A volume source is a volume name or a folder. A relative folder is inside the project folder (`site` becomes `./site`).
+- **Save as a project** (a Switch) is on by default. On: Captain writes `~/Captain/<name>/compose.yaml` with one service named after the image's repository, records the project, and opens the editor. Off: a plain `docker run -d`, pulling first if the engine lacks the image; folder volumes are refused there, since a plain container has no project folder.
 
 ### Start from a template
 
@@ -54,7 +60,9 @@ Templates are Compose files built into Captain with pinned tags. Each asks only 
 | Web server | `nginx:stable-alpine` | a folder to serve | the folder bound read-only at `/usr/share/nginx/html` ([nginx docs](https://github.com/docker-library/docs/blob/master/nginx/content.md)) |
 
 - No MinIO template: MinIO stopped publishing community images in October 2025, the `minio/minio` repository answers 404 on the Hub API, and the GitHub repository says it is no longer maintained ([minio/minio](https://github.com/minio/minio)).
-- Mongo 9 exists; 8 stays the default until it has more use. The tags live in one table in `captain_core`, with a test that each template passes `docker compose config`.
+- Mongo 9 exists; 8 stays the default until it has more use. The tags live in one table in `captain_core::new_project::TEMPLATES`, with a unit test that each template is YAML without its password, and an ignored test that each passes `docker compose config`.
+- The form asks for the project name, a host port for each port (suggested free, 8080 for nginx's 80), a user name for MongoDB and RabbitMQ, and a password (24 random letters and digits from the system's random source; editable, masked). `compose.yaml` reads them with `${NAME:?...}`; `.env` holds them with mode 0600, and a `.gitignore` lists `.env`.
+- Tasks in `x-captain.tasks`: `databases` and `db-size` (PostgreSQL), `databases` (MySQL, MongoDB), `keys` and `memory` (Redis), `queues` (RabbitMQ). They run with `exec -T`, so they are one-shot commands, not shells. `$$` in them keeps `$` for the container's shell. The web server writes `site/index.html`.
 
 ### Open a folder
 
@@ -81,19 +89,22 @@ Templates are Compose files built into Captain with pinned tags. Each asks only 
 | `-w`, `--workdir` | `working_dir` |
 | `--entrypoint` | `entrypoint` |
 | `-u`, `--user`; `-h`, `--hostname`; `-l`, `--label` | `user`, `hostname`, `labels` |
+| `-m`, `--memory`; `--cpus` | `mem_limit`, `cpus` |
 | `-i`, `-t`, `-it` | `stdin_open`, `tty` |
 | `--platform`, `--pull` | `platform`, `pull_policy` |
 | image, then command | `image`, `command` (as a list) |
 | `-d`, `--detach` | nothing: `up -d` detaches |
 | `--rm` | nothing: Compose has no such key; Captain warns that the container stays after it stops |
 
-- Every other flag (for example `--mount`, `--cap-add`, `--privileged`, `--device`, `--memory`, `--cpus`, `--gpus`, `--health-*`, `--ulimit`, `--log-opt`, `--add-host`, `--dns`) is kept out of the file and listed as a warning: "Captain did not convert `--privileged`. Add it to compose.yaml by hand." Phase 3 can map more of them; the table above is what phase 3 starts with.
+- Values are written literally: Captain quotes what YAML would read as a number or a bool and doubles `$`, so Compose does not interpolate it.
+- Every other flag (for example `--mount`, `--cap-add`, `--privileged`, `--device`, `--gpus`, `--health-*`, `--ulimit`, `--log-opt`, `--add-host`, `--dns`) is kept out of the file and listed as a warning: "Captain did not convert `--privileged`. Add it to compose.yaml by hand." Phase 3 can map more of them; the table above is what phase 3 starts with.
 
 ### Known projects and the sidebar
 
 - A **known project** is one Captain created or opened. It is recorded in `~/.captain/projects.json` (see [Storage on disk](#storage-on-disk)).
 - The sidebar merges the projects found from labels with the known projects. A known project matches a running one when the Compose project name and the working folder are the same. A known project that matches nothing shows as **Stopped**, with its folder and an **Up** button. Its Project page has the usual header with Up, and the Files tab.
 - When a running project has the same name as a known project but another folder, the running project wins the sidebar entry, because Compose names are unique per engine. The known record stays and shows again when the other project is gone.
+- `up <name>` in ⌘K completes and starts a known project that has no containers, as well as the running ones.
 - **Remove from Captain** in the entry's context menu (right-click) forgets a known project after a confirmation. It never deletes files or containers. A project that still runs stays in the sidebar, found from its labels.
 
 ## Storage on disk
@@ -122,7 +133,7 @@ Captain keeps one visual style: its own widgets on top of GPUI Kit 0.7 (gpui-com
 - **Key chips** use Captain's `key_hint` (the ⌘K palette's chip), not the kit's **Kbd** ([docs](https://gpui-kit.com/component/kbd)), so the chips look the same everywhere.
 - **Menu** ([docs](https://gpui-kit.com/component/menu)): `ContextMenuExt::context_menu` gives the sidebar entry its right-click menu with Remove from Captain. Settings already uses the kit's `PopupMenu`.
 - **AlertDialog** (in Dialog) confirms Remove from Captain, as Down does.
-- Phase 2 and 3: **List** with search ([docs](https://gpui-kit.com/component/list)) for the image and template pickers, **Skeleton** ([docs](https://gpui-kit.com/component/skeleton)) rows while Docker Hub answers, **Tag** ([docs](https://gpui-kit.com/component/tag)) for the Official badge, and **Form** ([docs](https://gpui-kit.com/component/form)) for grouped fields (ports, environment, volumes) with add and remove rows. A segmented control switches between the form and the Compose preview; Captain already has `widgets/segmented.rs`.
+- Phase 2 and 3 (built): **List** with search ([docs](https://gpui-kit.com/component/list)) for the image and template pickers, with two sections for the image picker (On this engine, Docker Hub); **Skeleton** ([docs](https://gpui-kit.com/component/skeleton)) rows in the Docker Hub section while it answers; **Tag** ([docs](https://gpui-kit.com/component/tag)) for the Official badge, colored from the theme's accent; **Switch** for Save as a project; **Textarea** for the pasted command; and the masked **Input** with its eye toggle for passwords. Fields are Captain's label-over-control rows, not the kit's **Form**, to match the other dialogs. `widgets/segmented.rs` switches between the form and a read-only preview of `compose.yaml`.
 
 To adopt elsewhere later (not changed now): **Skeleton** for the Images, Volumes, and Storage pages while they load; **Empty** ([docs](https://gpui-kit.com/component/empty)) for empty pages, in place of `empty_note`; **DescriptionList** ([docs](https://gpui-kit.com/component/description-list)) for the inspector's key-value sections (`widgets/key_values.rs`); **context menus** on container rows and image rows.
 
@@ -138,9 +149,9 @@ Checked live with curl on 2026-10-01; no request needed a login.
 ## Phases
 
 1. **Known projects and Open a folder** (built). `captain_core::known_projects` (load, save through `file_replace`, add, remove, merge with label projects), the sidebar's stopped entries with Up, Remove from Captain, the + button, ⌘N, and `new` in ⌘K opening the New sheet (Open a folder works; the other three are disabled with a "Coming next" line), Open a folder with the Compose check, and the `projects_dir` setting.
-2. **Templates and Run an image.** The template table and its Compose text in `captain_core`, the project-name and password form, writing `compose.yaml` and `.env` without overwriting a folder that exists; the image picker (local images, Docker Hub search, tags) and the form with Save as a project.
-3. **Paste a docker run command.** The shell-word splitter and the flag table in `captain_core`, with one test per mapped flag group and one for the warnings.
-4. **Guide and hand checks.** A guide page and a section in docs/testing.md.
+2. **Templates and Run an image** (built). The template table and its Compose text in `captain_core`, the project-name and password form, writing `compose.yaml` and `.env` without overwriting a folder that exists; the image picker (local images, Docker Hub search, tags) and the form with Save as a project.
+3. **Paste a docker run command** (built). The shell-word splitter and the flag table in `captain_core`, with one test per mapped flag group and one for the warnings.
+4. **Guide and hand checks** (written; the hand checks are not run yet). [new-projects.md](../guide/new-projects.md) and test 17 in docs/testing.md.
 
 ## Safety
 
@@ -159,6 +170,9 @@ Checked live with curl on 2026-10-01; no request needed a login.
 - A template gallery from the network; templates ship with Captain.
 
 ## Verification
+
+- Unit tests (phases 2 and 3): the Compose writer (quoting, `$$`, top-level volumes and external networks); project names (rules, from an image, unique); writing a project with a private `.env` and refusing a folder with files; random passwords; the free-port suggestion; each template is YAML with its values and no password; Docker Hub URLs, official first, 429 with `Retry-After`, short counts; the Run form's ports, volumes, and service; `up` naming a stopped known project; the `docker run` parser on the postgres, redis, and nginx README examples and a long multi-line command, with its warnings and errors; splitting image references.
+- Ignored tests: every template passes `docker compose config` (docker CLI); Docker Hub search and tags (network).
 
 - Unit tests (phase 1): `projects.json` round trip and a missing file; a broken file is not overwritten; add replaces the same project and remove forgets it; merge hides a known project that runs, keeps one that runs under the same name elsewhere out of the list, and shows the rest as stopped; the Compose file search follows Compose's order and adds the override; `projects_dir` expands `~/`; the project name is read from `config --format json`.
 - By hand (phase 1):

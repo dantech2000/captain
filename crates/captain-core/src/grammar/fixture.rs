@@ -55,7 +55,8 @@ fn kube(namespace: &str, name: &str, ports: &[u16]) -> KubeService {
 
 /// Project `shop` with web, api, two workers, and postgres; project `blog` with its
 /// own api; a loose `redis`; a stopped loose container named `blog`; a pod
-/// container; and three Kubernetes services, two of them named `web`.
+/// container; three Kubernetes services, two of them named `web`; and a known
+/// project `notes` with no containers.
 pub fn catalog() -> Catalog {
     let shop =
         |name, service, ports: &[(u16, u16)]| container(name, Some("shop"), Some(service), ports);
@@ -83,5 +84,6 @@ pub fn catalog() -> Catalog {
         current_project: None,
         kubernetes: true,
         compose: true,
+        stopped_projects: vec!["notes".into()],
     }
 }

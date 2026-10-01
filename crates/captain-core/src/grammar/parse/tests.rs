@@ -78,6 +78,26 @@ fn up_and_down_take_only_projects() {
 }
 
 #[test]
+fn up_also_names_a_known_project_that_has_no_containers() {
+    assert_eq!(
+        ok("up notes"),
+        Action::Project {
+            name: "notes".into(),
+            action: ProjectAction::Up
+        }
+    );
+    assert_eq!(
+        error("down notes"),
+        "No project named \u{201c}notes\u{201d}."
+    );
+    let names: Vec<String> = crate::grammar::complete("up no", &catalog())
+        .into_iter()
+        .map(|suggestion| suggestion.line)
+        .collect();
+    assert_eq!(names, ["up notes"]);
+}
+
+#[test]
 fn a_service_name_resolves_in_the_current_project_or_by_project_slash_service() {
     assert_eq!(
         ok("restart blog/api"),

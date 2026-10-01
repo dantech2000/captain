@@ -1,4 +1,5 @@
 use captain_core::grammar::{Catalog, ParseError, Verb, complete, parse};
+use captain_core::known_projects::stopped_known;
 use captain_core::kubernetes::KubernetesStatus;
 use captain_core::store::GroupKey;
 use gpui_kit::*;
@@ -6,6 +7,7 @@ use gpui_kit::*;
 use super::ranking::Ranked;
 use super::suggestion_row;
 use crate::kubernetes::kubernetes_model;
+use crate::new_project::known_projects;
 use crate::port_forwarding::ForwardingModel;
 use crate::theme::Palette;
 use crate::workspace::{Page, Workspace};
@@ -27,6 +29,10 @@ pub fn catalog(workspace: &Workspace, forwarding: Option<&ForwardingModel>, cx: 
         current_project,
         kubernetes,
         compose: workspace.has_project_runner(),
+        stopped_projects: stopped_known(&workspace.compose_projects(), &known_projects(cx))
+            .into_iter()
+            .map(|project| project.name)
+            .collect(),
     }
 }
 

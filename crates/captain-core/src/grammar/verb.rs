@@ -23,6 +23,8 @@ pub(super) struct Kinds {
     pub container: bool,
     pub service: bool,
     pub project: bool,
+    /// A known project that has no containers, which only `up` can start.
+    pub stopped: bool,
     pub port: bool,
     pub kube: bool,
     pub page: bool,
@@ -32,6 +34,7 @@ const RUNNABLE: Kinds = Kinds {
     container: true,
     service: true,
     project: true,
+    stopped: false,
     port: false,
     kube: false,
     page: false,
@@ -39,6 +42,10 @@ const RUNNABLE: Kinds = Kinds {
 const PROJECT: Kinds = Kinds {
     project: true,
     ..NONE
+};
+const UP: Kinds = Kinds {
+    stopped: true,
+    ..PROJECT
 };
 const CONTAINER: Kinds = Kinds {
     container: true,
@@ -56,6 +63,7 @@ const NONE: Kinds = Kinds {
     container: false,
     service: false,
     project: false,
+    stopped: false,
     port: false,
     kube: false,
     page: false,
@@ -198,7 +206,8 @@ impl Verb {
             Verb::Start | Verb::Stop | Verb::Restart | Verb::Pause | Verb::Resume | Verb::Logs => {
                 &[RUNNABLE]
             }
-            Verb::Up | Verb::Down => &[PROJECT],
+            Verb::Up => &[UP],
+            Verb::Down => &[PROJECT],
             Verb::Shell | Verb::Float => &[CONTAINER],
             Verb::Open => &[OPENER],
             Verb::Forward => &[KUBE, PORT],

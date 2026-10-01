@@ -23,16 +23,17 @@ Each page says when a feature needs macOS.
 1. [Getting started](getting-started.md): install Captain, set up Captain Engine, and learn the main window (the icon rail, the sidebar, and ⌘B) and the menu bar.
 2. [Moving from Docker Desktop or Rancher Desktop](moving-from-docker-desktop-or-rancher.md): copy your data, set up your terminal, and uninstall the old app.
 3. [Projects and tasks](projects-and-tasks.md): the project page, `x-captain.tasks`, the Open row, and the Map tab.
-4. [Editing a project's files](editing-projects.md): the Files tab, checks as you type, completion, Save and apply, and Rebuild.
-5. [Storage](storage.md): see what fills the engine disk and free space.
-6. [The command palette](command-palette.md): every ⌘K command.
-7. [Kubernetes](kubernetes.md): a one-node cluster in Captain Engine.
-8. [Snapshots](snapshots.md): save and restore the state of Captain Engine.
-9. [Extensions](extensions.md): Docker Desktop extensions in Captain.
-10. [Settings](settings.md): the Settings page and the settings file.
-11. [Troubleshooting](troubleshooting.md): the Diagnostics checks and their fixes, and the logs.
-12. [The command line](cli.md): the `captain` command.
-13. [AI agents](agents.md): let Claude Code, Codex, Cursor, and other agents read and run your projects through `captain mcp`.
+4. [Making new projects](new-projects.md): the New sheet (⌘N) for running an image, starting from a template, opening a folder, or pasting a `docker run` command, and the projects Captain remembers.
+5. [Editing a project's files](editing-projects.md): the Files tab, checks as you type, completion, Save and apply, and Rebuild.
+6. [Storage](storage.md): see what fills the engine disk and free space.
+7. [The command palette](command-palette.md): every ⌘K command.
+8. [Kubernetes](kubernetes.md): a one-node cluster in Captain Engine.
+9. [Snapshots](snapshots.md): save and restore the state of Captain Engine.
+10. [Extensions](extensions.md): Docker Desktop extensions in Captain.
+11. [Settings](settings.md): the Settings page and the settings file.
+12. [Troubleshooting](troubleshooting.md): the Diagnostics checks and their fixes, and the logs.
+13. [The command line](cli.md): the `captain` command.
+14. [AI agents](agents.md): let Claude Code, Codex, Cursor, and other agents read and run your projects through `captain mcp`.
 
 ## Reference
 

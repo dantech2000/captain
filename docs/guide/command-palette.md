@@ -34,7 +34,7 @@ A command is a verb and, for most verbs, a name. The palette completes each word
 | `restart <container\|service\|project>` | Restarts a container, a service, or a project (`docker compose restart`). |
 | `pause <container\|service\|project>` | Freezes the processes of each container. |
 | `resume <container\|service\|project>` | Resumes the frozen processes. |
-| `up <project>` | Creates and starts the services of a project (`docker compose up`). |
+| `up <project>` | Creates and starts the services of a project (`docker compose up`). It also names a stopped project that Captain remembers; see [Making new projects](new-projects.md). |
 | `down <project>` | Stops and removes the containers of a project. Captain asks first. |
 | `logs <container\|service\|project> [--since TIME] [--errors]` | Opens the logs. See [logs](#logs). |
 | `shell <container\|service>` | Opens the inspector at the **Terminal** tab. |

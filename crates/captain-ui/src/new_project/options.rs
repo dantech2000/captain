@@ -51,26 +51,20 @@ impl NewOption {
         }
     }
 
-    /// True if the option works in this build. The others come in the next phases
-    /// of docs/features/0040-new-projects.md.
-    pub fn ready(self) -> bool {
-        self == NewOption::OpenFolder
-    }
-
     /// The status bar sentence of the option's card.
     pub fn help(self) -> &'static str {
         match self {
             NewOption::RunImage => {
-                "Coming next: run an image as a one-service project, or as a plain container."
+                "Pick an image, then save it as a one-service project or run it as a plain container."
             }
             NewOption::Template => {
-                "Coming next: a Compose project from a built-in template with pinned image tags."
+                "Make a Compose project from a built-in template with pinned image tags."
             }
             NewOption::OpenFolder => {
                 "Choose a folder or a Compose file. Captain checks it, remembers the project, and opens its files."
             }
             NewOption::PasteRun => {
-                "Coming next: paste a docker run command and get a Compose file, with warnings for flags it cannot convert."
+                "Paste a docker run command and get a Compose file, with a warning for each flag Captain cannot convert."
             }
         }
     }
