@@ -201,8 +201,10 @@ fn show(
             .title(title.clone())
             .w(px(520.))
             .overlay_closable(false)
-            // Cancel removes an image the check pulled; the close button would not.
+            // Cancel removes an image the check pulled; the close button and Escape
+            // would not.
             .close_button(false)
+            .keyboard(false)
             .child(dialog.clone())
     });
 }
