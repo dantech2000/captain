@@ -13,7 +13,7 @@ pub fn render(
     host: Option<&HostSummary>,
     palette: &Palette,
 ) -> Stateful<Div> {
-    // The numbers live in the engine card and the status bar; here only which
+    // The numbers live in the status line and the status bar; here only which
     // engine it is and its state.
     let engine = EngineState::of(workspace, host, palette);
     div()

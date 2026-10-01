@@ -49,7 +49,7 @@ impl EngineState {
     /// The status bar sentence for the engine header and the rail's app icon.
     pub fn help(&self) -> String {
         format!(
-            "{}: {}. The engine card in the sidebar shows its CPU and memory.",
+            "{}: {}. The line at the bottom of the sidebar shows its CPU, memory, and disk.",
             self.engine,
             self.state.to_lowercase()
         )

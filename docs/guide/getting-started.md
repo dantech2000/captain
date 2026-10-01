@@ -74,8 +74,7 @@ From top to bottom:
 - **Projects.** One entry per Compose project, with "Compose · N services", how many containers run, and the published ports. **All containers**, on the same line, shows every container in one list.
 - **Kubernetes namespaces.** One entry per namespace, while **Show Kubernetes containers** is on. See [Kubernetes](kubernetes.md).
 - **Loose containers.** The containers that are in no project.
-- **The Disk card.** How much of the engine disk is in use, and how much you can free. Click it to open [Storage](storage.md).
-- **The engine card.** CPU and memory gauges, and **Start**, **Stop**, or **Set up** for Captain Engine.
+- **The status line.** One line at the bottom: a dot in the engine's state color, then CPU, memory, and disk in use, for example `● 0% · 55 MB · 1.6 GB`. While the engine is not connected, the line shows its state, such as **Stopped**. Point at a number to see the full figure in the status bar. The disk number turns to the warning color when you can free space; click it to open [Storage](storage.md). With Captain Engine, the power button on the right stops, starts, or sets up the engine. A spinner shows while the engine starts or stops.
 
 ### The project page
 

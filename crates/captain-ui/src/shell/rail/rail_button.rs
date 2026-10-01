@@ -67,7 +67,7 @@ pub fn toggle_button(handle: &Entity<Workspace>, hidden: bool, palette: &Palette
 /// The status bar sentence for the sidebar button, and for the palette's row.
 pub fn sidebar_help(hidden: bool) -> &'static str {
     if hidden {
-        "Show the projects list, the Disk card, and the engine card."
+        "Show the projects list and the engine status line."
     } else {
         "Hide the projects list, so the page gets the width."
     }

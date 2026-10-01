@@ -96,7 +96,7 @@ impl AppShell {
         // The sidebar badge counts failed checks.
         subscriptions
             .extend(diagnostics_model(cx).map(|model| cx.observe(&model, |_, _, cx| cx.notify())));
-        // The sidebar's Disk card.
+        // The sidebar's status line shows the disk use.
         subscriptions
             .extend(storage_model(cx).map(|model| cx.observe(&model, |_, _, cx| cx.notify())));
         let focus_handle = cx.focus_handle();

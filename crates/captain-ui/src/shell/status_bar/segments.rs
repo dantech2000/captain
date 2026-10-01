@@ -111,7 +111,8 @@ fn engine(connection: &Connection, host: Option<&HostSummary>, palette: &Palette
         let (dot, help) = match &host.status {
             HostStatus::Running => (
                 palette.green,
-                "Captain Engine is running. Start or stop it in the engine card.".to_string(),
+                "Captain Engine is running. Stop it with the power button in the sidebar."
+                    .to_string(),
             ),
             HostStatus::Starting | HostStatus::Stopping => (
                 palette.orange,
@@ -119,14 +120,16 @@ fn engine(connection: &Connection, host: Option<&HostSummary>, palette: &Palette
             ),
             HostStatus::NotCreated => (
                 palette.gray,
-                "Captain Engine is not set up. Set it up in the engine card.".to_string(),
+                "Captain Engine is not set up. Set it up with the power button in the sidebar."
+                    .to_string(),
             ),
             HostStatus::Failed(why) | HostStatus::NotInstalled(why) => {
                 (palette.red, format!("Captain Engine cannot run: {why}"))
             }
             HostStatus::Stopped => (
                 palette.red,
-                "Captain Engine is stopped. Start it in the engine card.".to_string(),
+                "Captain Engine is stopped. Start it with the power button in the sidebar."
+                    .to_string(),
             ),
         };
         return Segment {

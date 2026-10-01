@@ -1,24 +1,25 @@
-mod disk_card;
-mod engine_card;
+mod disk_summary;
 mod engine_header;
 mod page_help;
+mod power_button;
 mod projects;
 mod search_button;
+mod status_line;
 
 pub(crate) use page_help::page_help;
 
 use gpui_kit::*;
 
-pub use disk_card::DiskSummary;
+pub use disk_summary::DiskSummary;
 
 use crate::engine_host::HostSummary;
 use crate::theme::Palette;
 use crate::widgets::drag_region;
 use crate::workspace::Workspace;
 
-/// The engine header, search, the projects, the Disk card, and the engine card, to
-/// the right of the icon rail. The projects list takes the free height, so the parts
-/// below it do not move when entries come and go. `disk` is `None` until the storage
+/// The engine header, search, the projects, and the engine status line, to the right
+/// of the icon rail. The projects list takes the free height, so the status line
+/// does not move when entries come and go. `disk` is `None` until the storage
 /// model has read the disk use.
 pub fn render(
     handle: &Entity<Workspace>,
@@ -34,7 +35,7 @@ pub fn render(
         .flex()
         .flex_col()
         .px(px(12.))
-        .pb(px(14.))
+        .pb(px(4.))
         .bg(palette.side)
         .border_r_1()
         .border_color(palette.sep)
@@ -42,6 +43,5 @@ pub fn render(
         .child(engine_header::render(workspace, host, palette))
         .child(search_button::render(palette))
         .child(projects::render(handle, workspace, palette))
-        .children(disk.map(|disk| disk_card::render(handle, disk, palette)))
-        .child(engine_card::render(workspace, host, palette))
+        .child(status_line::render(handle, workspace, host, disk, palette))
 }
