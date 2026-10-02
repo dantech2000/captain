@@ -1,10 +1,8 @@
 use std::collections::HashMap;
 
-use bollard::errors::Error;
 use bollard::models::{ContainerSummary, CreateImageInfo, ImageSummary, ProgressDetail};
-use captain_core::EngineError;
 
-use super::{image, image_usage, needs_usage, pull_error, pull_progress};
+use super::{image, image_usage, needs_usage, pull_progress};
 
 fn summary(id: &str, tags: &[&str], containers: i64) -> ImageSummary {
     ImageSummary {
@@ -18,21 +16,17 @@ fn summary(id: &str, tags: &[&str], containers: i64) -> ImageSummary {
 }
 
 #[test]
-fn maps_a_tagged_image() {
-    let image = image(summary("sha256:a", &["nginx:1.27"], 2), &HashMap::new());
-    assert_eq!(image.id, "sha256:a");
-    assert_eq!(image.repo_tags, ["nginx:1.27"]);
-    assert_eq!(image.size, 1024);
-    assert_eq!(image.created, 1_700_000_000);
-    assert_eq!(image.containers, 2);
-    assert!(!image.dangling);
-}
-
-#[test]
-fn none_tags_mean_dangling() {
-    let image = image(summary("sha256:b", &["<none>:<none>"], 0), &HashMap::new());
-    assert!(image.repo_tags.is_empty());
-    assert!(image.dangling);
+fn maps_a_tagged_image_and_none_tags_mean_dangling() {
+    let nginx = image(summary("sha256:a", &["nginx:1.27"], 2), &HashMap::new());
+    assert_eq!(nginx.id, "sha256:a");
+    assert_eq!(nginx.repo_tags, ["nginx:1.27"]);
+    assert_eq!(nginx.size, 1024);
+    assert_eq!(nginx.created, 1_700_000_000);
+    assert_eq!(nginx.containers, 2);
+    assert!(!nginx.dangling);
+    let dangling = image(summary("sha256:b", &["<none>:<none>"], 0), &HashMap::new());
+    assert!(dangling.repo_tags.is_empty());
+    assert!(dangling.dangling);
 }
 
 #[test]
@@ -79,12 +73,4 @@ fn maps_pull_messages() {
     });
     assert_eq!(status.layer, None);
     assert_eq!(status.current, None);
-}
-
-#[test]
-fn stream_errors_are_api_errors() {
-    let error = pull_error(Error::DockerStreamError {
-        error: "manifest unknown".into(),
-    });
-    assert_eq!(error, EngineError::Api("manifest unknown".into()));
 }

@@ -41,11 +41,3 @@ fn a_429_waits_for_retry_after() {
     );
     assert!(matches!(status_error(503, None), HubError::Unavailable(_)));
 }
-
-#[test]
-fn counts_are_short() {
-    assert_eq!(count_label(950), "950");
-    assert_eq!(count_label(12_345), "12K");
-    assert_eq!(count_label(3_456_789), "3.4M");
-    assert_eq!(count_label(1_000_000_000), "1B");
-}

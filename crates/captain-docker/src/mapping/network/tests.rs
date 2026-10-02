@@ -15,7 +15,7 @@ fn config(subnet: &str, gateway: &str) -> IpamConfig {
 }
 
 #[test]
-fn maps_fields_and_prefers_ipv4() {
+fn maps_fields_prefers_ipv4_and_falls_back_to_ipv6() {
     let docker = DockerNetwork {
         id: Some("abc123".into()),
         name: Some("shop_default".into()),
@@ -45,10 +45,7 @@ fn maps_fields_and_prefers_ipv4() {
     assert_eq!(n.gateway.as_deref(), Some("172.18.0.1"));
     assert_eq!(n.containers, 3);
     assert_eq!(n.compose_project.as_deref(), Some("shop"));
-}
-
-#[test]
-fn missing_ipam_gives_no_subnet() {
+    // Missing IPAM gives no subnet.
     let docker = DockerNetwork {
         name: Some("none".into()),
         ..DockerNetwork::default()
@@ -57,10 +54,7 @@ fn missing_ipam_gives_no_subnet() {
     assert_eq!(n.subnet, None);
     assert_eq!(n.gateway, None);
     assert!(n.is_built_in());
-}
-
-#[test]
-fn falls_back_to_ipv6_and_drops_empty_gateways() {
+    // IPv6 is the fallback, and an empty gateway is none.
     let ipam = Ipam {
         config: Some(vec![config("fd00::/64", "")]),
         ..Ipam::default()

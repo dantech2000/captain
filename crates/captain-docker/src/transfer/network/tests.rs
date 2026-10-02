@@ -20,7 +20,7 @@ fn network(config: Option<Vec<IpamConfig>>) -> NetworkInspect {
 }
 
 #[test]
-fn keeps_driver_labels_and_subnet() {
+fn keeps_driver_labels_and_subnet_or_lets_the_engine_pick() {
     let subnet = IpamConfig {
         subnet: Some("172.30.0.0/16".into()),
         ..IpamConfig::default()
@@ -37,10 +37,7 @@ fn keeps_driver_labels_and_subnet() {
         }])),
         "x"
     )));
-}
-
-#[test]
-fn no_subnet_means_the_engine_picks() {
+    // No subnet means the engine picks.
     let request = create_request(&network(Some(vec![])), "backend");
     assert!(!has_subnet(&request));
     assert_eq!(request.ipam.unwrap().config, None);

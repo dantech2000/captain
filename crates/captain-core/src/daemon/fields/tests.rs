@@ -11,12 +11,7 @@ fn fields() -> DaemonFields<'static> {
 }
 
 #[test]
-fn empty_fields_are_the_defaults() {
-    assert_eq!(parse_fields(fields()), Ok(Default::default()));
-}
-
-#[test]
-fn lists_split_on_lines_and_commas_without_duplicates() {
+fn empty_fields_are_the_defaults_and_lists_split_on_lines_and_commas() {
     let settings = parse_fields(DaemonFields {
         registry_mirrors: "https://a.example\n https://b.example, https://a.example\n",
         insecure_registries: "10.0.0.0/8,registry.local:5000",
@@ -31,6 +26,7 @@ fn lists_split_on_lines_and_commas_without_duplicates() {
         settings.insecure_registries,
         ["10.0.0.0/8", "registry.local:5000"]
     );
+    assert_eq!(parse_fields(fields()), Ok(Default::default()));
 }
 
 #[test]

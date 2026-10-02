@@ -26,16 +26,12 @@ fn the_id_is_the_repository_as_a_host_name() {
 }
 
 #[test]
-fn repositories_with_the_same_slug_get_different_ids() {
+fn repositories_with_the_same_slug_get_different_ids_and_data_stores() {
     assert_eq!(
         extension_id("acme/foo-bar:1"),
         extension_id("acme/foo-bar:2")
     );
     assert_ne!(extension_id("acme/foo-bar"), extension_id("acme/foo_bar"));
-}
-
-#[test]
-fn the_project_and_the_data_store_follow_the_id() {
     assert_eq!(project_name("acme-ext"), "captain-ext-acme-ext");
     assert_eq!(data_store_id("acme-ext"), data_store_id("acme-ext"));
     assert_ne!(data_store_id("acme-ext"), data_store_id("acme-ext2"));

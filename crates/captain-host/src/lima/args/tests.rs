@@ -51,7 +51,7 @@ fn resources(cpus: u32, memory_gib: u64, disk_gib: u64) -> HostResources {
 }
 
 #[test]
-fn edit_only_what_changed() {
+fn edit_only_what_changed_keeping_a_larger_disk() {
     let current = resources(4, 8, 64);
     assert_eq!(edit("captain", &current, &current), None);
     assert_eq!(
@@ -62,18 +62,11 @@ fn edit_only_what_changed() {
         joined(edit("captain", &current, &resources(4, 12, 100)).unwrap()),
         "--log-format json edit captain --tty=false --memory 12 --disk 100"
     );
-}
-
-#[test]
-fn edit_keeps_a_larger_disk() {
+    // A larger disk is kept.
     assert_eq!(
         edit("captain", &resources(4, 8, 100), &resources(4, 8, 64)),
         None
     );
-}
-
-#[test]
-fn edit_takes_fractional_memory() {
     let wanted = HostResources {
         memory_bytes: 4 * GIB + GIB / 2,
         ..resources(4, 8, 64)

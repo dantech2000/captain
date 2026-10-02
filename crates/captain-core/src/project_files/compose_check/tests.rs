@@ -11,7 +11,7 @@ fn lines(stderr: &str, text: &str) -> Vec<Option<usize>> {
 }
 
 #[test]
-fn schema_errors_map_their_key_path_to_a_line() {
+fn schema_and_service_errors_map_to_their_key_line() {
     let text = "services:\n  web:\n    imgae: busybox\n    ports: 80\n";
     let stderr = "validating -: services.web additional properties 'imgae' not allowed\n";
     assert_eq!(lines(stderr, text), [Some(2)]);
@@ -20,6 +20,10 @@ fn schema_errors_map_their_key_path_to_a_line() {
     let root = "servicez:\n  web:\n    image: busybox\n";
     let stderr = "validating -:  additional properties 'servicez' not allowed\n";
     assert_eq!(lines(stderr, root), [Some(0)]);
+    // A named service points at its key.
+    let text = "services:\n  web:\n    image: busybox\n    depends_on: [db]\n";
+    let stderr = "service \"web\" depends on undefined service \"db\": invalid compose project\n";
+    assert_eq!(lines(stderr, text), [Some(1)]);
 }
 
 #[test]
@@ -45,11 +49,4 @@ fn other_files_have_no_line_and_warnings_stay_warnings() {
     assert!(problems[0].message.starts_with("other.yaml: "));
     assert_eq!(problems[1].line, Some(0));
     assert_eq!(problems[1].severity, Severity::Warning);
-}
-
-#[test]
-fn a_named_service_points_at_its_key() {
-    let text = "services:\n  web:\n    image: busybox\n    depends_on: [db]\n";
-    let stderr = "service \"web\" depends on undefined service \"db\": invalid compose project\n";
-    assert_eq!(lines(stderr, text), [Some(1)]);
 }

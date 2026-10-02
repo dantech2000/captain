@@ -28,25 +28,17 @@ fn parses_every_section() {
 }
 
 #[test]
-fn a_ui_only_extension_has_no_backend() {
+fn the_vm_section_gives_no_backend_an_image_or_a_compose_file() {
     let json = r#"{"ui": {"dashboard-tab": {"title": "T", "root": "/ui", "src": "index.html"}}}"#;
     let metadata = ExtensionMetadata::parse(json).unwrap();
     assert_eq!(metadata.backend("x"), None);
     assert!(metadata.host_binaries("darwin").is_empty());
-}
-
-#[test]
-fn a_compose_backend_keeps_its_path() {
     let json = r#"{"vm": {"composefile": "docker-compose.yaml"}}"#;
     let metadata = ExtensionMetadata::parse(json).unwrap();
     assert_eq!(
         metadata.backend("x"),
         Some(Backend::Compose("docker-compose.yaml".into()))
     );
-}
-
-#[test]
-fn rejects_bad_json_and_an_empty_vm() {
     assert!(ExtensionMetadata::parse("not json").is_err());
     assert!(ExtensionMetadata::parse(r#"{"vm": {}}"#).is_err());
 }

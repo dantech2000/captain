@@ -16,67 +16,46 @@ fn plain(key: &str, key_char: Option<&str>) -> Keystroke {
 }
 
 #[test]
-fn named_keys_map_to_terminal_keys() {
-    assert_eq!(
-        key_input(&plain("enter", None), true),
-        Some(KeyInput::new(Key::Enter))
-    );
-    assert_eq!(
-        key_input(&plain("up", None), false),
-        Some(KeyInput::new(Key::Up))
-    );
-    assert_eq!(
-        key_input(&plain("f5", None), false),
-        Some(KeyInput::new(Key::F(5)))
-    );
-    assert_eq!(key_input(&plain("f20", None), false), None);
-    assert_eq!(
-        key_input(&plain("space", Some(" ")), false),
-        Some(KeyInput::new(Key::Char(' ')).with_text(" "))
-    );
-}
-
-#[test]
-fn characters_carry_their_typed_text() {
-    let shifted = stroke("a", Some("A"), Modifiers::shift());
-    assert_eq!(
-        key_input(&shifted, true),
-        Some(
-            KeyInput::new(Key::Char('a'))
-                .with_text("A")
-                .with_mods(TermMods::SHIFT)
-        )
-    );
-    let ctrl_c = stroke("c", None, Modifiers::control());
-    assert_eq!(
-        key_input(&ctrl_c, true),
-        Some(KeyInput::new(Key::Char('c')).with_mods(TermMods::CTRL))
-    );
-}
-
-#[test]
-fn option_composes_on_macos_and_is_meta_elsewhere() {
-    let option_s = stroke("s", Some("ß"), Modifiers::alt());
-    assert_eq!(
-        key_input(&option_s, true),
-        Some(KeyInput::new(Key::Char('s')).with_text("ß"))
-    );
-    assert_eq!(
-        key_input(&stroke("b", Some("b"), Modifiers::alt()), false),
-        Some(
-            KeyInput::new(Key::Char('b'))
-                .with_text("b")
-                .with_mods(TermMods::ALT)
-        )
-    );
-}
-
-#[test]
-fn cmd_keys_stay_with_the_app() {
-    assert_eq!(
-        key_input(&stroke("k", None, Modifiers::command()), true),
-        None
-    );
+fn keystrokes_map_to_terminal_keys() {
+    let char_key = |c| KeyInput::new(Key::Char(c));
+    let cases = [
+        (plain("enter", None), true, Some(KeyInput::new(Key::Enter))),
+        (plain("up", None), false, Some(KeyInput::new(Key::Up))),
+        (plain("f5", None), false, Some(KeyInput::new(Key::F(5)))),
+        (plain("f20", None), false, None),
+        (
+            plain("space", Some(" ")),
+            false,
+            Some(char_key(' ').with_text(" ")),
+        ),
+        // Characters carry their typed text.
+        (
+            stroke("a", Some("A"), Modifiers::shift()),
+            true,
+            Some(char_key('a').with_text("A").with_mods(TermMods::SHIFT)),
+        ),
+        (
+            stroke("c", None, Modifiers::control()),
+            true,
+            Some(char_key('c').with_mods(TermMods::CTRL)),
+        ),
+        // Option composes on macOS and is Meta elsewhere.
+        (
+            stroke("s", Some("ß"), Modifiers::alt()),
+            true,
+            Some(char_key('s').with_text("ß")),
+        ),
+        (
+            stroke("b", Some("b"), Modifiers::alt()),
+            false,
+            Some(char_key('b').with_text("b").with_mods(TermMods::ALT)),
+        ),
+        // Cmd keys stay with the app.
+        (stroke("k", None, Modifiers::command()), true, None),
+    ];
+    for (keystroke, macos, input) in cases {
+        assert_eq!(key_input(&keystroke, macos), input, "{keystroke:?}");
+    }
 }
 
 #[test]

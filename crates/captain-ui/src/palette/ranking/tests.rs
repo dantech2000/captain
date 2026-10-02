@@ -51,11 +51,7 @@ fn query_keeps_only_matches_with_ranges() {
 fn best_section_comes_first_and_rows_stay_grouped() {
     let ranked = rank(sample(), "api");
     assert_eq!(titles(&ranked), ["api", "Restart api", "Stop api"]);
-}
-
-#[test]
-fn child_index_counts_section_headers() {
-    let ranked = rank(sample(), "api");
+    // The child index counts the section headers.
     assert_eq!(child_index(&ranked, 0), 1);
     assert_eq!(child_index(&ranked, 1), 3);
     assert_eq!(child_index(&ranked, 2), 4);

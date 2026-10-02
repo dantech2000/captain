@@ -33,13 +33,9 @@ fn equal_neighbors_merge_into_one_span() {
 }
 
 #[test]
-fn segments_skip_trailing_blanks() {
+fn segments_skip_trailing_blanks_and_give_wide_characters_their_own() {
     assert_eq!(text_segments(&row("ls -la   ")), vec![(0..6)]);
     assert!(text_segments(&row("    ")).is_empty());
-}
-
-#[test]
-fn wide_characters_get_their_own_segment() {
     let mut cells = row("a漢 b");
     cells[1].flags = CellFlags {
         wide: true,

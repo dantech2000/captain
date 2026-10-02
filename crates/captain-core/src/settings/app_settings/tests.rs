@@ -4,45 +4,31 @@ use crate::settings::{Appearance, EngineChoice, ThemeFamily};
 use crate::{GIB, HostResources};
 
 #[test]
-fn missing_fields_get_defaults() {
+fn old_and_partial_files_get_defaults() {
+    let settings = Settings::from_json(
+        r#"{"version": 1, "appearance": "light", "accent": "purple", "show_menu_bar_icon": "no", "window": {"width": 900}}"#,
+    )
+    .unwrap();
+    assert_eq!(settings.appearance, Appearance::Light);
+    assert_eq!(settings.theme, ThemeFamily::Dusk);
+    assert_eq!(settings.engine_endpoint, None);
+    assert!(!settings.start_in_background);
+    assert!(settings.show_menu_bar_icon);
+    assert!(!settings.show_extension_containers);
     let settings = Settings::from_json(r#"{"version": 1, "theme": "harbor"}"#).unwrap();
     assert_eq!(settings.theme, ThemeFamily::Harbor);
     assert_eq!(settings.appearance, Appearance::System);
-    assert_eq!(settings.engine_endpoint, None);
 }
 
 #[test]
-fn unknown_fields_are_ignored() {
-    let json = r#"{"version": 1, "appearance": "light", "window": {"width": 900}}"#;
-    let settings = Settings::from_json(json).unwrap();
-    assert_eq!(settings.appearance, Appearance::Light);
-}
-
-#[test]
-fn unknown_values_fall_back_to_defaults() {
+fn bad_values_fall_back_to_defaults_and_bad_json_is_an_error() {
     let json = r#"{"appearance": "sepia", "theme": 7, "engine_endpoint": false}"#;
     let settings = Settings::from_json(json).unwrap();
     assert_eq!(settings.appearance, Appearance::System);
     assert_eq!(settings.theme, ThemeFamily::Dusk);
     assert_eq!(settings.engine_endpoint, None);
-}
-
-#[test]
-fn a_file_with_the_old_accent_gets_the_default_theme() {
-    let json = r#"{"version": 1, "appearance": "dark", "accent": "purple"}"#;
-    let settings = Settings::from_json(json).unwrap();
-    assert_eq!(settings.appearance, Appearance::Dark);
-    assert_eq!(settings.theme, ThemeFamily::Dusk);
-}
-
-#[test]
-fn blank_endpoint_is_none() {
     let settings = Settings::from_json(r#"{"engine_endpoint": "  "}"#).unwrap();
     assert_eq!(settings.engine_endpoint, None);
-}
-
-#[test]
-fn malformed_json_is_an_error() {
     assert!(Settings::from_json("{").is_err());
 }
 
@@ -76,37 +62,21 @@ fn round_trips() {
 }
 
 #[test]
-fn engine_choice_defaults_to_captain_when_it_can_run() {
+fn engine_choice_is_the_saved_choice_then_a_saved_endpoint_then_captain_if_it_can_run() {
     let settings = Settings::default();
     assert_eq!(settings.engine_choice(true), EngineChoice::Captain);
     assert_eq!(settings.engine_choice(false), EngineChoice::External);
-}
-
-#[test]
-fn a_saved_endpoint_keeps_the_other_engine() {
     let settings = Settings {
         engine_endpoint: Some("unix:///var/run/docker.sock".into()),
         ..Settings::default()
     };
     assert_eq!(settings.engine_choice(true), EngineChoice::External);
-}
-
-#[test]
-fn a_saved_choice_wins() {
     let settings = Settings {
         engine: Some(EngineChoice::Captain),
         engine_endpoint: Some("tcp://10.0.0.5:2375".into()),
         ..Settings::default()
     };
     assert_eq!(settings.engine_choice(false), EngineChoice::Captain);
-}
-
-#[test]
-fn old_files_get_the_behavior_defaults() {
-    let settings = Settings::from_json(r#"{"version": 1, "show_menu_bar_icon": "no"}"#).unwrap();
-    assert!(!settings.start_in_background);
-    assert!(settings.show_menu_bar_icon);
-    assert!(!settings.show_extension_containers);
 }
 
 #[test]

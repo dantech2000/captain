@@ -3,25 +3,20 @@ use super::age_label;
 const NOW: i64 = 1_800_000_000;
 
 #[test]
-fn under_a_minute_is_just_now() {
-    assert_eq!(age_label(NOW - 59, NOW), "just now");
-}
-
-#[test]
-fn future_timestamps_are_just_now() {
-    assert_eq!(age_label(NOW + 100, NOW), "just now");
-}
-
-#[test]
-fn picks_the_largest_whole_unit() {
-    assert_eq!(age_label(NOW - 60, NOW), "1 minute ago");
-    assert_eq!(age_label(NOW - 3 * 3600, NOW), "3 hours ago");
-    assert_eq!(age_label(NOW - 2 * 86_400, NOW), "2 days ago");
-    assert_eq!(age_label(NOW - 14 * 86_400, NOW), "2 weeks ago");
-    assert_eq!(age_label(NOW - 400 * 86_400, NOW), "1 year ago");
-}
-
-#[test]
-fn missing_time_shows_a_dash() {
-    assert_eq!(age_label(0, NOW), "—");
+fn ages_use_the_largest_whole_unit() {
+    let cases = [
+        (NOW - 59, "just now"),
+        // A clock skew must not show a future age.
+        (NOW + 100, "just now"),
+        (NOW - 60, "1 minute ago"),
+        (NOW - 3 * 3600, "3 hours ago"),
+        (NOW - 2 * 86_400, "2 days ago"),
+        (NOW - 14 * 86_400, "2 weeks ago"),
+        (NOW - 400 * 86_400, "1 year ago"),
+        // Docker reports a missing time as 0.
+        (0, "—"),
+    ];
+    for (time, label) in cases {
+        assert_eq!(age_label(time, NOW), label, "{time}");
+    }
 }

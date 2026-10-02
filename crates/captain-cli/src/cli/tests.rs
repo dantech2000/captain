@@ -20,7 +20,7 @@ fn status_takes_json_and_a_settings_path_after_the_command() {
 }
 
 #[test]
-fn set_takes_a_kebab_case_key_and_a_value() {
+fn set_and_tools_take_only_known_words() {
     let cli = parse(&["set", "stop-engine-on-quit", "false"]).expect("parses");
     assert_eq!(
         cli.command,
@@ -30,6 +30,10 @@ fn set_takes_a_kebab_case_key_and_a_value() {
         }
     );
     assert!(parse(&["set", "appearance", "dark"]).is_err());
+    let cli = parse(&["tools", "install", "--path", "manual"]).expect("parses");
+    let path = Some(PathArg::Manual);
+    assert_eq!(cli.command, Command::Tools(ToolsCommand::Install { path }));
+    assert!(parse(&["tools", "install", "--path", "sometimes"]).is_err());
 }
 
 #[test]
@@ -37,12 +41,6 @@ fn shell_passes_everything_after_the_separator() {
     let cli = parse(&["shell", "--", "ls", "-la", "/"]).expect("parses");
     let command = ["ls", "-la", "/"].map(String::from).to_vec();
     assert_eq!(cli.command, Command::Shell { command });
-}
-
-#[test]
-fn completion_needs_a_known_shell() {
-    assert!(parse(&["completion", "zsh"]).is_ok());
-    assert!(parse(&["completion", "tcsh"]).is_err());
 }
 
 #[test]
@@ -105,12 +103,4 @@ fn kubernetes_enable_takes_a_version_port_and_traefik_switch() {
         })
     );
     assert!(parse(&["kubernetes", "enable", "--port", "0"]).is_err());
-}
-
-#[test]
-fn tools_install_takes_a_path_mode() {
-    let cli = parse(&["tools", "install", "--path", "manual"]).expect("parses");
-    let path = Some(PathArg::Manual);
-    assert_eq!(cli.command, Command::Tools(ToolsCommand::Install { path }));
-    assert!(parse(&["tools", "install", "--path", "sometimes"]).is_err());
 }

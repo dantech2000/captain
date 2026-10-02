@@ -5,7 +5,7 @@ use bollard::models::ContainerSummary;
 use super::container;
 
 #[test]
-fn reads_the_compose_labels() {
+fn reads_the_compose_labels_and_the_kubernetes_namespace() {
     let labels = [
         ("com.docker.compose.project", "shop"),
         ("com.docker.compose.service", "web"),
@@ -34,17 +34,10 @@ fn reads_the_compose_labels() {
             "/code/shop/compose.override.yaml"
         ]
     );
-}
-
-#[test]
-fn a_plain_container_has_no_compose_labels() {
+    // A plain container has no compose labels.
     let c = container(ContainerSummary::default());
     assert_eq!(c.compose_project, None);
     assert_eq!(c.compose, Default::default());
-}
-
-#[test]
-fn reads_the_kubernetes_namespace() {
     let summary = ContainerSummary {
         labels: Some(HashMap::from([(
             "io.kubernetes.pod.namespace".to_string(),

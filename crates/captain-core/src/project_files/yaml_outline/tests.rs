@@ -30,7 +30,7 @@ fn key_line_finds_nested_keys_list_items_and_quoted_keys() {
 }
 
 #[test]
-fn cursor_context_gives_the_parent_mapping_and_the_typed_prefix() {
+fn cursor_context_gives_the_parents_the_typed_prefix_and_the_hovered_key() {
     let text = "services:\n  web:\n    image: nginx\n    heal";
     let context = cursor_context(text, text.len());
     assert_eq!(context.parents, ["services", "web"]);
@@ -40,10 +40,6 @@ fn cursor_context_gives_the_parent_mapping_and_the_typed_prefix() {
     let context = cursor_context(item, item.len());
     assert_eq!(context.parents, ["services", "web", "ports", "0"]);
     assert_eq!(context.prefix.as_deref(), Some("tar"));
-}
-
-#[test]
-fn cursor_context_names_the_hovered_key() {
     let offset = COMPOSE.find("image").unwrap() + 2;
     let context = cursor_context(COMPOSE, offset);
     assert_eq!(

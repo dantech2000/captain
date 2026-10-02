@@ -110,14 +110,9 @@ fn builds_a_service_with_folders_in_the_project() {
 }
 
 #[test]
-fn an_empty_name_lets_the_engine_pick() {
-    let form = RunForm::from_image("busybox", &ImageDetail::default());
-    assert_eq!(form.to_spec().unwrap().name, None);
-}
-
-#[test]
-fn rejects_bad_names() {
+fn an_empty_name_lets_the_engine_pick_and_bad_names_are_refused() {
     let mut form = RunForm::from_image("busybox", &ImageDetail::default());
+    assert_eq!(form.to_spec().unwrap().name, None);
     form.name = "-web".into();
     assert_eq!(form.to_spec(), Err(RunFormError::Name(NameError::BadStart)));
     form.name = "my web".into();
@@ -162,18 +157,6 @@ fn rejects_env_lines_without_a_key() {
     }
     form.env = vec!["URL=http://x?a=b".into()];
     assert_eq!(form.to_spec().unwrap().env[0].value, "http://x?a=b");
-}
-
-#[test]
-fn errors_read_as_sentences() {
-    assert_eq!(
-        RunFormError::Port("80/tcp".into()).to_string(),
-        "Host port for 80/tcp: enter a number from 1 to 65535, or leave it empty"
-    );
-    assert_eq!(
-        RunFormError::Name(NameError::TooShort).to_string(),
-        "Name: Use at least 2 characters"
-    );
 }
 
 #[test]

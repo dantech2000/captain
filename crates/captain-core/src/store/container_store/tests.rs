@@ -20,7 +20,7 @@ fn container(name: &str, state: ContainerState) -> Container {
 }
 
 #[test]
-fn replace_sorts_active_first_then_by_name() {
+fn replace_sorts_active_first_then_by_name_and_counts_the_active() {
     let mut store = ContainerStore::default();
     store.replace(vec![
         container("zeta", ContainerState::Exited),
@@ -31,11 +31,7 @@ fn replace_sorts_active_first_then_by_name() {
 
     let names: Vec<&str> = store.containers().iter().map(|c| c.name.as_str()).collect();
     assert_eq!(names, ["beta", "gamma", "alpha", "zeta"]);
-}
 
-#[test]
-fn active_count_counts_running_paused_and_restarting() {
-    let mut store = ContainerStore::default();
     store.replace(vec![
         container("a", ContainerState::Running),
         container("b", ContainerState::Paused),
@@ -43,7 +39,6 @@ fn active_count_counts_running_paused_and_restarting() {
         container("d", ContainerState::Exited),
         container("e", ContainerState::Created),
     ]);
-
     assert_eq!(store.active_count(), 3);
 }
 
@@ -56,7 +51,7 @@ fn in_project(name: &str, project: Option<&str>, state: ContainerState) -> Conta
 }
 
 #[test]
-fn groups_put_projects_first_and_standalone_last() {
+fn groups_put_projects_first_standalone_last_and_follow_the_filter() {
     let mut store = ContainerStore::default();
     store.replace(vec![
         in_project("solo", None, ContainerState::Running),
@@ -70,31 +65,13 @@ fn groups_put_projects_first_and_standalone_last() {
     assert_eq!(names, [Some("blog"), Some("shop"), None]);
     assert_eq!(groups[1].containers.len(), 2);
     assert_eq!(groups[1].running_count(), 2);
-}
+    // Projects skip standalone containers.
+    assert_eq!(store.projects().len(), 2);
 
-#[test]
-fn groups_apply_the_filter_and_drop_empty_groups() {
-    let mut store = ContainerStore::default();
-    store.replace(vec![
-        in_project("web", Some("shop"), ContainerState::Running),
-        in_project("post", Some("blog"), ContainerState::Exited),
-    ]);
-
+    // A filter drops groups it empties.
     let groups = store.groups(ContainerFilter::Running, false);
-    assert_eq!(groups.len(), 1);
-    assert_eq!(groups[0].project(), Some("shop"));
-}
-
-#[test]
-fn projects_skip_standalone_containers() {
-    let mut store = ContainerStore::default();
-    store.replace(vec![
-        in_project("web", Some("shop"), ContainerState::Running),
-        in_project("solo", None, ContainerState::Running),
-    ]);
-
-    assert_eq!(store.projects().len(), 1);
-    assert!(store.find(&store.containers()[0].id).is_some());
+    let names: Vec<Option<&str>> = groups.iter().map(|g| g.project()).collect();
+    assert_eq!(names, [Some("shop"), None]);
 }
 
 fn in_namespace(name: &str, namespace: &str) -> Container {

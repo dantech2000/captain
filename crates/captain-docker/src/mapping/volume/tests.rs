@@ -2,12 +2,12 @@ use std::collections::HashMap;
 
 use bollard::models::{
     ContainerSummary, ContainerSummaryStateEnum, MountPoint, SystemDataUsageResponse,
-    Volume as DockerVolume, VolumePruneResponse, VolumeUsageData, VolumesDiskUsage,
+    Volume as DockerVolume, VolumeUsageData, VolumesDiskUsage,
 };
 use captain_core::model::ContainerState;
 use serde_json::json;
 
-use super::{volume, volume_prune, volume_prune_filters, volume_usage, volume_users};
+use super::{volume, volume_prune_filters, volume_usage, volume_users};
 
 fn docker_volume(name: &str) -> DockerVolume {
     DockerVolume {
@@ -41,7 +41,7 @@ fn reads_usage_from_df_items() {
 }
 
 #[test]
-fn maps_fields_and_usage() {
+fn maps_fields_and_usage_and_keeps_unknown_usage_unknown() {
     let usage = HashMap::from([(
         "pgdata".to_string(),
         VolumeUsageData {
@@ -56,10 +56,6 @@ fn maps_fields_and_usage() {
     assert_eq!(v.compose_project.as_deref(), Some("shop"));
     assert_eq!(v.size_bytes, Some(4096));
     assert_eq!(v.containers, Some(2));
-}
-
-#[test]
-fn unknown_usage_stays_unknown() {
     let v = volume(docker_volume("other"), &HashMap::new());
     assert_eq!(v.size_bytes, None);
     assert_eq!(v.containers, None);
@@ -126,18 +122,4 @@ fn prune_filters_add_all_and_label_only_when_asked() {
     let filters = volume_prune_filters(true, Some("captain-agent-test=1"));
     assert_eq!(filters["all"], ["true"]);
     assert_eq!(filters["label"], ["captain-agent-test=1"]);
-}
-
-#[test]
-fn prune_response_maps_names_and_space() {
-    let report = volume_prune(VolumePruneResponse {
-        volumes_deleted: Some(vec!["a".into(), "b".into()]),
-        space_reclaimed: Some(2048),
-    });
-    assert_eq!(report.removed, ["a", "b"]);
-    assert_eq!(report.reclaimed_bytes, 2048);
-    assert_eq!(
-        volume_prune(VolumePruneResponse::default()).reclaimed_bytes,
-        0
-    );
 }

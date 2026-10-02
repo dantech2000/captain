@@ -55,6 +55,11 @@ fn groups_by_project_and_service_and_skips_standalone() {
     assert_eq!(web, ["shop-web-1", "shop-web-2"]);
     assert_eq!(shop.container_count(), 3);
     assert_eq!(shop.active_count(), 2);
+    assert_eq!(
+        compose_project(&containers, "blog").map(|p| p.name),
+        Some("blog".into())
+    );
+    assert_eq!(compose_project(&containers, "gone"), None);
 }
 
 #[test]
@@ -90,17 +95,4 @@ fn a_missing_working_dir_label_takes_the_next_container() {
     let project = &compose_projects(&containers)[0];
     assert_eq!(project.working_dir.as_deref(), Some("/code/p"));
     assert_eq!(project.config_files, ["/code/p/compose.yaml"]);
-}
-
-#[test]
-fn finds_one_project_by_name() {
-    let containers = [
-        member("a", Some("shop"), Some("a"), true),
-        member("b", Some("blog"), Some("b"), true),
-    ];
-    assert_eq!(
-        compose_project(&containers, "blog").map(|p| p.name),
-        Some("blog".into())
-    );
-    assert_eq!(compose_project(&containers, "gone"), None);
 }

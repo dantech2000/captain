@@ -30,6 +30,16 @@ fn cpus_stay_within_this_computer() {
     );
     assert!(set(SettingKey::Cpus, "0").is_err());
     assert!(set(SettingKey::Cpus, "two").is_err());
+    // A new resource keeps the other defaults.
+    let saved = set(SettingKey::Cpus, "2")
+        .unwrap()
+        .engine_resources
+        .unwrap();
+    let defaults = engine_resources(&Settings::default(), &MACHINE);
+    assert_eq!(
+        (saved.memory_bytes, saved.disk_bytes),
+        (defaults.memory_bytes, defaults.disk_bytes)
+    );
 }
 
 #[test]
@@ -41,17 +51,6 @@ fn memory_takes_gib_up_to_three_quarters_of_the_computer() {
         Err("Memory must be 2 to 24 GiB.".into())
     );
     assert!(set(SettingKey::Memory, "1g").is_err());
-}
-
-#[test]
-fn a_new_resource_keeps_the_other_defaults() {
-    let settings = set(SettingKey::Cpus, "2").unwrap();
-    let defaults = engine_resources(&Settings::default(), &MACHINE);
-    let saved = settings.engine_resources.unwrap();
-    assert_eq!(
-        (saved.memory_bytes, saved.disk_bytes),
-        (defaults.memory_bytes, defaults.disk_bytes)
-    );
 }
 
 #[test]

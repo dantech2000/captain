@@ -24,7 +24,7 @@ fn runtime() -> tokio::runtime::Runtime {
 fn wait_idle_returns_after_the_limit() {
     let in_flight = InFlight::default();
     let _guard = in_flight.enter();
-    let idle = runtime().block_on(in_flight.wait_idle(Some(Duration::from_millis(250))));
+    let idle = runtime().block_on(in_flight.wait_idle(Some(Duration::from_millis(20))));
     assert!(!idle);
     assert_eq!(in_flight.count(), 1);
 }
@@ -34,7 +34,7 @@ fn wait_idle_without_a_limit_waits_for_the_last_guard() {
     let in_flight = InFlight::default();
     let guard = in_flight.enter();
     let ended = std::thread::spawn(move || {
-        std::thread::sleep(Duration::from_millis(300));
+        std::thread::sleep(Duration::from_millis(50));
         drop(guard);
     });
     assert!(runtime().block_on(in_flight.wait_idle(None)));

@@ -11,29 +11,25 @@ fn plist_escapes_the_program() {
 }
 
 #[test]
-fn a_plain_path_is_not_quoted() {
-    let entry = autostart_entry("/opt/captain/captain");
-    assert!(entry.contains("\nExec=/opt/captain/captain\n"), "{entry}");
-}
-
-#[test]
-fn exec_quotes_reserved_characters() {
-    // Inside the quotes `$` and `\` get a backslash; the string escape then doubles
-    // every backslash.
-    let entry = autostart_entry(r"/home/me/my apps/$x\captain");
-    assert!(
-        entry.contains(r#"Exec="/home/me/my apps/\\$x\\\\captain""#),
-        "{entry}"
-    );
-}
-
-#[test]
-fn exec_escapes_percent_and_line_breaks() {
-    let entry = autostart_entry("/home/me/100%/%u\ncaptain");
-    assert!(
-        entry.contains(r#"Exec="/home/me/100%%/%%u\ncaptain""#),
-        "{entry}"
-    );
+fn exec_quotes_and_escapes_only_what_the_desktop_entry_spec_reserves() {
+    let cases = [
+        // A plain path is not quoted.
+        ("/opt/captain/captain", "\nExec=/opt/captain/captain\n"),
+        // Inside the quotes `$` and `\` get a backslash; the string escape then
+        // doubles every backslash.
+        (
+            r"/home/me/my apps/$x\captain",
+            r#"Exec="/home/me/my apps/\\$x\\\\captain""#,
+        ),
+        (
+            "/home/me/100%/%u\ncaptain",
+            r#"Exec="/home/me/100%%/%%u\ncaptain""#,
+        ),
+    ];
+    for (program, exec) in cases {
+        let entry = autostart_entry(program);
+        assert!(entry.contains(exec), "{entry}");
+    }
 }
 
 #[test]

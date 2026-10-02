@@ -12,15 +12,11 @@ fn found(version: &str) -> ToolProbe {
 }
 
 #[test]
-fn lima_needs_2_2_0() {
+fn lima_needs_2_2_0_on_macos_for_captain_engine_only() {
     assert_eq!(lima(MAC, true, &found("2.2.0")).state, CheckState::Passed);
     let old = lima(MAC, true, &found("2.1.9"));
     assert_eq!(old.state, CheckState::Failed);
     assert_eq!(old.fix, Some(Fix::CopyCommand("brew upgrade lima")));
-}
-
-#[test]
-fn lima_does_not_apply_off_macos_or_to_another_engine() {
     let linux = Platform {
         macos: false,
         ..MAC

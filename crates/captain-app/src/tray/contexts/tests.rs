@@ -4,7 +4,8 @@ use super::contexts_item;
 use crate::tray::menu_model::{TrayCommand, TrayItem};
 
 #[test]
-fn checks_the_current_context() {
+fn checks_the_current_context_and_has_no_submenu_without_contexts() {
+    assert_eq!(contexts_item(&KubeContexts::default()), None);
     let contexts = KubeContexts {
         names: vec!["prod".into(), "captain".into()],
         current: Some("captain".into()),
@@ -22,9 +23,4 @@ fn checks_the_current_context() {
         }
     );
     assert!(matches!(&items[0], TrayItem::Check { checked: false, .. }));
-}
-
-#[test]
-fn no_contexts_means_no_submenu() {
-    assert_eq!(contexts_item(&KubeContexts::default()), None);
 }

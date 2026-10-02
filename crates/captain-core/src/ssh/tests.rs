@@ -9,17 +9,11 @@ fn parses_user_host_port_and_socket() {
     assert_eq!(target.host, "box.lan");
     assert_eq!(target.port, Some(2222));
     assert_eq!(target.remote_socket(), "/run/user/1000/docker.sock");
-}
-
-#[test]
-fn host_alone_uses_default_socket() {
+    // A host alone uses the default socket.
     let target = SshTarget::parse("ssh://box/").unwrap();
     assert_eq!((target.user.as_deref(), target.port), (None, None));
     assert_eq!(target.remote_socket(), "/var/run/docker.sock");
-}
-
-#[test]
-fn parses_ipv6_and_round_trips() {
+    // IPv6 hosts parse and round-trip.
     let url = "ssh://me@[fe80::1]:22";
     let target = SshTarget::parse(url).unwrap();
     assert_eq!(target.host, "fe80::1");

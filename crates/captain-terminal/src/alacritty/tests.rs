@@ -31,10 +31,7 @@ fn sgr_sets_colors_and_flags() {
     assert_eq!(row[3].fg, Color::Foreground);
     assert_eq!(row[3].bg, Color::Background);
     assert!(!row[3].flags.bold);
-}
-
-#[test]
-fn bright_colors_keep_their_index() {
+    // Bright colors keep their index, and dim is a flag.
     let screen = term(b"\x1b[92mG\x1b[2;34mB").snapshot();
     assert_eq!(screen.lines[0][0].fg, Color::Indexed(10));
     assert_eq!(screen.lines[0][1].fg, Color::Indexed(4));

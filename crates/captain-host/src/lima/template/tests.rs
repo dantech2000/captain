@@ -11,7 +11,7 @@ fn resources() -> HostResources {
 }
 
 #[test]
-fn sets_the_machine() {
+fn sets_the_machine_mounts_home_and_tmp_and_forwards_the_docker_socket() {
     let yaml = render(&resources(), false);
     for line in [
         "minimumLimaVersion: 2.2.0",
@@ -27,11 +27,6 @@ fn sets_the_machine() {
             "missing {line:?} in\n{yaml}"
         );
     }
-}
-
-#[test]
-fn mounts_home_and_tmp_writable() {
-    let yaml = render(&resources(), false);
     assert!(
         yaml.contains("- location: \"~\"\n  writable: true\n"),
         "{yaml}"
@@ -40,11 +35,6 @@ fn mounts_home_and_tmp_writable() {
         yaml.contains("mountPoint: /tmp/lima\n  writable: true\n"),
         "{yaml}"
     );
-}
-
-#[test]
-fn forwards_the_docker_socket() {
-    let yaml = render(&resources(), false);
     assert!(yaml.contains("guestSocket: \"/var/run/docker.sock\""));
     assert!(yaml.contains("hostSocket: \"{{.Dir}}/sock/docker.sock\""));
     assert!(yaml.contains("host.docker.internal: host.lima.internal"));

@@ -166,6 +166,3 @@ impl FakeImages {
 fn no_such_image(id: &str) -> EngineError {
     EngineError::Api(format!("No such image: {id}"))
 }
-
-#[cfg(test)]
-mod tests;

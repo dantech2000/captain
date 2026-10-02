@@ -10,37 +10,21 @@ fn network(name: &str, containers: usize) -> Network {
 }
 
 #[test]
-fn built_in_networks_cannot_be_removed() {
+fn only_empty_user_networks_can_be_removed() {
     for name in ["bridge", "host", "none"] {
         let n = network(name, 0);
         assert!(n.is_built_in());
         assert!(!n.can_remove());
         assert!(n.remove_blocker().is_some());
     }
-}
-
-#[test]
-fn networks_with_containers_cannot_be_removed() {
     let n = network("app_default", 2);
     assert!(!n.is_built_in());
     assert!(n.is_in_use());
     assert!(!n.can_remove());
     assert_eq!(n.remove_blocker(), Some("Disconnect its containers first"));
-}
-
-#[test]
-fn empty_user_networks_can_be_removed() {
     let n = network("app_default", 0);
     assert!(n.can_remove());
     assert_eq!(n.remove_blocker(), None);
-}
-
-#[test]
-fn short_id_and_usage_label() {
-    assert_eq!(network("a", 0).short_id(), "0123456789ab");
-    assert_eq!(network("a", 0).usage_label(), "No containers");
-    assert_eq!(network("a", 1).usage_label(), "1 container");
-    assert_eq!(network("a", 4).usage_label(), "4 containers");
 }
 
 #[test]

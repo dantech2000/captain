@@ -24,15 +24,7 @@ fn container(name: &str, state: ContainerState, project: Option<&str>) -> Contai
 }
 
 #[test]
-fn a_stopped_engine_has_no_containers() {
-    let containers = [container("web", ContainerState::Running, None)];
-    let snapshot = TraySnapshot::new(EngineHealth::Stopped, &containers);
-    assert!(snapshot.containers.is_empty());
-    assert_eq!(snapshot.active_count(), 0);
-}
-
-#[test]
-fn a_running_engine_keeps_ids_states_projects_and_ports() {
+fn a_running_engine_keeps_ids_states_projects_and_ports_and_a_stopped_one_none() {
     let mut web = container("web", ContainerState::Running, Some("shop"));
     web.ports = vec![
         PortMapping {
@@ -59,6 +51,11 @@ fn a_running_engine_keeps_ids_states_projects_and_ports() {
         [PortLink::Open("http://localhost:8080".into())]
     );
     assert_eq!(snapshot.active_count(), 1);
+
+    let web = container("web", ContainerState::Running, None);
+    let snapshot = TraySnapshot::new(EngineHealth::Stopped, &[web]);
+    assert!(snapshot.containers.is_empty());
+    assert_eq!(snapshot.active_count(), 0);
 }
 
 #[test]

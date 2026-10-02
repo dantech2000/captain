@@ -2,14 +2,10 @@ use super::{Container, ContainerState};
 use crate::model::PortMapping;
 
 #[test]
-fn parse_known_and_unknown_states() {
+fn states_parse_and_their_labels_round_trip() {
     assert_eq!(ContainerState::parse("running"), ContainerState::Running);
     assert_eq!(ContainerState::parse("exited"), ContainerState::Exited);
     assert_eq!(ContainerState::parse("bogus"), ContainerState::Unknown);
-}
-
-#[test]
-fn state_label_round_trips() {
     for state in [
         ContainerState::Created,
         ContainerState::Running,

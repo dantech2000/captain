@@ -15,36 +15,22 @@ fn input(docker_host: Option<&str>) -> DiscoveryInput {
 }
 
 #[test]
-fn docker_host_wins() {
+fn docker_host_wins_and_an_unsupported_one_is_an_error() {
     let endpoint = discover(&input(Some("tcp://1.2.3.4:2375")), |_| true);
     assert_eq!(endpoint, Ok(Endpoint::Tcp("tcp://1.2.3.4:2375".into())));
-}
-
-#[test]
-fn unsupported_docker_host_is_an_error() {
     let endpoint = discover(&input(Some("ssh://me@host")), |_| true);
     assert!(matches!(endpoint, Err(DiscoveryError::Unsupported(_))));
 }
 
 #[cfg(unix)]
 #[test]
-fn first_existing_home_socket_wins() {
+fn the_first_existing_home_socket_wins_then_the_system_socket() {
     let orbstack = Path::new("/nonexistent-home/.orbstack/run/docker.sock");
-    let endpoint = discover(&input(None), |path| path == orbstack);
-    assert_eq!(endpoint, Ok(Endpoint::Unix(orbstack.into())));
-}
-
-#[cfg(unix)]
-#[test]
-fn falls_back_to_system_socket() {
     let system = Path::new("/var/run/docker.sock");
+    let endpoint = discover(&input(None), |path| path == orbstack || path == system);
+    assert_eq!(endpoint, Ok(Endpoint::Unix(orbstack.into())));
     let endpoint = discover(&input(None), |path| path == system);
     assert_eq!(endpoint, Ok(Endpoint::Unix(system.into())));
-}
-
-#[cfg(unix)]
-#[test]
-fn nothing_found_is_an_error() {
     assert_eq!(
         discover(&input(None), |_| false),
         Err(DiscoveryError::NotFound)

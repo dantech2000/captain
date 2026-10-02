@@ -1,14 +1,10 @@
 use super::{clock, parse, split};
 
 #[test]
-fn parses_docker_nanosecond_times() {
+fn parses_docker_nanosecond_times_and_zone_offsets() {
     assert_eq!(parse("1970-01-01T00:00:00Z"), Some(0));
     assert_eq!(parse("2024-05-01T12:34:56.123456789Z"), Some(1_714_566_896));
     assert_eq!(parse("2000-02-29T23:59:59.5Z"), Some(951_868_799));
-}
-
-#[test]
-fn applies_a_zone_offset() {
     assert_eq!(parse("2024-05-01T14:34:56+02:00"), Some(1_714_566_896));
     assert_eq!(parse("2024-05-01T07:34:56.1-05:00"), Some(1_714_566_896));
 }

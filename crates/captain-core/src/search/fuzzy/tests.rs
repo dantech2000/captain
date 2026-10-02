@@ -1,3 +1,6 @@
+// The expected values are byte ranges, not a vector of numbers.
+#![allow(clippy::single_range_in_vec_init)]
+
 use super::fuzzy_match;
 
 fn score(query: &str, candidate: &str) -> i32 {
@@ -21,60 +24,39 @@ fn rejects_a_query_that_is_not_a_subsequence() {
 }
 
 #[test]
-fn ignores_case() {
-    let found = fuzzy_match("REST", "restart").unwrap();
-    assert_eq!(found.ranges, vec![0..4]);
+fn ranges_cover_the_matched_bytes() {
+    let cases = [
+        // Case does not matter, and adjacent characters join into one range.
+        ("REST", "restart", vec![0..4]),
+        ("rest", "Restart api", vec![0..4]),
+        // Whitespace in the query is ignored.
+        ("go con", "Go to Containers", vec![0..2, 6..9]),
+        // Camel-case humps count as word starts.
+        ("cv", "ContainersView", vec![0..1, 10..11]),
+        // A greedy match takes the first "a"; the word "api" scores higher.
+        ("ap", "a api", vec![2..4]),
+        // Ranges are in bytes for multibyte characters.
+        ("fé", "Café", vec![2..5]),
+        ("É", "café", vec![3..5]),
+    ];
+    for (query, candidate, ranges) in cases {
+        let found = fuzzy_match(query, candidate).unwrap();
+        assert_eq!(found.ranges, ranges, "{query:?} in {candidate:?}");
+    }
 }
 
 #[test]
-fn joins_adjacent_characters_into_one_range() {
-    let found = fuzzy_match("rest", "Restart api").unwrap();
-    assert_eq!(found.ranges, vec![0..4]);
-}
-
-#[test]
-fn ignores_whitespace_in_the_query() {
-    let found = fuzzy_match("go con", "Go to Containers").unwrap();
-    assert_eq!(found.ranges, vec![0..2, 6..9]);
-}
-
-#[test]
-fn prefers_a_prefix() {
-    assert!(score("res", "Restart") > score("res", "Unrestricted"));
-}
-
-#[test]
-fn prefers_word_starts() {
-    assert!(score("api", "Restart api") > score("api", "rapid"));
-}
-
-#[test]
-fn prefers_camel_case_word_starts() {
-    let found = fuzzy_match("cv", "ContainersView").unwrap();
-    assert_eq!(found.ranges, vec![0..1, 10..11]);
-}
-
-#[test]
-fn prefers_contiguous_runs() {
-    assert!(score("abc", "abcxx") > score("abc", "axbxc"));
-}
-
-#[test]
-fn prefers_fewer_skipped_characters() {
-    assert!(score("ab", "axb") > score("ab", "axxxxb"));
-}
-
-#[test]
-fn picks_the_best_alignment_not_the_first() {
-    // A greedy match takes the first "a"; the word "api" scores higher.
-    let found = fuzzy_match("ap", "a api").unwrap();
-    assert_eq!(found.ranges, vec![2..4]);
-}
-
-#[test]
-fn reports_byte_ranges_for_multibyte_characters() {
-    let found = fuzzy_match("fé", "Café").unwrap();
-    assert_eq!(found.ranges, vec![2..5]);
-    let found = fuzzy_match("É", "café").unwrap();
-    assert_eq!(found.ranges, vec![3..5]);
+fn prefers_prefixes_word_starts_runs_and_fewer_skips() {
+    let cases = [
+        ("res", "Restart", "Unrestricted"),
+        ("api", "Restart api", "rapid"),
+        ("abc", "abcxx", "axbxc"),
+        ("ab", "axb", "axxxxb"),
+    ];
+    for (query, better, worse) in cases {
+        assert!(
+            score(query, better) > score(query, worse),
+            "{query:?}: {better:?} should beat {worse:?}"
+        );
+    }
 }

@@ -9,11 +9,14 @@ fn metrics() -> GridMetrics {
 }
 
 #[test]
-fn fits_whole_cells() {
-    let metrics = metrics();
-    assert_eq!((metrics.cols, metrics.rows), (10, 3));
+fn fits_whole_cells_and_spans_cover_them() {
+    let fitted = metrics();
+    assert_eq!((fitted.cols, fitted.rows), (10, 3));
     let tiny = GridMetrics::fit(Bounds::default(), size(px(7.), px(16.)));
     assert_eq!((tiny.cols, tiny.rows), (2, 1));
+    let span = metrics().span(1, 2, 3);
+    assert_eq!(span.origin, point(px(24.), px(36.)));
+    assert_eq!(span.size, size(px(21.), px(16.)));
 }
 
 #[test]
@@ -36,11 +39,4 @@ fn finds_the_cell_and_side_under_the_pointer() {
         metrics.point_at(point(px(0.), px(0.))),
         GridPoint::new(0, 0, Side::Left)
     );
-}
-
-#[test]
-fn spans_cover_whole_cells() {
-    let span = metrics().span(1, 2, 3);
-    assert_eq!(span.origin, point(px(24.), px(36.)));
-    assert_eq!(span.size, size(px(21.), px(16.)));
 }

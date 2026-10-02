@@ -5,15 +5,11 @@ fn v(text: &str) -> K3sVersion {
 }
 
 #[test]
-fn orders_by_number_then_release_then_build() {
+fn orders_by_number_then_release_then_build_and_only_releases_are_stable() {
     assert!(v("v1.36.4+k3s1") > v("v1.35.9+k3s1"));
     assert!(v("v1.36.10+k3s1") > v("v1.36.9+k3s1"));
     assert!(v("v1.37.0+k3s1") > v("v1.37.0-rc5+k3s1"));
     assert!(v("v1.33.13+k3s2") > v("v1.33.13+k3s1"));
-}
-
-#[test]
-fn only_releases_are_stable() {
     assert!(v("v1.36.4+k3s1").is_stable());
     assert!(!v("v1.37.1-rc2+k3s1").is_stable());
     assert_eq!(v("v1.36.4+k3s1").minor_channel(), "v1.36");

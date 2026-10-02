@@ -61,16 +61,12 @@ fn steps_run_in_order() {
 }
 
 #[test]
-fn project_starts_only_the_services_that_ran() {
+fn a_plan_stops_and_restarts_only_what_ran_and_resyncs_its_volumes() {
     // app, backup, mail, and offsite sit behind profiles and were not running.
     let plan = SwitchOverPlan::for_item(&project(&["postgres"])).expect("plan");
     assert_eq!(plan.services, ["postgres"]);
     assert_eq!(plan.stop, ["stokecrm-postgres"]);
     assert_eq!(plan.volumes, ["stokecrm-pgdata"]);
-}
-
-#[test]
-fn container_stops_itself_and_resyncs_its_volumes() {
     let plan = SwitchOverPlan::for_item(&container(true)).expect("plan");
     assert_eq!(plan.stop, ["web"]);
     assert_eq!(plan.volumes, ["web-data"]);

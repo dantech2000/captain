@@ -25,13 +25,9 @@ fn list() -> VersionList {
 }
 
 #[test]
-fn keeps_stable_releases_above_the_floor_newest_first() {
+fn keeps_stable_releases_above_the_floor_and_skips_testing_channels() {
     let names: Vec<String> = list().versions.iter().map(ToString::to_string).collect();
     assert_eq!(names, ["v1.37.0+k3s1", "v1.36.4+k3s1"]);
-}
-
-#[test]
-fn skips_testing_channels() {
     let channels = parse_channels(CHANNELS).unwrap();
     let names: Vec<&str> = channels.keys().map(String::as_str).collect();
     assert_eq!(names, ["latest", "stable", "v1.16", "v1.36"]);

@@ -138,7 +138,7 @@ fn switch_over_is_off_by_default_and_only_for_running_items() {
 }
 
 #[test]
-fn switch_over_clears_the_live_volume_warning() {
+fn live_volumes_list_running_users_until_a_switch_over() {
     let mut plan = MigrationPlan::new(
         "test",
         vec![
@@ -150,31 +150,10 @@ fn switch_over_clears_the_live_volume_warning() {
             },
         ],
     );
-    assert_eq!(plan.live_volumes().len(), 1);
-    plan.set_switch_over("project:crm", true);
-    assert!(plan.live_volumes().is_empty());
-}
-
-#[test]
-fn live_volumes_lists_selected_volumes_with_running_users() {
-    let plan = MigrationPlan::new(
-        "test",
-        vec![
-            MigrationItem::Volume {
-                name: "pgdata".into(),
-                size: None,
-                used_by_running: vec!["db".into()],
-            },
-            MigrationItem::Volume {
-                name: "cache".into(),
-                size: None,
-                used_by_running: Vec::new(),
-            },
-        ],
-    );
-
     let live = plan.live_volumes();
     assert_eq!(live.len(), 1);
     assert_eq!(live[0].0, "pgdata");
-    assert_eq!(live[0].1, ["db".to_string()]);
+    assert_eq!(live[0].1, ["crm-db".to_string()]);
+    plan.set_switch_over("project:crm", true);
+    assert!(plan.live_volumes().is_empty());
 }

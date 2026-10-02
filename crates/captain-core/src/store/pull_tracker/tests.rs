@@ -38,6 +38,10 @@ fn download_and_extract_fill_one_layer() {
     tracker.apply(&PullProgress::layer("l1", "Pull complete", None));
     assert!(close(tracker.fraction(), 1.0));
     assert_eq!(tracker.layer_counts(), (1, 1));
+    // Zero totals do not divide by zero.
+    let mut tracker = PullTracker::new("a");
+    tracker.apply(&PullProgress::layer("l1", "Downloading", Some((0, 0))));
+    assert_eq!(tracker.fraction(), 0.0);
 }
 
 #[test]
@@ -57,13 +61,6 @@ fn a_layer_never_moves_backwards() {
     tracker.apply(&PullProgress::layer("l1", "Download complete", None));
     tracker.apply(&PullProgress::layer("l1", "Downloading", Some((10, 100))));
     assert!(close(tracker.fraction(), 0.8));
-}
-
-#[test]
-fn zero_totals_do_not_divide_by_zero() {
-    let mut tracker = PullTracker::new("a");
-    tracker.apply(&PullProgress::layer("l1", "Downloading", Some((0, 0))));
-    assert_eq!(tracker.fraction(), 0.0);
 }
 
 #[test]

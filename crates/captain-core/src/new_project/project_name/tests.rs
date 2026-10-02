@@ -29,9 +29,6 @@ fn a_taken_name_gets_the_next_free_number() {
         unique_project_name("redis", |name| taken.contains(&name)),
         "redis"
     );
-}
-
-#[test]
-fn the_search_for_a_free_name_stops() {
+    // The search stops when every name is taken.
     assert_eq!(unique_project_name("app", |_| true), "app");
 }

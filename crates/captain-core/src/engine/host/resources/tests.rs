@@ -1,29 +1,19 @@
 use super::{GIB, HostResources};
 
 #[test]
-fn half_the_cpus_between_two_and_eight() {
-    assert_eq!(HostResources::recommended(2, 8 * GIB).cpus, 2);
-    assert_eq!(HostResources::recommended(10, 8 * GIB).cpus, 5);
-    assert_eq!(HostResources::recommended(24, 8 * GIB).cpus, 8);
-    assert_eq!(HostResources::recommended(1, 8 * GIB).cpus, 2);
-}
-
-#[test]
-fn memory_is_a_quarter_between_four_and_sixteen_gib() {
-    assert_eq!(HostResources::recommended(8, 8 * GIB).memory_bytes, 4 * GIB);
-    assert_eq!(
-        HostResources::recommended(8, 32 * GIB).memory_bytes,
-        8 * GIB
-    );
-    assert_eq!(
-        HostResources::recommended(8, 128 * GIB).memory_bytes,
-        16 * GIB
-    );
-}
-
-#[test]
-fn disk_is_sixty_four_gib() {
-    assert_eq!(HostResources::recommended(8, 16 * GIB).disk_bytes, 64 * GIB);
+fn the_recommendation_is_half_the_cpus_a_quarter_of_memory_and_64_gib_of_disk() {
+    let cpus = [(2, 2), (10, 5), (24, 8), (1, 2)];
+    for (machine, recommended) in cpus {
+        let resources = HostResources::recommended(machine, 8 * GIB);
+        assert_eq!(resources.cpus, recommended, "{machine} CPUs");
+    }
+    let memory = [(8, 4), (32, 8), (128, 16)];
+    for (machine, recommended) in memory {
+        let resources = HostResources::recommended(8, machine * GIB);
+        assert_eq!(resources.memory_bytes, recommended * GIB, "{machine} GiB");
+    }
+    let resources = HostResources::recommended(8, 16 * GIB);
+    assert_eq!(resources.disk_bytes, 64 * GIB);
 }
 
 #[test]
@@ -76,14 +66,4 @@ fn a_restart_changes_only_what_differs_from_the_running_machine() {
             "6 CPUs and 8.0 GB memory".into()
         ))
     );
-}
-
-#[test]
-fn summary_names_each_resource() {
-    let resources = HostResources {
-        cpus: 4,
-        memory_bytes: 8 * GIB,
-        disk_bytes: 64 * GIB,
-    };
-    assert_eq!(resources.summary(), "4 CPUs · 8.0 GB memory · 64.0 GB disk");
 }

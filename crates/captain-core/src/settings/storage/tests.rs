@@ -29,14 +29,7 @@ impl Drop for TempDir {
 }
 
 #[test]
-fn missing_file_gives_defaults() {
-    let dir = TempDir::new();
-    let settings = Settings::load(&dir.0.join("settings.json")).unwrap();
-    assert_eq!(settings, Settings::default());
-}
-
-#[test]
-fn save_then_load_leaves_no_temp_file() {
+fn save_then_load_round_trips_and_a_missing_file_gives_defaults() {
     let dir = TempDir::new();
     let path = dir.0.join("Captain").join("settings.json");
     let settings = Settings {
@@ -52,6 +45,16 @@ fn save_then_load_leaves_no_temp_file() {
         .map(|entry| entry.unwrap().file_name())
         .collect();
     assert_eq!(names, ["settings.json"]);
+    // A missing file gives the defaults.
+    let dir = TempDir::new();
+    let settings = Settings::load(&dir.0.join("settings.json")).unwrap();
+    assert_eq!(settings, Settings::default());
+    // A folder in place of the file is an I/O error.
+    let dir = TempDir::new();
+    assert!(matches!(
+        Settings::load(&dir.0),
+        Err(SettingsError::Io { .. })
+    ));
 }
 
 #[test]
@@ -128,15 +131,6 @@ fn migration_drops_defaults_and_keeps_one_backup() {
     fs::write(&path, old.replace("harbor", "dusk")).unwrap();
     Settings::migrate_file(&path).unwrap();
     assert_eq!(fs::read_to_string(&backup).unwrap(), old);
-}
-
-#[test]
-fn directory_in_place_of_file_is_an_io_error() {
-    let dir = TempDir::new();
-    assert!(matches!(
-        Settings::load(&dir.0),
-        Err(SettingsError::Io { .. })
-    ));
 }
 
 #[test]

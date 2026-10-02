@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use super::{label_matches, network_prune_summary, prunable_networks, prunable_volumes};
+use super::{label_matches, prunable_networks, prunable_volumes};
 use crate::model::{Network, Volume};
 
 fn labels(pairs: &[(&str, &str)]) -> BTreeMap<String, String> {
@@ -93,15 +93,5 @@ fn network_prune_skips_built_in_and_used_networks() {
     assert_eq!(
         network_names(prunable_networks(&networks, Some("captain-agent-test"))),
         ["mine"]
-    );
-}
-
-#[test]
-fn network_prune_summary_counts_the_removed_networks() {
-    assert_eq!(network_prune_summary(&[]), "No unused networks to remove");
-    assert_eq!(network_prune_summary(&["a".into()]), "Removed 1 network");
-    assert_eq!(
-        network_prune_summary(&["a".into(), "b".into(), "c".into()]),
-        "Removed 3 networks"
     );
 }

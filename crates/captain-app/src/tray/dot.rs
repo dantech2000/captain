@@ -48,6 +48,3 @@ impl Light {
         format!("{} {label}", self.glyph())
     }
 }
-
-#[cfg(test)]
-mod tests;

@@ -12,45 +12,49 @@ fn classify(probe: SocketProbe) -> SocketLink {
 }
 
 #[test]
-fn a_link_to_captain_is_captain() {
-    let link = classify(SocketProbe::Link(CAPTAIN.into()));
-    assert_eq!(link, SocketLink::Captain);
-    assert_eq!(link.action(), Some(LinkAction::Unlink));
-    assert!(!link.needs_confirmation());
-}
-
-#[test]
-fn a_missing_socket_links_without_asking() {
-    let link = classify(SocketProbe::Missing);
-    assert_eq!(link.action(), Some(LinkAction::Link));
-    assert!(!link.needs_confirmation());
-}
-
-#[test]
-fn another_engine_needs_confirmation() {
-    let other = classify(SocketProbe::Link("/Users/me/.rd/docker.sock".into()));
-    assert_eq!(
-        other,
-        SocketLink::OtherLink("/Users/me/.rd/docker.sock".into())
-    );
-    assert!(other.needs_confirmation());
-    let socket = classify(SocketProbe::Socket);
-    assert_eq!(socket.action(), Some(LinkAction::Link));
-    assert!(socket.needs_confirmation());
-}
-
-#[test]
-fn a_relative_link_is_read_from_var_run() {
-    let link = classify(SocketProbe::Link("docker.sock.real".into()));
-    assert_eq!(
-        link,
-        SocketLink::OtherLink(Path::new("/var/run").join("docker.sock.real"))
-    );
-}
-
-#[test]
-fn a_plain_file_is_left_alone() {
-    assert_eq!(classify(SocketProbe::Other).action(), None);
+fn each_probe_gets_its_action_and_only_another_engine_asks_first() {
+    let rd = PathBuf::from("/Users/me/.rd/docker.sock");
+    let cases = [
+        (
+            SocketProbe::Link(CAPTAIN.into()),
+            SocketLink::Captain,
+            Some(LinkAction::Unlink),
+            false,
+        ),
+        (
+            SocketProbe::Missing,
+            SocketLink::Missing,
+            Some(LinkAction::Link),
+            false,
+        ),
+        (
+            SocketProbe::Link(rd.clone()),
+            SocketLink::OtherLink(rd),
+            Some(LinkAction::Link),
+            true,
+        ),
+        // A relative link is read from /var/run.
+        (
+            SocketProbe::Link("docker.sock.real".into()),
+            SocketLink::OtherLink(Path::new("/var/run").join("docker.sock.real")),
+            Some(LinkAction::Link),
+            true,
+        ),
+        (
+            SocketProbe::Socket,
+            SocketLink::Socket,
+            Some(LinkAction::Link),
+            true,
+        ),
+        // A plain file is left alone.
+        (SocketProbe::Other, SocketLink::Other, None, false),
+    ];
+    for (probe, link, action, asks) in cases {
+        let found = classify(probe);
+        assert_eq!(found, link);
+        assert_eq!(found.action(), action, "{link:?}");
+        assert_eq!(found.needs_confirmation(), asks, "{link:?}");
+    }
 }
 
 #[test]

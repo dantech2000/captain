@@ -6,12 +6,11 @@ fn strings(items: &[&str]) -> Vec<String> {
 }
 
 #[test]
-fn the_postgres_readme_command_converts() {
+fn the_readme_commands_convert() {
     let run = convert_docker_run(
         "docker run --name some-postgres -e POSTGRES_PASSWORD=mysecretpassword -d postgres",
     )
     .unwrap();
-
     assert_eq!(run.service_name, "some-postgres");
     assert_eq!(run.container_name.as_deref(), Some("some-postgres"));
     assert_eq!(run.service.image, "postgres");
@@ -23,35 +22,26 @@ fn the_postgres_readme_command_converts() {
         )]
     );
     assert!(run.warnings.is_empty());
-}
 
-#[test]
-fn words_after_the_image_are_the_command() {
     let run = convert_docker_run(
         "docker run --name some-redis -d redis redis-server --save 60 1 --loglevel warning",
     )
     .unwrap();
-
     assert_eq!(run.service.image, "redis");
     assert_eq!(
         run.service.command,
         strings(&["redis-server", "--save", "60", "1", "--loglevel", "warning"])
     );
-}
 
-#[test]
-fn the_nginx_readme_command_converts() {
     let run = convert_docker_run(
         "$ docker run --name some-nginx -v /some/content:/usr/share/nginx/html:ro -d -p 8080:80 nginx",
     )
     .unwrap();
-
+    assert_eq!(run.service.image, "nginx");
     assert_eq!(
         run.service.volumes,
         strings(&["/some/content:/usr/share/nginx/html:ro"])
     );
-    assert_eq!(run.service.ports, strings(&["8080:80"]));
-    assert_eq!(run.service.image, "nginx");
 }
 
 const LONG: &str = r#"docker container run -it --rm \

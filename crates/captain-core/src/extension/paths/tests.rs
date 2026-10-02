@@ -1,19 +1,6 @@
 use std::path::Path;
 
-use super::{ExtensionPaths, mime_type, ui_file};
-
-#[test]
-fn each_extension_has_its_own_folder() {
-    let paths = ExtensionPaths::in_home(Path::new("/Users/me"));
-    assert_eq!(
-        paths.ui_dir("acme-ext"),
-        Path::new("/Users/me/.captain/extensions/acme-ext/ui")
-    );
-    assert_eq!(
-        paths.manifest("acme-ext"),
-        Path::new("/Users/me/.captain/extensions/acme-ext/extension.json")
-    );
-}
+use super::{mime_type, ui_file};
 
 #[test]
 fn a_url_path_maps_into_the_ui_folder_only() {

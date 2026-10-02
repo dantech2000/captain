@@ -125,32 +125,21 @@ fn with_host(engine: EngineHealth, status: HostStatus) -> TraySnapshot {
 }
 
 #[test]
-fn a_stopped_captain_engine_offers_start() {
+fn the_engine_item_follows_the_captain_engine_state() {
     let menu = build(&with_host(EngineHealth::Stopped, HostStatus::Stopped));
     assert_eq!(labels(&menu)[2], "Start Captain Engine");
     assert!(menu.contains(&TrayItem::command(
         "Start Captain Engine",
         TrayCommand::StartEngine
     )));
-}
-
-#[test]
-fn a_running_captain_engine_offers_stop() {
     let menu = build(&with_host(EngineHealth::Running, HostStatus::Running));
     assert_eq!(labels(&menu)[3], "Stop Captain Engine");
-}
-
-#[test]
-fn a_new_captain_engine_opens_setup() {
     let menu = build(&with_host(EngineHealth::Stopped, HostStatus::NotCreated));
     assert!(menu.contains(&TrayItem::command(
         "Set Up Captain Engine\u{2026}",
         TrayCommand::OpenCaptain
     )));
-}
-
-#[test]
-fn another_engine_has_no_engine_item() {
+    // Another engine has no engine item.
     let menu = build(&snapshot(Vec::new()));
     assert!(!menu.iter().any(|item| matches!(
         item,

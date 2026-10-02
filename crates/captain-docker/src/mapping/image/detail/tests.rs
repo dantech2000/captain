@@ -33,7 +33,7 @@ fn nginx() -> ImageInspect {
 }
 
 #[test]
-fn maps_the_inspect_result() {
+fn maps_the_inspect_result_and_an_empty_one_gives_defaults() {
     let detail = image_detail(nginx());
     assert_eq!(detail.id, "sha256:abc");
     assert_eq!(detail.repo_tags, ["nginx:1.27"]);
@@ -54,10 +54,6 @@ fn maps_the_inspect_result() {
     assert_eq!(config.working_dir, "/usr/share/nginx");
     assert_eq!(config.user, "nginx");
     assert_eq!(config.labels[0], ("a.first".into(), "1".into()));
-}
-
-#[test]
-fn an_empty_inspect_result_gives_defaults() {
     let detail = image_detail(ImageInspect {
         repo_tags: Some(vec!["<none>:<none>".into()]),
         size: Some(-1),
@@ -69,7 +65,7 @@ fn an_empty_inspect_result_gives_defaults() {
 }
 
 #[test]
-fn maps_a_history_step() {
+fn maps_a_history_step_and_a_null_history_is_empty() {
     let layer = image_layer(ImageHistoryResponseItem {
         id: "<missing>".into(),
         created: 1_700_000_000,
@@ -81,10 +77,6 @@ fn maps_a_history_step() {
     assert_eq!(layer.created, 1_700_000_000);
     assert_eq!(layer.size, 4096);
     assert_eq!(layer.command(), "CMD [\"sh\"]");
-}
-
-#[test]
-fn a_null_history_is_empty() {
     let null = Error::JsonDataError {
         message: "invalid type: null, expected a sequence".into(),
         column: 4,

@@ -17,7 +17,7 @@ fn shop(dir: &str) -> KnownProject {
 }
 
 #[test]
-fn a_saved_list_reads_back_and_a_missing_file_is_empty() {
+fn a_saved_list_reads_back_a_missing_file_is_empty_and_a_broken_one_an_error() {
     let home = temp_dir("known-round-trip");
     let path = known_projects_path(&home);
     assert_eq!(
@@ -31,10 +31,6 @@ fn a_saved_list_reads_back_and_a_missing_file_is_empty() {
 
     assert_eq!(KnownProjects::load(&path).unwrap(), list);
     fs::remove_dir_all(&home).ok();
-}
-
-#[test]
-fn a_file_that_is_not_a_project_list_is_an_error() {
     let home = temp_dir("known-broken");
     let path = known_projects_path(&home);
     fs::create_dir_all(path.parent().unwrap()).unwrap();

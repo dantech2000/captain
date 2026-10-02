@@ -44,17 +44,13 @@ fn up_passes_the_project_name_and_every_file() {
 }
 
 #[test]
-fn up_fails_when_a_file_is_missing() {
-    let project = project(&["/code/shop/compose.yaml"]);
-    let error = compose_command(&project, ProjectAction::Up, Path::new(TMP), |p| {
+fn up_and_pull_refuse_missing_or_unknown_files() {
+    let shop = project(&["/code/shop/compose.yaml"]);
+    let error = compose_command(&shop, ProjectAction::Up, Path::new(TMP), |p| {
         p == Path::new("/code/shop")
     })
     .expect_err("missing file");
     assert!(error.contains("cannot find"), "{error}");
-}
-
-#[test]
-fn pull_fails_without_known_files() {
     let error = compose_command(&project(&[]), ProjectAction::Pull, Path::new(TMP), |_| true)
         .expect_err("no files");
     assert!(error.contains("does not know"), "{error}");

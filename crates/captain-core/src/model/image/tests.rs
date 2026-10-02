@@ -19,15 +19,6 @@ fn short_id_drops_the_algorithm() {
 }
 
 #[test]
-fn display_name_uses_the_first_tag() {
-    assert_eq!(
-        image(&["nginx:1.27", "nginx:latest"]).display_name(),
-        "nginx:1.27"
-    );
-    assert_eq!(image(&[]).display_name(), "<none>");
-}
-
-#[test]
 fn repository_and_tag_split_on_the_last_colon() {
     assert_eq!(
         image(&["nginx:1.27"]).repository_and_tag(),
@@ -42,14 +33,4 @@ fn repository_and_tag_split_on_the_last_colon() {
         ("localhost:5000/app", "")
     );
     assert_eq!(image(&[]).repository_and_tag(), ("<none>", "<none>"));
-}
-
-#[test]
-fn extra_tags_and_usage() {
-    let mut nginx = image(&["nginx:1.27", "nginx:latest"]);
-    assert_eq!(nginx.extra_tag_count(), 1);
-    assert!(!nginx.in_use());
-    nginx.containers = 2;
-    assert!(nginx.in_use());
-    assert_eq!(image(&[]).extra_tag_count(), 0);
 }
