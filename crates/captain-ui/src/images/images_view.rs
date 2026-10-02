@@ -3,6 +3,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use captain_core::model::EngineEvent;
 use captain_core::store::ImageFilter;
 use gpui_kit::component::input::{InputEvent, InputState};
+use gpui_kit::component::scroll::ScrollableElement;
 use gpui_kit::*;
 
 use super::pull_status::message;
@@ -12,6 +13,7 @@ use super::{
 };
 use crate::engine_host::connection_screen;
 use crate::theme::Palette;
+use crate::widgets::skeleton_rows;
 use crate::workspace::{Page, Workspace};
 
 /// The Images page: the image list with a filter, pull, remove, and prune, and the
@@ -97,7 +99,7 @@ impl Render for ImagesView {
             Some(screen) => screen,
             None if !state.is_loaded() => match state.load_error() {
                 Some(error) => centered(message(error, palette.red), &palette),
-                None => centered(div().child("Loading images..."), &palette),
+                None => skeleton_rows(6, px(50.)).into_any_element(),
             },
             None => self.list(state, &palette),
         };
@@ -175,7 +177,7 @@ impl ImagesView {
                     .id("image-list")
                     .flex_1()
                     .min_h_0()
-                    .overflow_y_scroll()
+                    .overflow_y_scrollbar()
                     .px(px(12.))
                     .pt(px(10.))
                     .pb(px(16.))

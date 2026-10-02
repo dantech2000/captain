@@ -1,5 +1,6 @@
 use captain_core::storage::largest_items;
 use gpui_kit::component::WindowExt;
+use gpui_kit::component::scroll::ScrollableElement;
 use gpui_kit::component::spinner::Spinner;
 use gpui_kit::*;
 
@@ -108,7 +109,7 @@ impl Render for StorageView {
                     .id("storage-scroll")
                     .flex_1()
                     .min_h_0()
-                    .overflow_y_scroll()
+                    .overflow_y_scrollbar()
                     .child(
                         div()
                             .flex()

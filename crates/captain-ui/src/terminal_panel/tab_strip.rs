@@ -9,8 +9,9 @@ use gpui_kit::*;
 use super::keys::{CLOSE_TAB_KEYS, NEW_TAB_KEYS, TOGGLE_KEYS};
 use super::panel_view::TerminalPanel;
 use super::tab_title::tab_title;
-use crate::help::HelpExt;
+use crate::help::{HelpExt, Hint};
 use crate::theme::Palette;
+use crate::widgets::{Look, kit_button};
 
 pub fn render(panel: &TerminalPanel, palette: &Palette, cx: &mut Context<TerminalPanel>) -> Div {
     let home = std::env::home_dir();
@@ -18,13 +19,17 @@ pub fn render(panel: &TerminalPanel, palette: &Palette, cx: &mut Context<Termina
         let title = tab_title(tab.view.read(cx).title(), &tab.cwd, home.as_deref());
         let active = index == panel.active;
         let folder = tab.cwd.display().to_string();
-        let close = icon_button(("terminal-tab-close", index), IconName::Close, palette)
-            .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
-            .on_click(cx.listener(move |this, _, _, cx| this.close_tab(index, cx)))
-            .help_keys(
+        let close = icon_button(
+            ("terminal-tab-close", index),
+            IconName::Close,
+            Hint::with_keys(
                 "Close this terminal tab. Its shell and the program it runs end.",
                 CLOSE_TAB_KEYS,
-            );
+            ),
+            palette,
+            cx.listener(move |this, _, _, cx| this.close_tab(index, cx)),
+        )
+        .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation());
         let hover = palette.nav_selected;
         div()
             .id(("terminal-tab", index))
@@ -48,22 +53,30 @@ pub fn render(panel: &TerminalPanel, palette: &Palette, cx: &mut Context<Termina
             .help(format!("Show the shell that started in {folder}."))
     });
     let folder = panel.default_dir(cx).display().to_string();
-    let add = icon_button("terminal-new-tab", IconName::Plus, palette)
-        .on_click(cx.listener(|this, _, _, cx| {
+    let add = icon_button(
+        "terminal-new-tab",
+        IconName::Plus,
+        Hint::with_keys(
+            format!("Open a new terminal tab in {folder}."),
+            NEW_TAB_KEYS,
+        ),
+        palette,
+        cx.listener(|this, _, _, cx| {
             let dir = this.default_dir(cx);
             this.new_tab(dir, cx);
             this.select(this.tabs.len() - 1, cx);
-        }))
-        .help_keys(
-            format!("Open a new terminal tab in {folder}."),
-            NEW_TAB_KEYS,
-        );
-    let hide = icon_button("terminal-hide", IconName::ChevronDown, palette)
-        .on_click(cx.listener(|this, _, _, cx| this.hide(cx)))
-        .help_keys(
+        }),
+    );
+    let hide = icon_button(
+        "terminal-hide",
+        IconName::ChevronDown,
+        Hint::with_keys(
             "Hide the terminal panel. Its tabs keep running.",
             TOGGLE_KEYS,
-        );
+        ),
+        palette,
+        cx.listener(|this, _, _, cx| this.hide(cx)),
+    );
 
     div()
         .flex_shrink_0()
@@ -87,18 +100,30 @@ pub fn render(panel: &TerminalPanel, palette: &Palette, cx: &mut Context<Termina
         .child(hide)
 }
 
-fn icon_button(id: impl Into<ElementId>, icon: IconName, palette: &Palette) -> Stateful<Div> {
-    let hover = palette.nav_selected;
-    div()
-        .id(id)
-        .flex_shrink_0()
-        .size(px(22.))
-        .flex()
-        .items_center()
-        .justify_center()
-        .rounded(px(5.))
-        .cursor_pointer()
-        .text_color(palette.text2)
-        .hover(move |style| style.bg(hover))
-        .child(Icon::new(icon).size(px(13.)))
+/// A small borderless icon button for the strip. `help` is its status bar sentence
+/// and the name a screen reader says.
+fn icon_button(
+    id: impl Into<ElementId>,
+    icon: IconName,
+    help: Hint,
+    palette: &Palette,
+    on_click: impl Fn(&ClickEvent, &mut Window, &mut App) + 'static,
+) -> Stateful<Div> {
+    let look = Look {
+        bg: transparent_black(),
+        fg: palette.text2,
+        hover: palette.nav_selected,
+    };
+    let icon = Icon::new(icon).size(px(13.));
+    kit_button(id, help.text.clone(), look, true, on_click, |button| {
+        button
+            .size_full()
+            .p_0()
+            .rounded(px(5.))
+            .cursor_pointer()
+            .child(icon)
+    })
+    .flex_shrink_0()
+    .size(px(22.))
+    .help(help)
 }

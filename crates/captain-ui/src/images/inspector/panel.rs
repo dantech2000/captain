@@ -1,10 +1,11 @@
 use captain_core::model::Image;
+use gpui_kit::component::scroll::ScrollableElement;
 use gpui_kit::*;
 
 use super::{actions, header, layers, sections};
 use crate::images::ImagesState;
 use crate::theme::Palette;
-use crate::widgets::{drag_region, section_note};
+use crate::widgets::{drag_region, section_note, skeleton_lines};
 
 /// The inspector panel, 400 px wide, for `image`. The sections appear once the
 /// details have loaded.
@@ -24,7 +25,7 @@ pub fn render(
             .child(sections::environment(detail, palette))
             .child(sections::labels(detail, palette))
             .child(layers::render(layers, palette)),
-        _ => body.child(section_note("Loading details...", palette)),
+        _ => body.child(skeleton_lines(6)),
     };
 
     div()
@@ -54,7 +55,7 @@ pub fn render(
                 .id("image-inspector-body")
                 .flex_1()
                 .min_h_0()
-                .overflow_y_scroll()
+                .overflow_y_scrollbar()
                 .px(px(20.))
                 .pt(px(16.))
                 .pb(px(20.))

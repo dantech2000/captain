@@ -30,6 +30,10 @@ pub fn install_kit_themes(family: ThemeFamily, cx: &mut App) {
 /// The toasts a window shows at once.
 const MAX_TOASTS: usize = 1;
 
+/// The corner radius of kit controls (inputs, selects, dialog buttons), the same as
+/// Captain's own buttons.
+const RADIUS: usize = 7;
+
 fn config(family: ThemeFamily, dark: bool) -> ThemeConfig {
     let t = Tokens::of(family, dark);
     let hex = |color: u32| Some(format!("#{color:06x}").into());
@@ -73,6 +77,7 @@ fn config(family: ThemeFamily, dark: bool) -> ThemeConfig {
     colors.progress_bar = hex(t.action);
     colors.scrollbar_thumb = hex(t.border_strong);
     colors.scrollbar_thumb_hover = hex(t.text3);
+    colors.skeleton = hex(t.border);
     colors.sidebar = hex(t.sidebar);
     colors.sidebar_foreground = hex(t.text);
     colors.sidebar_border = hex(t.border);
@@ -91,6 +96,7 @@ fn config(family: ThemeFamily, dark: bool) -> ThemeConfig {
         } else {
             ThemeMode::Light
         },
+        radius: Some(RADIUS),
         colors,
         highlight: Some(highlight(&t)),
         ..ThemeConfig::default()

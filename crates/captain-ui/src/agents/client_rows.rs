@@ -2,6 +2,7 @@
 //! for the user to confirm it: the command, the link, or the changed lines.
 
 use captain_core::agent_clients::{ClientState, ClientStep};
+use gpui_kit::component::scroll::ScrollableElement;
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::*;
 
@@ -170,17 +171,22 @@ fn confirm(
         )
         .child(
             div()
-                .id(SharedString::from(format!("agents-{id}-step")))
-                .max_h(px(180.))
-                .overflow_y_scroll()
-                .px(px(10.))
-                .py(px(8.))
+                .id(SharedString::from(format!("agents-{id}-step-frame")))
                 .rounded(px(7.))
                 .bg(palette.terminal)
-                .font_family(palette.mono())
-                .text_size(px(11.5))
-                .whitespace_normal()
-                .child(preview)
+                .overflow_hidden()
+                .child(
+                    div()
+                        .id(SharedString::from(format!("agents-{id}-step")))
+                        .max_h(px(180.))
+                        .overflow_y_scrollbar()
+                        .px(px(10.))
+                        .py(px(8.))
+                        .font_family(palette.mono())
+                        .text_size(px(11.5))
+                        .whitespace_normal()
+                        .child(preview),
+                )
                 .help("The exact step Captain takes. Nothing changes until you click the button."),
         )
         .child(

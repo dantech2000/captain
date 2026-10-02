@@ -1,6 +1,7 @@
 use captain_core::known_projects::{KnownProject, known_match, stopped_known};
 use captain_core::store::{ContainerGroup, GroupKey};
 use gpui_kit::assets::IconName;
+use gpui_kit::component::scroll::ScrollableElement;
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::*;
 
@@ -70,7 +71,7 @@ pub fn render(
                 .id("sidebar-projects")
                 .flex_1()
                 .min_h_0()
-                .overflow_y_scroll()
+                .overflow_y_scrollbar()
                 .flex()
                 .flex_col()
                 .gap(px(4.))

@@ -5,7 +5,7 @@ use crate::icons::CaptainIcon;
 use crate::theme::Palette;
 use crate::widgets::{
     DetailHeader, container_link, detail_note, detail_panel, detail_section, key_values,
-    map_or_note,
+    map_or_note, skeleton_lines,
 };
 use crate::workspace::{Page, Workspace};
 
@@ -38,7 +38,7 @@ pub fn render(
         _ => &fallback,
     };
     let containers = match detail {
-        None => detail_note("Loading containers...", palette),
+        None => skeleton_lines(2),
         Some(Err(error)) => detail_note(format!("Could not inspect: {error}"), palette),
         Some(Ok(detail)) => endpoints(&detail.endpoints, handle, workspace, palette),
     };

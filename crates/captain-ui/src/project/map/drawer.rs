@@ -3,13 +3,14 @@ use std::collections::BTreeSet;
 use captain_core::model::count_label;
 use captain_core::project_map::StagedChange;
 use gpui_kit::assets::IconName;
+use gpui_kit::component::scroll::ScrollableElement;
 use gpui_kit::*;
 
 use crate::help::HelpExt;
 use crate::icons::{CaptainIcon, cap_icon};
 use crate::project::ProjectView;
 use crate::theme::Palette;
-use crate::widgets::{ButtonTone, icon_button, primary_button, text_button};
+use crate::widgets::{ButtonTone, icon_button, small_primary_button, text_button};
 
 /// The staged changes of the shown containers: one row per field, with a remove
 /// button, then Discard and Apply. `ids` are the shown containers; `busy` is true
@@ -40,7 +41,7 @@ pub fn render(
     let targets = count_label(containers.len(), "container");
     let apply = {
         let view = view.clone();
-        primary_button(
+        small_primary_button(
             "map-apply",
             format!("Apply · update {targets}"),
             format!(
@@ -52,8 +53,6 @@ pub fn render(
                 view.update(cx, |view, cx| view.apply(&ids, cx)).ok();
             },
         )
-        .h(px(30.))
-        .text_size(px(12.))
     };
     div()
         .flex_shrink_0()
@@ -95,7 +94,7 @@ pub fn render(
                 .flex()
                 .flex_col()
                 .gap(px(6.))
-                .overflow_y_scroll()
+                .overflow_y_scrollbar()
                 .children(changes.iter().map(|change| row(change, view, palette))),
         )
 }

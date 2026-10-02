@@ -2,7 +2,7 @@ use captain_core::model::{Severity, Vulnerability};
 use gpui_kit::*;
 
 use crate::theme::Palette;
-use crate::widgets::pill;
+use crate::widgets::{list_scrollbar, pill};
 
 /// The state color of a severity: failing, warning, info, or gray.
 pub fn severity_color(severity: Severity, palette: &Palette) -> Hsla {
@@ -20,13 +20,14 @@ pub fn list(
     vulnerabilities: Vec<Vulnerability>,
     scroll: &UniformListScrollHandle,
     palette: &Palette,
-) -> UniformList {
+) -> Div {
     let colors = *palette;
-    uniform_list("scan-results", vulnerabilities.len(), move |range, _, _| {
+    let list = uniform_list("scan-results", vulnerabilities.len(), move |range, _, _| {
         range.map(|ix| row(&vulnerabilities[ix], &colors)).collect()
     })
     .track_scroll(scroll)
-    .flex_1()
+    .flex_1();
+    list_scrollbar(list, scroll)
 }
 
 fn row(vuln: &Vulnerability, palette: &Palette) -> Div {

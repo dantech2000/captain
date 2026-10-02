@@ -2,6 +2,7 @@
 //! the engines on this computer, the Docker contexts, and a remote host field.
 
 use gpui_kit::component::WindowExt;
+use gpui_kit::component::scroll::ScrollableElement;
 use gpui_kit::*;
 
 use super::{SettingsView, endpoint_picker, store};
@@ -45,7 +46,7 @@ impl Render for EngineSheet {
                 div()
                     .id("engine-sheet-scroll")
                     .max_h(px(520.))
-                    .overflow_y_scroll()
+                    .overflow_y_scrollbar()
                     .child(picker),
             )
             .child(div().flex().justify_end().child(primary_button(

@@ -1,4 +1,5 @@
 use captain_core::project_files::{EditableFile, FileKind};
+use gpui_kit::component::scroll::ScrollableElement;
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::*;
 
@@ -44,7 +45,7 @@ pub fn render(
         .flex()
         .flex_col()
         .gap(px(2.))
-        .overflow_y_scroll()
+        .overflow_y_scrollbar()
         .child(section_label("Files", palette))
         .children(rows)
         .children(docker_note.map(|note| {

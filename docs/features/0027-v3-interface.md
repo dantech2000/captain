@@ -75,6 +75,18 @@ The palette tables from the canvas. `dusk` is Harbor's neutrals with Periwinkle'
 
 Text on the action color, and text colors on their window, card, and rail colors, meet 4.5:1. The rail is the icon column at the far left of the window (spec 0030), one step darker than the sidebar.
 
+## Components
+
+Captain draws its own look on top of GPUI Kit 0.7 parts. A kit part is used where it adds behavior Captain would otherwise lack; Captain's own widget stays where the kit has no fit (stat tiles, sparklines, grouped container cards, the stepper with units, the ⌘K palette).
+
+- **Button** ([docs](https://gpui-kit.com/component/button)) is under `text_button`, `primary_button`, `small_primary_button`, `icon_button`, `action_button`, and the terminal tab strip's icons (`widgets/kit_button.rs`). It gives every button Tab focus, Enter and Space, a focus ring in the action color, and a button role with a name for VoiceOver. An icon-only button's name is its help sentence. The helpers set Captain's height, radius, and colors, so the call sites stay as they were. A div with the same id wraps each button and carries `.help()`, which the kit button cannot take.
+- **Scrollable** ([docs](https://gpui-kit.com/component/scrollable)): `overflow_y_scrollbar()` on pages, inspectors, sheets, and lists, and `list_scrollbar` (a `vertical_scrollbar` over a `uniform_list`) on the logs, files, project log, build log, and scan results. The thumb uses Border strong, and Text 3 on hover.
+- **Empty** ([docs](https://gpui-kit.com/component/empty)) is under `empty_note`, with Captain's duotone icon, sizes, and text colors.
+- **Skeleton** ([docs](https://gpui-kit.com/component/skeleton)): `skeleton_rows` while the Images, Volumes, and Networks lists load, and `skeleton_lines` for inspector sections, processes, and files. The bars use the Border color.
+- Already in use: Input, Select, Checkbox, Switch, Dialog, Notification, Spinner, Progress, Tag, Kbd, Tooltip, List, and Menu.
+
+`theme/kit_theme.rs` maps the tokens onto the kit theme and sets the kit radius to 7 px, the radius of Captain's buttons.
+
 ## Out of scope
 
 - A Windows or Linux engine host (M12).

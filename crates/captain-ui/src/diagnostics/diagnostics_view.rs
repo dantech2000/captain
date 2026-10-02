@@ -1,4 +1,5 @@
 use captain_core::diagnostics::CheckState;
+use gpui_kit::component::scroll::ScrollableElement;
 use gpui_kit::*;
 
 use super::{DiagnosticsModel, check_row, diagnostics_model, engine_card, troubleshooting};
@@ -119,7 +120,7 @@ impl Render for DiagnosticsView {
                     .id("diagnostics-scroll")
                     .flex_1()
                     .min_h_0()
-                    .overflow_y_scroll()
+                    .overflow_y_scrollbar()
                     .px(px(24.))
                     .pt(px(4.))
                     .pb(px(24.))

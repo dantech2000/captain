@@ -6,6 +6,7 @@ use gpui_kit::*;
 
 use super::files_pane::{FilesPane, Load, Preview, note};
 use crate::theme::Palette;
+use crate::widgets::skeleton_lines;
 
 const LINE_HEIGHT: f32 = 16.;
 
@@ -50,14 +51,7 @@ pub fn render(preview: &Preview, palette: &Palette, cx: &mut Context<FilesPane>)
         );
 
     let body = match &preview.load {
-        Load::Idle | Load::Loading => div()
-            .flex_1()
-            .flex()
-            .items_center()
-            .justify_center()
-            .text_size(px(12.))
-            .text_color(palette.text2)
-            .child("Loading…"),
+        Load::Idle | Load::Loading => div().flex_1().child(skeleton_lines(8).p(px(12.))),
         Load::Failed(error) => note(
             IconName::CircleAlert,
             "Could not read this file",

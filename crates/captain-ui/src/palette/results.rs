@@ -1,3 +1,4 @@
+use gpui_kit::component::scroll::ScrollableElement;
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::*;
 
@@ -10,7 +11,7 @@ use crate::icons::glyph;
 use crate::theme::Palette;
 
 /// The result list: a header for each section, then its rows. The list scrolls
-/// once it is taller than the window allows.
+/// once it is taller than the window allows, with gpui-kit's scrollbar.
 pub fn render(
     results: &[Ranked],
     selected: usize,
@@ -19,7 +20,20 @@ pub fn render(
     scroll: &ScrollHandle,
     palette: &Palette,
     cx: &mut Context<CommandPalette>,
-) -> impl IntoElement {
+) -> Div {
+    let list = items(results, selected, query, error, scroll, palette, cx);
+    div().relative().child(list).vertical_scrollbar(scroll)
+}
+
+fn items(
+    results: &[Ranked],
+    selected: usize,
+    query: &str,
+    error: Option<String>,
+    scroll: &ScrollHandle,
+    palette: &Palette,
+    cx: &mut Context<CommandPalette>,
+) -> Stateful<Div> {
     let mut list = div()
         .id("palette-results")
         .track_scroll(scroll)

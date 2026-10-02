@@ -9,7 +9,7 @@ use super::host_screen::{frame, note, page, title};
 use crate::theme::Palette;
 use crate::widgets::{ButtonTone, primary_button, text_button};
 
-pub fn render(model: &Entity<HostModel>, host: &HostModel, palette: &Palette) -> Stateful<Div> {
+pub fn render(model: &Entity<HostModel>, host: &HostModel, palette: &Palette) -> impl IntoElement {
     let start = model.clone();
     let external = model.clone();
     let column = frame(palette)

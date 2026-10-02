@@ -1,3 +1,4 @@
+use gpui_kit::component::scroll::ScrollableElement;
 use gpui_kit::*;
 
 use super::{drag_region, pill};
@@ -45,7 +46,7 @@ pub fn detail_panel(
                 .id(SharedString::from(format!("{id}-body")))
                 .flex_1()
                 .min_h_0()
-                .overflow_y_scroll()
+                .overflow_y_scrollbar()
                 .px(px(20.))
                 .pt(px(16.))
                 .pb(px(20.))

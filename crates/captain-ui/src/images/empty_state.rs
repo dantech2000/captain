@@ -1,7 +1,8 @@
 use gpui_kit::*;
 
-use crate::icons::{CaptainIcon, cap_icon};
+use crate::icons::CaptainIcon;
 use crate::theme::Palette;
+use crate::widgets::empty_note;
 
 /// Shown when no image passes the filter, or the engine has no images.
 pub fn render(filtered: bool, palette: &Palette) -> impl IntoElement {
@@ -16,19 +17,5 @@ pub fn render(filtered: bool, palette: &Palette) -> impl IntoElement {
             "Pull one above, for example busybox or nginx:alpine.",
         )
     };
-    div()
-        .pt(px(80.))
-        .flex()
-        .flex_col()
-        .items_center()
-        .gap(px(8.))
-        .text_color(palette.text2)
-        .child(cap_icon(CaptainIcon::Image, px(32.), palette.text3))
-        .child(
-            div()
-                .text_color(palette.text)
-                .font_weight(FontWeight::SEMIBOLD)
-                .child(title),
-        )
-        .child(div().text_size(px(12.)).child(hint))
+    empty_note(CaptainIcon::Image, title, hint, palette)
 }

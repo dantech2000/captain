@@ -12,7 +12,7 @@ use crate::theme::Palette;
 /// How many progress lines to show.
 const LINES: usize = 8;
 
-pub fn render(host: &HostModel, palette: &Palette) -> Stateful<Div> {
+pub fn render(host: &HostModel, palette: &Palette) -> impl IntoElement {
     let stopping = *host.status() == HostStatus::Stopping;
     let (heading, hint) = if stopping {
         ("Stopping Captain Engine", "This takes a few seconds.")

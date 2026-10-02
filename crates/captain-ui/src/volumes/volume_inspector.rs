@@ -6,7 +6,7 @@ use crate::icons::CaptainIcon;
 use crate::theme::Palette;
 use crate::widgets::{
     DetailHeader, container_link, detail_note, detail_panel, detail_section, key_values,
-    map_or_note,
+    map_or_note, skeleton_lines,
 };
 use crate::workspace::{Page, Workspace};
 
@@ -84,7 +84,7 @@ fn used_by(
     palette: &Palette,
 ) -> Div {
     let users = match users {
-        None => return detail_note("Loading containers...", palette),
+        None => return skeleton_lines(2),
         Some(Err(error)) => {
             return detail_note(format!("Could not load containers: {error}"), palette);
         }

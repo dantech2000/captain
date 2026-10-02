@@ -3,6 +3,7 @@
 use captain_core::format::bytes_label;
 use captain_core::storage::{ReclaimGroup, ReclaimItem};
 use gpui_kit::component::WindowExt;
+use gpui_kit::component::scroll::ScrollableElement;
 use gpui_kit::*;
 
 use super::StorageModel;
@@ -71,7 +72,7 @@ impl Render for PreviewDialog {
                 div()
                     .id("storage-preview-list")
                     .max_h(px(360.))
-                    .overflow_y_scroll()
+                    .overflow_y_scrollbar()
                     .flex()
                     .flex_col()
                     .gap(px(12.))

@@ -11,7 +11,7 @@ use super::action_help::{down_help, restart_help, up_help};
 use crate::containers::down_dialog;
 use crate::help::HelpExt;
 use crate::theme::Palette;
-use crate::widgets::{drag_region, primary_button};
+use crate::widgets::{drag_region, small_primary_button};
 use crate::workspace::Workspace;
 
 /// The folder and Compose files in mono, the name in large type, and for a Compose
@@ -169,7 +169,7 @@ fn buttons(
     };
     let primary = {
         let (handle, project) = (handle.clone(), project.clone());
-        primary_button(
+        small_primary_button(
             "project-primary",
             label,
             help,
@@ -182,8 +182,6 @@ fn buttons(
             },
         )
         .h(px(32.))
-        .px(px(14.))
-        .text_size(px(12.))
         .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
     };
     div()

@@ -1,5 +1,6 @@
 use captain_core::model::Container;
 use captain_core::store::GroupKey;
+use gpui_kit::component::scroll::ScrollableElement;
 use gpui_kit::*;
 
 use super::group_info::{is_sandbox, service_name};
@@ -136,7 +137,7 @@ pub fn render(view: &ProjectView, cx: &mut Context<ProjectView>) -> AnyElement {
                 .id("project-cards")
                 .flex_shrink_0()
                 .max_h(relative(0.6))
-                .overflow_y_scroll()
+                .overflow_y_scrollbar()
                 .px(px(28.))
                 .child(
                     div()

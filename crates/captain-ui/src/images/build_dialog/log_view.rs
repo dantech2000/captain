@@ -1,3 +1,4 @@
+use gpui_kit::component::scroll::ScrollableElement;
 use gpui_kit::*;
 
 use crate::theme::Palette;
@@ -12,6 +13,7 @@ pub fn log_view(
     let lines = lines.to_vec();
     let color = palette.text2;
     div()
+        .relative()
         .h(px(220.))
         .flex()
         .flex_col()
@@ -37,4 +39,5 @@ pub fn log_view(
             .track_scroll(scroll)
             .flex_1(),
         )
+        .vertical_scrollbar(scroll)
 }

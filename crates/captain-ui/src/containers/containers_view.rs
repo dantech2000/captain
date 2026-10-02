@@ -1,4 +1,5 @@
 use captain_core::store::ContainerFilter;
+use gpui_kit::component::scroll::ScrollableElement;
 use gpui_kit::*;
 
 use super::{column_header, empty_state, header, project_card, selection_bar, stat_tiles};
@@ -102,7 +103,7 @@ impl ContainersView {
                     .id("container-list")
                     .flex_1()
                     .min_h_0()
-                    .overflow_y_scroll()
+                    .overflow_y_scrollbar()
                     .px(px(12.))
                     .pt(px(10.))
                     .pb(px(16.))

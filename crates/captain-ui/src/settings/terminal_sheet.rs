@@ -4,6 +4,7 @@
 
 use captain_core::cli_tools::{SHOWN_TOOLS, SetupSteps};
 use gpui_kit::component::WindowExt;
+use gpui_kit::component::scroll::ScrollableElement;
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::*;
 
@@ -67,18 +68,22 @@ impl Render for TerminalSheet {
             .child(header(done, &palette))
             .child(
                 div()
-                    .id("terminal-sheet-steps")
-                    .max_h(px(480.))
-                    .overflow_y_scroll()
-                    .flex()
-                    .flex_col()
                     .rounded(px(12.))
                     .border_1()
                     .border_color(sep)
-                    .children(steps.into_iter().enumerate().map(move |(ix, step)| {
-                        step.when(ix > 0, |step| step.border_t_1().border_color(sep))
-                    }))
-                    .children(sources),
+                    .overflow_hidden()
+                    .child(
+                        div()
+                            .id("terminal-sheet-steps")
+                            .max_h(px(478.))
+                            .overflow_y_scrollbar()
+                            .flex()
+                            .flex_col()
+                            .children(steps.into_iter().enumerate().map(move |(ix, step)| {
+                                step.when(ix > 0, |step| step.border_t_1().border_color(sep))
+                            }))
+                            .children(sources),
+                    ),
             )
             .children(errors.into_iter().map(|error| {
                 div()

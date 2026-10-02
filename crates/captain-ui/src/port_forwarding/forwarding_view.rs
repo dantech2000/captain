@@ -1,4 +1,5 @@
 use gpui_kit::component::WindowExt;
+use gpui_kit::component::scroll::ScrollableElement;
 use gpui_kit::*;
 
 use super::{ForwardingModel, forwarding_model, service_card};
@@ -83,7 +84,7 @@ impl Render for PortForwardingView {
                     .id("forwarding-scroll")
                     .flex_1()
                     .min_h_0()
-                    .overflow_y_scroll()
+                    .overflow_y_scrollbar()
                     .px(px(24.))
                     .pt(px(4.))
                     .pb(px(24.))

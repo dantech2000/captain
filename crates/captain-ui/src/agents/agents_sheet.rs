@@ -6,6 +6,7 @@ use captain_core::agent_clients::copy_config;
 use captain_core::agent_tools::{AgentAction, AgentToolsSettings};
 use gpui_kit::component::checkbox::Checkbox;
 use gpui_kit::component::notification::Notification;
+use gpui_kit::component::scroll::ScrollableElement;
 use gpui_kit::component::switch::Switch;
 use gpui_kit::component::{Disableable, WindowExt};
 use gpui_kit::prelude::FluentBuilder;
@@ -58,7 +59,7 @@ impl Render for AgentsSheet {
                 div()
                     .id("agents-sheet-body")
                     .max_h(px(520.))
-                    .overflow_y_scroll()
+                    .overflow_y_scrollbar()
                     .flex()
                     .flex_col()
                     .gap(px(14.))

@@ -10,6 +10,7 @@ use gpui_kit::*;
 
 use super::files_pane::FilesPane;
 use crate::theme::Palette;
+use crate::widgets::list_scrollbar;
 
 const SIZE_WIDTH: f32 = 56.;
 const MODE_WIDTH: f32 = 72.;
@@ -67,7 +68,7 @@ pub fn render(
             "Modified".into(),
             palette.mono(),
         ))
-        .child(list)
+        .child(list_scrollbar(list, scroll))
 }
 
 fn row(

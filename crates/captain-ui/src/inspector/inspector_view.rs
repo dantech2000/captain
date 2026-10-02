@@ -1,4 +1,5 @@
 use captain_core::model::{ContainerDetail, ContainerState};
+use gpui_kit::component::scroll::ScrollableElement;
 use gpui_kit::*;
 
 use super::files::FilesPane;
@@ -160,7 +161,7 @@ impl Render for InspectorView {
                     .id("stats-tab")
                     .flex_1()
                     .min_h_0()
-                    .overflow_y_scroll()
+                    .overflow_y_scrollbar()
                     .pb(px(20.))
                     .child(stats_tab::render(history, &palette))
                     .child(self.processes.clone())

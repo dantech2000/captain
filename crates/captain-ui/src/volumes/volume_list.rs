@@ -1,6 +1,7 @@
 use captain_core::format::bytes_label;
 use captain_core::model::Volume;
 use captain_core::store::{ResourceGroup, UsageFilter};
+use gpui_kit::component::scroll::ScrollableElement;
 use gpui_kit::*;
 
 use super::VolumesView;
@@ -8,7 +9,7 @@ use super::volume_row::{self, CREATED_WIDTH, SIZE_WIDTH, USAGE_WIDTH};
 use crate::engine_host::connection_screen;
 use crate::icons::CaptainIcon;
 use crate::theme::Palette;
-use crate::widgets::{Column, column_header, empty_note, group_card};
+use crate::widgets::{Column, column_header, empty_note, group_card, skeleton_rows};
 
 /// The column header and the volumes in project cards, or a note when there are none,
 /// or the engine connection screen while the engine does not answer.
@@ -17,14 +18,7 @@ pub fn render(view: &VolumesView, cx: &mut Context<VolumesView>, palette: &Palet
         return screen;
     }
     if !view.loaded {
-        return div()
-            .size_full()
-            .flex()
-            .items_center()
-            .justify_center()
-            .text_color(palette.text2)
-            .child("Loading volumes...")
-            .into_any_element();
+        return skeleton_rows(6, px(50.)).into_any_element();
     }
     let mut groups = view.store.groups(view.filter);
     // An extension's backend volumes hide with its containers. See feature 0025.
@@ -82,7 +76,7 @@ pub fn render(view: &VolumesView, cx: &mut Context<VolumesView>, palette: &Palet
                 .id("volume-list")
                 .flex_1()
                 .min_h_0()
-                .overflow_y_scroll()
+                .overflow_y_scrollbar()
                 .px(px(12.))
                 .pt(px(10.))
                 .pb(px(16.))

@@ -10,6 +10,7 @@ use gpui_kit::*;
 use super::keys::{self, ClosePreview, GoUp, KEY_CONTEXT, OpenSelected, SelectNext, SelectPrev};
 use super::{file_list, path_bar, preview_view};
 use crate::theme::Palette;
+use crate::widgets::skeleton_lines;
 
 /// Where a load is.
 pub(super) enum Load<T> {
@@ -128,7 +129,7 @@ impl Render for FilesPane {
             preview_view::render(preview, &palette, cx).into_any_element()
         } else {
             match &self.listing {
-                Load::Idle | Load::Loading => loading(&palette).into_any_element(),
+                Load::Idle | Load::Loading => loading().into_any_element(),
                 Load::Failed(error) => note(
                     IconName::CircleAlert,
                     "Could not list this folder",
@@ -175,15 +176,8 @@ impl Render for FilesPane {
     }
 }
 
-fn loading(palette: &Palette) -> Div {
-    div()
-        .flex_1()
-        .flex()
-        .items_center()
-        .justify_center()
-        .text_size(px(12.))
-        .text_color(palette.text2)
-        .child("Loading…")
+fn loading() -> Div {
+    div().flex_1().child(skeleton_lines(8).p(px(12.)))
 }
 
 /// A centered icon, title, and detail, for states with no list.

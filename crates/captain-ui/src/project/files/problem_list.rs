@@ -3,6 +3,7 @@
 
 use captain_core::project_files::{LineProblem, Severity};
 use gpui_kit::component::input::Position;
+use gpui_kit::component::scroll::{Scrollable, ScrollableElement};
 use gpui_kit::*;
 
 use super::FileEditor;
@@ -13,7 +14,7 @@ pub fn render(
     editor: &FileEditor,
     this: &Entity<FileEditor>,
     palette: &Palette,
-) -> Option<Stateful<Div>> {
+) -> Option<Scrollable<Stateful<Div>>> {
     if editor.problems.is_empty() {
         return None;
     }
@@ -26,7 +27,7 @@ pub fn render(
         div()
             .id("file-problems")
             .max_h(px(120.))
-            .overflow_y_scroll()
+            .overflow_y_scrollbar()
             .flex()
             .flex_col()
             .gap(px(2.))

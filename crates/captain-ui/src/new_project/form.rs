@@ -3,6 +3,7 @@
 
 use gpui_kit::component::Sizable;
 use gpui_kit::component::input::{Input, InputState};
+use gpui_kit::component::scroll::{Scrollable, ScrollableElement};
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::*;
 
@@ -82,11 +83,11 @@ pub fn form_root(id: &'static str) -> Stateful<Div> {
 }
 
 /// The scrolling area of a step, so a long form fits the window.
-pub fn scroll_body(id: &'static str) -> Stateful<Div> {
+pub fn scroll_body(id: &'static str) -> Scrollable<Stateful<Div>> {
     div()
         .id(id)
         .max_h(px(440.))
-        .overflow_y_scroll()
+        .overflow_y_scrollbar()
         .flex()
         .flex_col()
         .gap(px(14.))

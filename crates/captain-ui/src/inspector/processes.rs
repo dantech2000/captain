@@ -8,6 +8,7 @@ use gpui_kit::*;
 
 use super::section;
 use crate::theme::Palette;
+use crate::widgets::skeleton_lines;
 
 /// How often the table asks the engine again.
 const REFRESH: Duration = Duration::from_secs(2);
@@ -91,7 +92,7 @@ impl Render for ProcessList {
         let running = self.target.as_ref().is_some_and(|t| t.1);
         let body = match (&self.table, running) {
             (_, false) => message("Processes appear while the container runs.", &palette),
-            (None, true) => message("Loading…", &palette),
+            (None, true) => skeleton_lines(3),
             (Some(Err(error)), true) => message(error.clone(), &palette).text_color(palette.red),
             (Some(Ok(table)), true) => table_view(table, &palette),
         };

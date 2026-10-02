@@ -1,11 +1,12 @@
 use captain_core::format::{bytes_label, percent_label, rate_label};
 use captain_core::model::{Container, ContainerDetail};
+use gpui_kit::component::scroll::ScrollableElement;
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::*;
 
 use super::section::{heading, key_values};
 use crate::theme::Palette;
-use crate::widgets::{StatTile, scales, stat_tile};
+use crate::widgets::{StatTile, scales, skeleton_lines, stat_tile};
 use crate::workspace::Workspace;
 
 /// Live stats, ports, health, details, environment, and mounts.
@@ -27,18 +28,13 @@ pub fn render(
             .child(details(container, detail, palette))
             .child(environment(detail, palette))
             .child(mounts(detail, palette)),
-        None => body.child(
-            div()
-                .text_size(px(12.))
-                .text_color(palette.text3)
-                .child("Loading details..."),
-        ),
+        None => body.child(skeleton_lines(4)),
     };
 
     div()
         .id("overview")
         .flex_1()
-        .overflow_y_scroll()
+        .overflow_y_scrollbar()
         .px(px(20.))
         .pt(px(16.))
         .pb(px(20.))

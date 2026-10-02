@@ -1,6 +1,7 @@
 use captain_core::docker_context::ContextList;
 use captain_core::kubernetes::KubernetesSettings;
 use gpui_kit::component::input::{InputEvent, InputState};
+use gpui_kit::component::scroll::ScrollableElement;
 use gpui_kit::*;
 
 use super::admin_access::AdminAccess;
@@ -240,7 +241,7 @@ impl Render for SettingsView {
         div()
             .id("settings-scroll")
             .size_full()
-            .overflow_y_scroll()
+            .overflow_y_scrollbar()
             .flex()
             .justify_center()
             .px(px(24.))

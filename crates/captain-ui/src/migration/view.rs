@@ -1,3 +1,4 @@
+use gpui_kit::component::scroll::ScrollableElement;
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::*;
 
@@ -46,7 +47,7 @@ impl Render for MigrationAssistant {
                 div()
                     .id("migration-body")
                     .h(px(BODY_HEIGHT))
-                    .overflow_y_scroll()
+                    .overflow_y_scrollbar()
                     .pr(px(4.))
                     .child(body),
             )

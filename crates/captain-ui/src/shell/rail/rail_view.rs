@@ -1,3 +1,4 @@
+use gpui_kit::component::scroll::ScrollableElement;
 use gpui_kit::*;
 
 use super::app_mark;
@@ -74,7 +75,7 @@ pub fn render(
                 .id("rail-pages")
                 .flex_1()
                 .min_h_0()
-                .overflow_y_scroll()
+                .overflow_y_scrollbar()
                 .children(
                     PAGES
                         .into_iter()

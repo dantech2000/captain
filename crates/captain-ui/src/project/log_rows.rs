@@ -7,6 +7,7 @@ use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::*;
 
 use crate::theme::Palette;
+use crate::widgets::list_scrollbar;
 
 const ROW_HEIGHT: Pixels = px(20.);
 
@@ -100,7 +101,7 @@ pub fn render(
                 .py(px(6.))
                 .font_family(palette.mono())
                 .text_size(px(11.5))
-                .child(list),
+                .child(list_scrollbar(list, scroll)),
         )
 }
 

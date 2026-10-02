@@ -5,6 +5,7 @@
 use gpui_kit::component::Sizable;
 use gpui_kit::component::WindowExt;
 use gpui_kit::component::input::{Input, InputEvent, InputState};
+use gpui_kit::component::scroll::ScrollableElement;
 use gpui_kit::*;
 
 use super::options_entries::{OptionEntry, option_entries};
@@ -67,16 +68,20 @@ impl Render for OptionsSheet {
             .child(Input::new(&self.search).small())
             .child(
                 div()
-                    .id("options-sheet-list")
-                    .h(px(420.))
-                    .overflow_y_scroll()
-                    .flex()
-                    .flex_col()
                     .rounded(px(10.))
                     .border_1()
                     .border_color(palette.sep)
-                    .children(rows)
-                    .children(empty),
+                    .overflow_hidden()
+                    .child(
+                        div()
+                            .id("options-sheet-list")
+                            .h(px(418.))
+                            .overflow_y_scrollbar()
+                            .flex()
+                            .flex_col()
+                            .children(rows)
+                            .children(empty),
+                    ),
             )
             .child(
                 div()

@@ -9,6 +9,7 @@ use gpui_kit::*;
 
 use super::LogsPane;
 use crate::theme::Palette;
+use crate::widgets::list_scrollbar;
 
 /// Rows share this group so the copy icon shows on the hovered row only.
 const ROW_GROUP: &str = "log-line";
@@ -21,15 +22,16 @@ pub fn log_list(
     scroll: &UniformListScrollHandle,
     palette: &Palette,
     pane: WeakEntity<LogsPane>,
-) -> UniformList {
+) -> Div {
     let colors = *palette;
-    uniform_list("log-lines", matches.len(), move |range, _, _| {
+    let list = uniform_list("log-lines", matches.len(), move |range, _, _| {
         range
             .map(|ix| row(ix, &matches[ix], offset, &colors, pane.clone()))
             .collect()
     })
     .track_scroll(scroll)
-    .flex_1()
+    .flex_1();
+    list_scrollbar(list, scroll)
 }
 
 /// The height of one row. A paused list shifts by it when the oldest line drops.

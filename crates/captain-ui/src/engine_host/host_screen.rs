@@ -2,6 +2,7 @@
 //! running: setup, progress, or a stopped state.
 
 use captain_core::HostStatus;
+use gpui_kit::component::scroll::{Scrollable, ScrollableElement};
 use gpui_kit::*;
 
 use super::{HostModel, setup_screen, starting_screen, stopped_screen};
@@ -44,11 +45,11 @@ pub fn frame(palette: &Palette) -> Div {
 }
 
 /// The page around a [`frame`] column.
-pub fn page(column: Div) -> Stateful<Div> {
+pub fn page(column: Div) -> Scrollable<Stateful<Div>> {
     div()
         .id("host-screen")
         .size_full()
-        .overflow_y_scroll()
+        .overflow_y_scrollbar()
         .flex()
         .justify_center()
         .items_center()
@@ -70,6 +71,6 @@ pub fn note(text: impl Into<SharedString>, palette: &Palette) -> Div {
         .child(text.into())
 }
 
-fn checking(palette: &Palette) -> Stateful<Div> {
+fn checking(palette: &Palette) -> impl IntoElement {
     page(frame(palette).child(note("Checking Captain Engine...", palette)))
 }
