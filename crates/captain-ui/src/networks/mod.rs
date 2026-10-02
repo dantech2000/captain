@@ -7,5 +7,6 @@ mod network_row;
 mod networks_view;
 mod prune;
 mod toolbar;
+mod visible;
 
 pub use networks_view::NetworksView;

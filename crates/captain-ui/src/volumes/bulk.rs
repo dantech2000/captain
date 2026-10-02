@@ -29,8 +29,7 @@ impl VolumesView {
             return;
         }
         let order: Vec<String> = self
-            .store
-            .groups(self.filter)
+            .visible_groups()
             .into_iter()
             .flat_map(|group| group.items.into_iter().map(|v| v.name))
             .collect();

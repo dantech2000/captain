@@ -20,16 +20,7 @@ pub fn render(view: &VolumesView, cx: &mut Context<VolumesView>, palette: &Palet
     if !view.loaded {
         return skeleton_rows(6, px(50.)).into_any_element();
     }
-    let mut groups = view.store.groups(view.filter);
-    // An extension's backend volumes hide with its containers. See feature 0025.
-    if !crate::settings::current(cx).show_extension_containers {
-        groups.retain(|group| {
-            !group
-                .project
-                .as_deref()
-                .is_some_and(captain_core::extension::is_backend_project)
-        });
-    }
+    let groups = view.visible_groups();
     if groups.is_empty() {
         let (title, hint) = if view.filter == UsageFilter::All {
             (

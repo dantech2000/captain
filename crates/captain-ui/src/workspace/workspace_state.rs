@@ -30,6 +30,9 @@ pub struct Workspace {
     /// nothing after a switch to another engine.
     pub(super) generation: u64,
     pub(super) connection: Connection,
+    /// The endpoint of the last working connection. Automatic reconnects use it, so
+    /// only an explicit reconnect discovers again.
+    pub(super) endpoint: Option<String>,
     pub(super) page: Page,
     /// Item counts that the Images, Volumes, and Networks pages report for the sidebar.
     pub(super) page_counts: HashMap<Page, usize>,
@@ -97,6 +100,7 @@ impl Workspace {
             engine: None,
             generation: 0,
             connection: Connection::Connecting,
+            endpoint: None,
             page: Page::default(),
             page_counts: HashMap::new(),
             loaded: false,

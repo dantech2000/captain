@@ -4,6 +4,7 @@ mod feed;
 mod prune;
 mod toolbar;
 mod users;
+mod visible;
 mod volume_inspector;
 mod volume_list;
 mod volume_row;

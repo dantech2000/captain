@@ -29,6 +29,8 @@ pub struct VolumesView {
     pub(super) store: VolumeStore,
     pub(super) loaded: bool,
     pub(super) filter: UsageFilter,
+    /// Follows `show_extension_containers`: shows extension backend volumes.
+    pub(super) show_extensions: bool,
     /// The name of the selected volume.
     pub(super) selected: Option<String>,
     /// The volumes selected for a bulk delete. It holds the selected volume too.
@@ -69,6 +71,10 @@ impl VolumesView {
                 this.reload(RELOAD_DEBOUNCE, cx);
             }
         });
+        let settings =
+            cx.observe_global::<crate::settings::SettingsStore>(|this: &mut Self, cx| {
+                this.apply_settings(cx)
+            });
         let engine = workspace.read(cx).engine();
         let mut view = Self {
             workspace,
@@ -77,6 +83,7 @@ impl VolumesView {
             store: VolumeStore::default(),
             loaded: false,
             filter: UsageFilter::default(),
+            show_extensions: crate::settings::current(cx).show_extension_containers,
             selected: None,
             checked: MultiSelection::default(),
             removing: HashSet::new(),
@@ -89,7 +96,7 @@ impl VolumesView {
             notice: None,
             input: None,
             reload_task: None,
-            subscriptions: vec![observe, events],
+            subscriptions: vec![observe, events, settings],
         };
         view.follow_engine(engine, cx);
         view

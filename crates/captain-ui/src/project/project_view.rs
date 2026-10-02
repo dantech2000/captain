@@ -31,6 +31,8 @@ pub struct ProjectView {
     pub(super) workspace: Entity<Workspace>,
     pub(super) host: Option<Entity<HostModel>>,
     focus: Option<GroupKey>,
+    /// The workspace's engine generation that `details` came from.
+    generation: u64,
     /// The last Compose project seen for the entry. It stays after `down` removed
     /// the containers, so the header can offer Up.
     pub(super) project: Option<ComposeProject>,
@@ -89,6 +91,7 @@ impl ProjectView {
             workspace,
             host,
             focus: None,
+            generation: 0,
             project: None,
             details: HashMap::new(),
             inspecting: HashMap::new(),
@@ -148,6 +151,15 @@ impl ProjectView {
             }
         }
         let workspace = self.workspace.read(cx);
+        // An automatic reconnect keeps the focus, but the details came from the old
+        // connection: a container can keep its ID and state while its settings
+        // changed during the outage.
+        let generation = workspace.engine_generation();
+        if generation != self.generation {
+            self.generation = generation;
+            self.details.clear();
+            self.inspecting.clear();
+        }
         if workspace.is_loaded() {
             let store = workspace.store();
             self.staged.retain_containers(|id| store.find(id).is_some());

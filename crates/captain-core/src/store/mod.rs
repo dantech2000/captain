@@ -46,7 +46,7 @@ pub use prune_plan::{label_matches, network_prune_summary, prunable_networks, pr
 pub use pull_tracker::PullTracker;
 pub use push_tracker::PushTracker;
 pub use resource_events::{changes_network_list, changes_volume_list};
-pub use resource_group::{ResourceGroup, group_by_project};
+pub use resource_group::{ResourceGroup, group_by_project, visible_groups};
 pub use run_form::{PortRow, RunForm, RunFormError, VolumeRow};
 pub use stats_board::StatsBoard;
 pub use stats_history::{HISTORY_LEN, StatsHistory};

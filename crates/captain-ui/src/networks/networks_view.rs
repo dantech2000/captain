@@ -27,6 +27,8 @@ pub struct NetworksView {
     pub(super) store: NetworkStore,
     pub(super) loaded: bool,
     pub(super) filter: UsageFilter,
+    /// Follows `show_extension_containers`: shows extension backend networks.
+    pub(super) show_extensions: bool,
     /// The ID of the selected network.
     pub(super) selected: Option<String>,
     /// IDs of networks that are being removed.
@@ -58,6 +60,10 @@ impl NetworksView {
                 this.reload(RELOAD_DEBOUNCE, cx);
             }
         });
+        let settings =
+            cx.observe_global::<crate::settings::SettingsStore>(|this: &mut Self, cx| {
+                this.apply_settings(cx)
+            });
         let engine = workspace.read(cx).engine();
         let mut view = Self {
             workspace,
@@ -66,6 +72,7 @@ impl NetworksView {
             store: NetworkStore::default(),
             loaded: false,
             filter: UsageFilter::default(),
+            show_extensions: crate::settings::current(cx).show_extension_containers,
             selected: None,
             removing: HashSet::new(),
             creating: false,
@@ -77,7 +84,7 @@ impl NetworksView {
             notice: None,
             input: None,
             reload_task: None,
-            subscriptions: vec![observe, events],
+            subscriptions: vec![observe, events, settings],
         };
         view.follow_engine(engine, cx);
         view

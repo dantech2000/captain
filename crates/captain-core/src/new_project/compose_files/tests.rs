@@ -33,3 +33,29 @@ fn secret_values_go_in_a_private_env_file() {
     assert!(files[1].text.ends_with("\nPOSTGRES_PASSWORD='my$ecret'\n"));
     assert_eq!(files[2], NewFile::new(".gitignore", ".env\n"));
 }
+
+#[test]
+fn only_the_last_value_of_a_name_can_be_a_secret() {
+    for last in [Some(String::new()), None] {
+        let doc = ComposeDoc {
+            name: None,
+            services: vec![(
+                "app".into(),
+                ServiceSpec {
+                    image: "alpine".into(),
+                    environment: vec![
+                        ("API_TOKEN".into(), Some("old".into())),
+                        ("API_TOKEN".into(), last.clone()),
+                    ],
+                    ..ServiceSpec::default()
+                },
+            )],
+        };
+
+        let files = project_files(doc).unwrap();
+
+        assert_eq!(files.len(), 1, "{last:?}");
+        assert!(!files[0].text.contains("old"), "{}", files[0].text);
+        assert!(!files[0].text.contains("${API_TOKEN"), "{}", files[0].text);
+    }
+}

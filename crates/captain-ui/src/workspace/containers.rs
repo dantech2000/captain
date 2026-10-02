@@ -35,6 +35,7 @@ impl Workspace {
             Ok(containers) => {
                 self.store.replace(containers);
                 self.loaded = true;
+                self.finish_reconnect();
                 self.keep_selection_valid();
                 let store = &self.store;
                 self.checked.retain(|id| store.find(id).is_some());
@@ -91,6 +92,7 @@ impl Workspace {
             while let Some(event) = events.next().await {
                 let updated = match event {
                     Ok(event) => this.update(cx, |this, cx| {
+                        this.events_work();
                         this.crashes.record(&event);
                         if event.action == "die" {
                             this.schedule_crash_expiry(cx);

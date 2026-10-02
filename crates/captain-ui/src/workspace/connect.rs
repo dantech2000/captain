@@ -74,9 +74,7 @@ impl Workspace {
                 }
                 match info {
                     Ok(info) => {
-                        if this.auto.take().is_some() {
-                            tracing::info!("reconnected to the engine");
-                        }
+                        this.endpoint = Some(info.endpoint.clone());
                         this.connection = Connection::Connected(info);
                         this.engine = Some(engine);
                         this.set_project_runner(projects, cx);
@@ -84,6 +82,7 @@ impl Workspace {
                         this.extensions = extensions;
                         this.reload(Duration::ZERO, cx);
                         this.watch_events(cx);
+                        this.watch_feeds(cx);
                         cx.notify();
                     }
                     Err(error) => this.fail(error, cx),
@@ -95,12 +94,14 @@ impl Workspace {
     }
 
     /// Drops the engine, its tasks, and everything loaded from it, then connects again
-    /// with `connect`. The pages see no engine, then the new one.
+    /// with `connect`. The pages see no engine, then the new one. Unlike an automatic
+    /// reconnect, it forgets the last endpoint, so `connect` may discover another.
     pub fn reconnect(&mut self, connect: Connector, cx: &mut Context<Self>) {
         tracing::info!("reconnecting to the engine");
         self.drop_engine();
         self.connection = Connection::Connecting;
         self.auto = None;
+        self.endpoint = None;
         cx.notify();
         self.connect(connect, cx);
     }

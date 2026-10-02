@@ -1,6 +1,7 @@
 //! The files of a project made with Run an image or Paste a docker run command.
 //! Values that look secret go in `.env`, like the templates' passwords.
 
+use super::compose_text::last_wins;
 use super::{ComposeDoc, NewFile};
 use crate::model::is_secret_key;
 
@@ -11,19 +12,17 @@ use crate::model::is_secret_key;
 pub fn project_files(mut doc: ComposeDoc) -> Result<Vec<NewFile>, String> {
     let mut secrets: Vec<(String, String)> = Vec::new();
     for (_, service) in &mut doc.services {
-        // A later value wins, as it does in the service.
-        let mut found: Vec<(String, String)> = Vec::new();
-        for (name, value) in &service.environment {
-            let Some(value) = value.clone() else { continue };
-            // `${NAME:?...}` refuses an empty value, so an empty one stays.
-            if value.is_empty() || !is_secret_key(name) || !is_variable_name(name) {
-                continue;
-            }
-            match found.iter_mut().find(|(known, _)| known == name) {
-                Some(entry) => entry.1 = value,
-                None => found.push((name.clone(), value)),
-            }
-        }
+        // A later value wins, as it does in the service, also an empty one or one
+        // that passes the shell's value. Only the value that wins can be a secret.
+        let found: Vec<(String, String)> = last_wins(&service.environment)
+            .into_iter()
+            .filter_map(|(name, value)| {
+                let value = value.as_deref()?;
+                // `${NAME:?...}` refuses an empty value, so an empty one stays.
+                (!value.is_empty() && is_secret_key(name) && is_variable_name(name))
+                    .then(|| (name.clone(), value.to_string()))
+            })
+            .collect();
         for (name, value) in found {
             service.dotenv.push(name.clone());
             match secrets.iter().find(|(known, _)| *known == name) {

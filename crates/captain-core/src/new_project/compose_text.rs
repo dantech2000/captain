@@ -184,7 +184,7 @@ fn write_service(out: &mut String, s: &ServiceSpec) {
 
 /// Each name once, where it first shows, with its last value. YAML refuses a
 /// mapping with a key twice.
-fn last_wins<V>(entries: &[(String, V)]) -> Vec<(&String, &V)> {
+pub(super) fn last_wins<V>(entries: &[(String, V)]) -> Vec<(&String, &V)> {
     let mut out: Vec<(&String, &V)> = Vec::new();
     for (name, value) in entries {
         match out.iter_mut().find(|(known, _)| *known == name) {

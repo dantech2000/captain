@@ -17,7 +17,7 @@ mod terminal;
 mod workspace_event;
 mod workspace_state;
 
-pub use auto_reconnect::expected_running;
+pub use auto_reconnect::{expected_running, resume_endpoint};
 pub use connect::{Connector, active_workspace};
 pub use engine_health::EngineHealth;
 pub use focus::{InspectorTab, LogFilter};
