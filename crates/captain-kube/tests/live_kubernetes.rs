@@ -19,7 +19,7 @@ use std::process::Command;
 use std::time::{Duration, Instant};
 
 use captain_core::kubernetes::{
-    ForwardKey, KubernetesSettings, PortForwarding, load_contexts, user_kubeconfig_paths,
+    CONTEXT, ForwardKey, KubernetesSettings, PortForwarding, load_contexts, user_kubeconfig_paths,
 };
 use captain_core::{EngineHost, GIB, HostResources};
 use captain_host::{LimaHost, LimaPaths};
@@ -92,7 +92,7 @@ fn runs_a_local_image_in_k3s_and_forwards_its_port() {
     let status = block_on(kubernetes.status()).unwrap();
     assert_eq!(status.version(), Some(stable.as_str()), "{status:?}");
     let contexts = load_contexts(&user_kubeconfig_paths());
-    assert!(contexts.names.iter().any(|name| name == "captain"));
+    assert!(contexts.names.iter().any(|name| name == CONTEXT));
 
     docker_build(&paths.docker_socket());
     let runtime = tokio::runtime::Runtime::new().unwrap();

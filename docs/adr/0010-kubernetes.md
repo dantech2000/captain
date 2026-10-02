@@ -63,7 +63,7 @@ k3s server --docker --https-listen-port <port> --write-kubeconfig-mode 644 [--di
 
 ### Kubeconfig and context
 
-- After k3s writes `/etc/rancher/k3s/k3s.yaml`, Captain reads it from the guest and renames the cluster, user, and context to `captain`. Rancher Desktop uses `rancher-desktop` for all three ([k3sHelper.ts, `updateKubeconfig`](https://github.com/rancher-sandbox/rancher-desktop/blob/e4c91fe/pkg/rancher-desktop/backend/k3sHelper.ts)).
+- After k3s writes `/etc/rancher/k3s/k3s.yaml`, Captain reads it from the guest and renames the cluster, user, and context to `captain`. (Later renamed to `captain-desktop`; see the last change below.) Rancher Desktop uses `rancher-desktop` for all three ([k3sHelper.ts, `updateKubeconfig`](https://github.com/rancher-sandbox/rancher-desktop/blob/e4c91fe/pkg/rancher-desktop/backend/k3sHelper.ts)).
 - The server URL is `https://127.0.0.1:<port>`.
 - Captain merges the entry into the first file in `KUBECONFIG` that already has a `captain` context, or else into `~/.kube/config`. It replaces only the `captain` entries and keeps every other cluster, user, and context.
 - Captain sets `current-context: captain` only if the file has no current context. The menu bar lists all contexts and switches between them (the M19 menu bar item).
@@ -120,4 +120,5 @@ M19 follows this decision, with these changes. See [feature 0024](../features/00
 - **Turning Kubernetes off** also stops the pod containers. They are Docker containers and outlive k3s.
 - **Downgrade.** The host refuses a lower version. The Settings card asks, saves the version, and resets. The CLI saves the version and tells the user to run `captain kubernetes reset`.
 - **Reset Captain Engine** removes the `captain` context in the app's host model, not in `LimaHost`, so live tests that delete a test VM never touch a kubeconfig.
+- **Context name, 2026-10-01.** The cluster, user, and context are now `captain-desktop`, like `docker-desktop` and `rancher-desktop`. The name `captain` read as Captain's Docker context, which is `captain-engine`. Each merge removes Captain's old `captain` entries from every kubeconfig file, and a current context of `captain` becomes `captain-desktop`. Captain knows its old entries by the `captain` cluster: a server at `https://127.0.0.1:<port>` and the same certificate authority as the new `captain-desktop` cluster. A `captain` context for another cluster stays. Reset Captain Engine removes both names on the same rule. The backup works as before. A Reset Kubernetes or a port change before the first merge gives a new authority or server, so the old entries stay and the user deletes them with `kubectl config delete-context captain`.
 - **Not built yet:** hiding pod containers in the container list, and the "Expose Traefik on ports 80 and 443" rule. The port check runs only while k3s is off, because a running cluster holds its port through Lima.

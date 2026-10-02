@@ -1,4 +1,4 @@
-//! [`KubeForwarder`]: the [`PortForwarding`] of Captain's `captain` context. Forwards
+//! [`KubeForwarder`]: the [`PortForwarding`] of Captain's `captain-desktop` context. Forwards
 //! live on its own tokio runtime until they stop or Captain quits.
 
 use std::collections::BTreeMap;
@@ -34,7 +34,7 @@ pub struct KubeForwarder {
 }
 
 impl KubeForwarder {
-    /// A forwarder for the `captain` context in `kubeconfig`, which may not exist yet.
+    /// A forwarder for the `captain-desktop` context in `kubeconfig`, which may not exist yet.
     pub fn new(kubeconfig: PathBuf) -> std::io::Result<Self> {
         let runtime = Builder::new_multi_thread()
             .worker_threads(1)

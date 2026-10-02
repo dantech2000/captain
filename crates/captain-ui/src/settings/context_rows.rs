@@ -1,5 +1,5 @@
 //! The Docker CLI contexts in the engines sheet: one row per context, and a row
-//! that creates the `captain` context for Captain Engine. See
+//! that creates the `captain-engine` context for Captain Engine. See
 //! docs/features/0026-contexts-and-remote-hosts.md.
 
 use captain_core::docker_context::{CAPTAIN_CONTEXT, DockerContext};

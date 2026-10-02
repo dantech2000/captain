@@ -8,6 +8,7 @@ use std::path::{Path, PathBuf};
 use serde_json::Value;
 
 use super::kubeconfig::{self, CONTEXT};
+use super::kubeconfig_legacy::remove_legacy;
 use crate::link_target::link_target;
 
 /// The files kubectl reads: each entry of `KUBECONFIG`, or `~/.kube/config`.
@@ -63,39 +64,72 @@ pub fn write_config(link: &Path, config: &Value) -> Result<(), String> {
     std::fs::rename(&temp, path).map_err(fail)
 }
 
-/// Merges the `captain` entries into the first file that has a `captain` context,
-/// or else the first file, as `kubectl config` does. Returns the file. `captain`
-/// becomes the current context only when no file sets another one, because kubectl
-/// takes the current context from the first file that sets it.
+/// Merges the `captain-desktop` entries into the first file that has them or
+/// Captain's old `captain` entries, or else the first file, as `kubectl config`
+/// does. Returns the file. `captain-desktop` becomes the current context only when
+/// no file sets another one, because kubectl takes the current context from the
+/// first file that sets it. Captain's old entries go from every file, and a current
+/// context of `captain` becomes `captain-desktop`.
 pub fn install_captain(paths: &[PathBuf], captain: &Value) -> Result<PathBuf, String> {
-    let target = first_where(paths, |config| {
-        kubeconfig::contexts(config)
-            .iter()
-            .any(|name| name == CONTEXT)
-    })?;
-    let existing = read_config(&target)?;
+    let first = paths.first().ok_or("There is no kubeconfig file.")?;
+    let cas: Vec<String> = kubeconfig::captain_ca_data(captain).into_iter().collect();
+    // Each file that can be read, as read and without Captain's old entries.
+    let files: Vec<(&PathBuf, Value, Value)> = paths
+        .iter()
+        .filter_map(|path| {
+            let config = read_config(path).ok()?;
+            let migrated = remove_legacy(&config, &cas);
+            Some((path, config, migrated))
+        })
+        .collect();
+    let target = files
+        .iter()
+        .find(|(_, config, migrated)| has_captain(migrated) || config != migrated)
+        .map_or(first, |(path, ..)| *path);
+    let existing = match files.iter().find(|(path, ..)| *path == target) {
+        Some((_, _, migrated)) => migrated.clone(),
+        None => read_config(target)?,
+    };
     let mut merged = kubeconfig::merge(&existing, captain);
-    if load_contexts(paths)
-        .current
-        .is_some_and(|current| current != CONTEXT)
-    {
+    let current = files
+        .iter()
+        .find_map(|(_, _, migrated)| kubeconfig::current_context(migrated));
+    if current.is_some_and(|current| current != CONTEXT) {
         let current = kubeconfig::current_context(&existing).unwrap_or_default();
         merged = kubeconfig::set_current(&merged, &current);
     }
-    write_config(&target, &merged)?;
-    Ok(target)
+    write_config(target, &merged)?;
+    for (path, config, migrated) in &files {
+        if *path != target && config != migrated {
+            write_config(path, migrated)?;
+        }
+    }
+    Ok(target.clone())
 }
 
-/// Removes the `captain` entries from each file that has them.
+/// Removes the `captain-desktop` entries, and Captain's old `captain` entries, from
+/// each file that has them. The old entries are known by the certificate authority
+/// of a `captain-desktop` cluster.
 pub fn uninstall_captain(paths: &[PathBuf]) -> Result<(), String> {
+    let cas: Vec<String> = paths
+        .iter()
+        .filter_map(|path| read_config(path).ok())
+        .filter_map(|config| kubeconfig::captain_ca_data(&config))
+        .collect();
     for path in paths {
         let config = read_config(path)?;
-        let removed = kubeconfig::remove_captain(&config);
+        let removed = kubeconfig::remove_captain(&remove_legacy(&config, &cas));
         if removed != config {
             write_config(path, &removed)?;
         }
     }
     Ok(())
+}
+
+fn has_captain(config: &Value) -> bool {
+    kubeconfig::contexts(config)
+        .iter()
+        .any(|name| name == CONTEXT)
 }
 
 /// The contexts of all files, and the current one, as kubectl merges them.

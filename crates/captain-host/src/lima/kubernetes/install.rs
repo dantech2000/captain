@@ -162,12 +162,12 @@ fn wait_host_port(port: u16, ca: &Path, cancel: &Cancel) -> Result<(), HostError
     )))
 }
 
-/// Writes `~/.captain/kubeconfig` and merges the `captain` context into the user's
-/// kubeconfig, with a backup first.
+/// Writes `~/.captain/kubeconfig` and merges the `captain-desktop` context into the
+/// user's kubeconfig, with a backup first. Captain's old `captain` entries go.
 fn write_kubeconfig(paths: &LimaPaths, captain: &Value) -> Result<(), HostError> {
     write_config(&paths.kubeconfig(), captain).map_err(HostError)?;
     let target = install_captain(&user_kubeconfig_paths(), captain).map_err(HostError)?;
-    tracing::info!(file = %target.display(), "merged the captain context");
+    tracing::info!(file = %target.display(), "merged the captain-desktop context");
     Ok(())
 }
 

@@ -1,5 +1,6 @@
 use super::{
-    captain_config, cluster_ca, contexts, current_context, merge, parse, remove_captain, to_yaml,
+    CONTEXT, captain_config, cluster_ca, contexts, current_context, merge, parse, remove_captain,
+    to_yaml,
 };
 
 const K3S_YAML: &str = "apiVersion: v1
@@ -28,7 +29,7 @@ clusters:
 - name: prod
   cluster:
     server: https://prod.example.com
-- name: captain
+- name: captain-desktop
   cluster:
     server: https://127.0.0.1:1
 contexts:
@@ -47,7 +48,7 @@ current-context: prod
 #[test]
 fn renames_k3s_entries_and_points_at_the_port() {
     let config = captain_config(K3S_YAML, 7443).unwrap();
-    assert_eq!(config["clusters"][0]["name"], "captain");
+    assert_eq!(config["clusters"][0]["name"], CONTEXT);
     assert_eq!(
         config["clusters"][0]["cluster"]["server"],
         "https://127.0.0.1:7443"
@@ -58,7 +59,7 @@ fn renames_k3s_entries_and_points_at_the_port() {
     );
     assert_eq!(cluster_ca(&config).unwrap(), b"CA");
     assert_eq!(config["users"][0]["user"]["client-key-data"], "S0VZ");
-    assert_eq!(contexts(&config), ["captain"]);
+    assert_eq!(contexts(&config), [CONTEXT]);
 }
 
 #[test]
@@ -67,7 +68,7 @@ fn merge_replaces_only_captain_and_keeps_the_current_context() {
     let merged = merge(&parse(USER_YAML).unwrap(), &captain);
     let yaml = to_yaml(&merged).unwrap();
     let merged = parse(&yaml).unwrap();
-    assert_eq!(contexts(&merged), ["prod", "captain"]);
+    assert_eq!(contexts(&merged), ["prod", CONTEXT]);
     assert_eq!(current_context(&merged).as_deref(), Some("prod"));
     let clusters = merged["clusters"].as_array().unwrap();
     assert_eq!(clusters.len(), 2);
@@ -80,7 +81,7 @@ fn merge_replaces_only_captain_and_keeps_the_current_context() {
 fn merge_into_an_empty_file_makes_captain_current() {
     let captain = captain_config(K3S_YAML, 6443).unwrap();
     let merged = merge(&parse("").unwrap(), &captain);
-    assert_eq!(current_context(&merged).as_deref(), Some("captain"));
+    assert_eq!(current_context(&merged).as_deref(), Some(CONTEXT));
     assert_eq!(merged["kind"], "Config");
 }
 

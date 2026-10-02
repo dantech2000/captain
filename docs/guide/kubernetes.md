@@ -18,13 +18,15 @@ When you turn Kubernetes on the first time, Captain saves the current stable k3s
 
 ## Use kubectl
 
-Captain adds a context named `captain` to `~/.kube/config`, and keeps your other contexts. Before each change, it saves a copy as `~/.kube/config.captain-backup`.
+Captain adds a context named `captain-desktop` to `~/.kube/config`, and keeps your other contexts. Before each change, it saves a copy as `~/.kube/config.captain-backup`.
+
+Earlier versions of Captain named the context `captain`. The next time Kubernetes starts, Captain removes its own `captain` context and adds `captain-desktop`. If `captain` was the current context, `captain-desktop` becomes the current context. A `captain` context for another cluster stays.
 
 ```sh
-kubectl --context captain get nodes
+kubectl --context captain-desktop get nodes
 ```
 
-If no other context is current, `captain` becomes the current context. To switch contexts, click the menu bar icon and open **Kubernetes Contexts**, or run `kubectl config use-context captain`.
+If no other context is current, `captain-desktop` becomes the current context. To switch contexts, click the menu bar icon and open **Kubernetes Contexts**, or run `kubectl config use-context captain-desktop`.
 
 `Captain.app` ships `kubectl` 1.37 and Helm 4.3. To use them in your terminal, set up the command-line tools (Settings > **Terminal** > **Set up…**). Then `~/.captain/bin` holds links to both. `kubectl` works with a cluster one minor version older or newer, so it fits the stable (1.36) and latest (1.37) k3s versions. For an older k3s, install a matching `kubectl` yourself.
 
@@ -32,7 +34,7 @@ Run a local image without a push:
 
 ```sh
 docker build -t app:dev .
-kubectl --context captain run app --image app:dev --image-pull-policy Never
+kubectl --context captain-desktop run app --image app:dev --image-pull-policy Never
 ```
 
 ## Pods in the container list
@@ -73,4 +75,4 @@ The engine must run. The command asks first.
 
 ## Turn it off
 
-Turn off the **Kubernetes** switch. Captain stops k3s and its pod containers. The cluster keeps its state for the next time. The `captain` context stays in your kubeconfig.
+Turn off the **Kubernetes** switch. Captain stops k3s and its pod containers. The cluster keeps its state for the next time. The `captain-desktop` context stays in your kubeconfig.

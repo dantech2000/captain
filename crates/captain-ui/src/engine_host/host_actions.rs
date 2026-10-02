@@ -260,10 +260,11 @@ impl HostModel {
     }
 }
 
-/// Removes the `captain` context from the user's kubeconfig, if it is there.
+/// Removes the `captain-desktop` context, and Captain's old `captain` context, from
+/// the user's kubeconfig, if they are there.
 fn forget_kubernetes_context() {
     let paths = captain_core::kubernetes::user_kubeconfig_paths();
     if let Err(error) = captain_core::kubernetes::uninstall_captain(&paths) {
-        tracing::warn!(%error, "cannot remove the captain-engine context");
+        tracing::warn!(%error, "cannot remove the captain-desktop context");
     }
 }

@@ -7,6 +7,7 @@ mod assets;
 mod host;
 mod kubeconfig;
 mod kubeconfig_files;
+mod kubeconfig_legacy;
 mod services;
 mod settings;
 mod version;

@@ -7,8 +7,8 @@ use crate::tray::menu_model::{TrayCommand, TrayItem};
 fn checks_the_current_context_and_has_no_submenu_without_contexts() {
     assert_eq!(contexts_item(&KubeContexts::default()), None);
     let contexts = KubeContexts {
-        names: vec!["prod".into(), "captain".into()],
-        current: Some("captain".into()),
+        names: vec!["prod".into(), "captain-desktop".into()],
+        current: Some("captain-desktop".into()),
     };
     let Some(TrayItem::Submenu { label, items, .. }) = contexts_item(&contexts) else {
         panic!("no submenu");
@@ -17,8 +17,8 @@ fn checks_the_current_context_and_has_no_submenu_without_contexts() {
     assert_eq!(
         items[1],
         TrayItem::Check {
-            label: "captain".into(),
-            command: TrayCommand::UseContext("captain".into()),
+            label: "captain-desktop".into(),
+            command: TrayCommand::UseContext("captain-desktop".into()),
             checked: true,
         }
     );

@@ -1,4 +1,4 @@
-//! A kube client for the `captain` context in Captain's own kubeconfig.
+//! A kube client for the `captain-desktop` context in Captain's own kubeconfig.
 
 use std::path::Path;
 
@@ -14,8 +14,11 @@ pub async fn client(kubeconfig: &Path) -> Result<Client, HostError> {
             kubeconfig.display()
         ))
     })?;
+    // A file from before the rename has only the old `captain` context, which is its
+    // current context, until the next start rewrites it.
+    let named = file.contexts.iter().any(|context| context.name == CONTEXT);
     let options = KubeConfigOptions {
-        context: Some(CONTEXT.into()),
+        context: named.then(|| CONTEXT.into()),
         ..KubeConfigOptions::default()
     };
     let config = Config::from_custom_kubeconfig(file, &options)

@@ -1,7 +1,7 @@
 //! `captain kubernetes status`: the saved settings and the cluster's state.
 
 use anyhow::Result;
-use captain_core::kubernetes::{KubernetesStatus, load_contexts, user_kubeconfig_paths};
+use captain_core::kubernetes::{CONTEXT, KubernetesStatus, load_contexts, user_kubeconfig_paths};
 use futures::executor::block_on;
 use serde::Serialize;
 
@@ -18,7 +18,7 @@ struct Status {
     /// The version k3s runs, or why it failed.
     detail: Option<String>,
     kubeconfig: String,
-    /// True if the user's kubeconfig has the `captain` context.
+    /// True if the user's kubeconfig has the `captain-desktop` context.
     context: bool,
 }
 
@@ -46,7 +46,7 @@ pub fn run(context: &Context, json: bool) -> Result<()> {
         context: load_contexts(&user_kubeconfig_paths())
             .names
             .iter()
-            .any(|name| name == "captain"),
+            .any(|name| name == CONTEXT),
     };
     if json {
         println!("{}", serde_json::to_string_pretty(&report)?);
@@ -64,6 +64,6 @@ pub fn run(context: &Context, json: bool) -> Result<()> {
     println!("Traefik:     {}", if report.traefik { "on" } else { "off" });
     println!("Kubeconfig:  {}", report.kubeconfig);
     let context = if report.context { "yes" } else { "no" };
-    println!("Context:     captain in your kubeconfig: {context}");
+    println!("Context:     {CONTEXT} in your kubeconfig: {context}");
     Ok(())
 }

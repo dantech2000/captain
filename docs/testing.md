@@ -46,17 +46,19 @@ Stops the engine twice. The restore replaces the engine disk.
 
 ## 3. Kubernetes (M19)
 
-Installs k3s in the engine (about 70 MB download) and adds a `captain` context to your kubeconfig. Captain backs up the kubeconfig first.
+Installs k3s in the engine (about 70 MB download) and adds a `captain-desktop` context to your kubeconfig. Captain backs up the kubeconfig first.
 
 1. Open **Settings**. In the **Kubernetes** section, turn on the switch, keep the default version, and click **Apply now**.
    - Expect: a status line, then the cluster shows as running, and the status bar shows "Kubernetes on". This can take a few minutes on the first run.
-2. Run `kubectl --context captain get nodes`.
+2. Run `kubectl --context captain-desktop get nodes`.
    - Expect: one node, `Ready`.
+   - If an earlier Captain added a `captain` context, run `kubectl config get-contexts`.
+   - Expect: `captain-desktop` is in the list and Captain's `captain` is gone. If `captain` was current, `captain-desktop` is current now. The backup holds the old file.
 3. Build and run a pod from a local image:
    ```
    printf 'FROM nginx:alpine\n' | docker build -t captain-k8s-test:dev -
-   kubectl --context captain run web --image=captain-k8s-test:dev --image-pull-policy=Never --port=80
-   kubectl --context captain expose pod web --port=80
+   kubectl --context captain-desktop run web --image=captain-k8s-test:dev --image-pull-policy=Never --port=80
+   kubectl --context captain-desktop expose pod web --port=80
    ```
    - Expect: the pod runs without a pull.
 4. Open **Port Forwarding**. Forward service `web` port 80 to local port 18080.

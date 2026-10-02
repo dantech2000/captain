@@ -15,7 +15,7 @@ pub struct ContextChange {
     pub error: Option<SharedString>,
 }
 
-/// Asks, then creates or updates the `captain` context to point at `host`.
+/// Asks, then creates or updates the `captain-engine` context to point at `host`.
 pub fn create_captain(
     view: WeakEntity<SettingsView>,
     host: String,
@@ -74,7 +74,7 @@ pub fn make_default(
     });
 }
 
-/// Asks, then creates the `captain` context for `host` when `save` is true, and
+/// Asks, then creates the `captain-engine` context for `host` when `save` is true, and
 /// makes it the Docker CLI's default, so docker commands in a terminal use
 /// Captain Engine. See feature 0035.
 pub fn use_captain(

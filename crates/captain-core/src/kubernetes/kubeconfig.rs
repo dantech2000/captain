@@ -1,14 +1,16 @@
-//! Kubeconfig documents as JSON values: the `captain` entry made from k3s's own
-//! file, the merge into the user's file, and the context list. Only entries named
-//! `captain` ever change; other clusters, users, and contexts stay as they are.
+//! Kubeconfig documents as JSON values: the `captain-desktop` entry made from k3s's
+//! own file, the merge into the user's file, and the context list. Only entries named
+//! `captain-desktop` ever change, and Captain's own entries from before the rename
+//! (see `kubeconfig_legacy`); other clusters, users, and contexts stay as they are.
 //! See ADR 0010.
 
 use base64::Engine as _;
 use base64::engine::general_purpose::STANDARD;
 use serde_json::{Map, Value, json};
 
-/// The name of Captain's cluster, user, and context.
-pub const CONTEXT: &str = "captain";
+/// The name of Captain's cluster, user, and context, like `docker-desktop` and
+/// `rancher-desktop`.
+pub const CONTEXT: &str = "captain-desktop";
 
 /// The lists in a kubeconfig whose entries have a `name`.
 const LISTS: [&str; 3] = ["clusters", "users", "contexts"];
@@ -30,8 +32,8 @@ pub fn to_yaml(config: &Value) -> Result<String, String> {
     serde_saphyr::to_string(config).map_err(|error| error.to_string())
 }
 
-/// The `captain` config made from k3s's `k3s.yaml`: its first cluster and user,
-/// renamed to `captain`, with the server at `https://127.0.0.1:<port>`.
+/// The `captain-desktop` config made from k3s's `k3s.yaml`: its first cluster and
+/// user, renamed to `captain-desktop`, with the server at `https://127.0.0.1:<port>`.
 pub fn captain_config(k3s_yaml: &str, port: u16) -> Result<Value, String> {
     let k3s = parse(k3s_yaml)?;
     let first = |list: &str, key: &str| {
@@ -64,8 +66,8 @@ pub fn cluster_ca(config: &Value) -> Result<Vec<u8>, String> {
         .map_err(|error| format!("k3s.yaml has a bad certificate authority: {error}"))
 }
 
-/// `existing` with its `captain` entries replaced by those in `captain`. The current
-/// context becomes `captain` only when there is none.
+/// `existing` with its `captain-desktop` entries replaced by those in `captain`. The
+/// current context becomes `captain-desktop` only when there is none.
 pub fn merge(existing: &Value, captain: &Value) -> Value {
     let mut config = remove_captain(existing);
     let map = object(&mut config);
@@ -81,23 +83,39 @@ pub fn merge(existing: &Value, captain: &Value) -> Value {
     config
 }
 
-/// `config` without the `captain` cluster, user, and context. A current context of
-/// `captain` is cleared.
+/// `config` without the `captain-desktop` cluster, user, and context. A current
+/// context of `captain-desktop` is cleared.
 pub fn remove_captain(config: &Value) -> Value {
     let mut config = config.clone();
     if !config.is_object() {
         config = Value::Object(Map::new());
     }
-    let map = object(&mut config);
+    remove_named(&mut config, CONTEXT, "");
+    config
+}
+
+/// Removes the cluster, user, and context `name` from `config`. A current context of
+/// `name` becomes `current`.
+pub(super) fn remove_named(config: &mut Value, name: &str, current: &str) {
+    let map = object(config);
     for list in LISTS {
         if map.contains_key(list) {
-            list_mut(map, list).retain(|entry| entry["name"] != CONTEXT);
+            list_mut(map, list).retain(|entry| entry["name"] != name);
         }
     }
-    if map.get("current-context").and_then(Value::as_str) == Some(CONTEXT) {
-        map.insert("current-context".into(), "".into());
+    if map.get("current-context").and_then(Value::as_str) == Some(name) {
+        map.insert("current-context".into(), current.into());
     }
-    config
+}
+
+/// The base64 certificate authority of the `captain-desktop` cluster in `config`.
+pub fn captain_ca_data(config: &Value) -> Option<String> {
+    config["clusters"]
+        .as_array()?
+        .iter()
+        .find(|entry| entry["name"] == CONTEXT)?["cluster"]["certificate-authority-data"]
+        .as_str()
+        .map(String::from)
 }
 
 /// The context names, in file order.

@@ -149,12 +149,12 @@ The **Set up…** sheet offers to link `/var/run/docker.sock` to Captain Engine.
 
 ## Kubernetes contexts
 
-When you turn on Kubernetes in Captain, Captain adds a context named `captain` to `~/.kube/config`. Before each change, it saves a copy as `~/.kube/config.captain-backup`. The other contexts stay. See [Kubernetes](kubernetes.md).
+When you turn on Kubernetes in Captain, Captain adds a context named `captain-desktop` to `~/.kube/config`. Before each change, it saves a copy as `~/.kube/config.captain-backup`. The other contexts stay. See [Kubernetes](kubernetes.md).
 
 If another context is the current one, `captain` does not replace it. To switch, do one of these:
 
 - Right-click the menu bar icon, open **Kubernetes Contexts**, and pick `captain`.
-- Run `kubectl config use-context captain`.
+- Run `kubectl config use-context captain-desktop`.
 
 Rancher Desktop's context is `rancher-desktop`. Docker Desktop's is `docker-desktop`. They stop working when you uninstall the old app. Delete them with `kubectl config delete-context <name>`.
 

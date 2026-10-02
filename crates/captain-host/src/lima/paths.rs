@@ -96,7 +96,7 @@ impl LimaPaths {
         self.cache_dir().join("k3s-versions.json")
     }
 
-    /// Captain's own kubeconfig, with only the `captain` context.
+    /// Captain's own kubeconfig, with only the `captain-desktop` context.
     pub fn kubeconfig(&self) -> PathBuf {
         self.lima_home
             .parent()

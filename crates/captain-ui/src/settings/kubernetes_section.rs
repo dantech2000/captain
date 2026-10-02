@@ -4,7 +4,7 @@
 
 use captain_core::HostResources;
 use captain_core::format::bytes_label;
-use captain_core::kubernetes::{KubernetesStatus, RECOMMENDED_MEMORY};
+use captain_core::kubernetes::{CONTEXT, KubernetesStatus, RECOMMENDED_MEMORY};
 use captain_core::settings::EngineChoice;
 use gpui_kit::component::Sizable;
 use gpui_kit::component::select::Select;
@@ -108,7 +108,7 @@ fn status_line(kube: &KubernetesModel, palette: &Palette) -> Div {
     };
     let text: SharedString = kube.step().unwrap_or_else(|| match status {
         KubernetesStatus::Running { version } => {
-            format!("k3s {version} runs. kubectl uses the captain context.").into()
+            format!("k3s {version} runs. kubectl uses the {CONTEXT} context.").into()
         }
         KubernetesStatus::Failed(why) => why.clone().into(),
         other => format!(
