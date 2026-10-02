@@ -4,16 +4,21 @@ use gpui_kit::*;
 
 use super::NetworksView;
 use super::network_row::{self, CONTAINERS_WIDTH, SCOPE_WIDTH, SUBNET_WIDTH};
+use crate::engine_host::connection_screen;
 use crate::icons::CaptainIcon;
 use crate::theme::Palette;
 use crate::widgets::{Column, column_header, empty_note, group_card};
 
-/// The column header and the networks in project cards, or a note when there are none.
+/// The column header and the networks in project cards, or a note when there are none,
+/// or the engine connection screen while the engine does not answer.
 pub fn render(
     view: &NetworksView,
     cx: &mut Context<NetworksView>,
     palette: &Palette,
 ) -> AnyElement {
+    if let Some(screen) = connection_screen(view.workspace.read(cx), palette, cx) {
+        return screen;
+    }
     if !view.loaded {
         return div()
             .size_full()

@@ -11,6 +11,7 @@ use captain_core::store::{
 use captain_core::{Engine, EngineError, ImageBuilder, ProjectRunner};
 use gpui_kit::*;
 
+use super::auto_reconnect::AutoReconnect;
 use super::reveal::Reveal;
 use super::terminal::TerminalPanelState;
 use super::{InspectorTab, LogFilter, Page, WorkspaceEvent};
@@ -84,6 +85,8 @@ pub struct Workspace {
     pub(super) settings: Option<Subscription>,
     /// The terminal panel: open or hidden, and its height.
     pub(super) terminal: TerminalPanelState,
+    /// The automatic reconnect after the engine stopped answering, if any.
+    pub(super) auto: Option<AutoReconnect>,
 }
 
 impl EventEmitter<WorkspaceEvent> for Workspace {}
@@ -125,6 +128,7 @@ impl Workspace {
             reveal: None,
             settings: None,
             terminal: TerminalPanelState::default(),
+            auto: None,
         }
     }
 
@@ -278,15 +282,6 @@ impl Workspace {
 
     pub fn set_show_kubernetes(&mut self, show: bool, cx: &mut Context<Self>) {
         self.show_kubernetes = show;
-        cx.notify();
-    }
-
-    pub(super) fn fail(&mut self, error: EngineError, cx: &mut Context<Self>) {
-        tracing::warn!(%error, "engine connection failed");
-        self.connection = Connection::Failed(error);
-        self.events_task = None;
-        self.reload_task = None;
-        self.stats_tasks.clear();
         cx.notify();
     }
 }

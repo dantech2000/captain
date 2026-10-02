@@ -1,3 +1,4 @@
+mod engine_segment;
 mod latest_event;
 mod segments;
 mod status_bar_view;

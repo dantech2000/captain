@@ -1,12 +1,10 @@
 use captain_core::store::ContainerFilter;
 use gpui_kit::*;
 
-use super::{
-    column_header, empty_state, error_state, header, project_card, selection_bar, stat_tiles,
-};
-use crate::engine_host::{HostModel, host_model, host_screen};
+use super::{column_header, empty_state, header, project_card, selection_bar, stat_tiles};
+use crate::engine_host::{HostModel, connection_screen, host_model, host_screen};
 use crate::theme::Palette;
-use crate::workspace::{Connection, Workspace};
+use crate::workspace::Workspace;
 
 /// The Containers page: stat tiles and containers grouped into project cards.
 pub struct ContainersView {
@@ -41,13 +39,11 @@ impl Render for ContainersView {
         let screen = self
             .host
             .as_ref()
-            .and_then(|host| host_screen(host, &palette, cx));
-        let body = match (screen, workspace.connection()) {
-            (Some(screen), _) => screen,
-            (None, Connection::Failed(error)) => {
-                error_state::render(error, self.host.as_ref(), &palette, cx).into_any_element()
-            }
-            (None, _) if !workspace.is_loaded() => div()
+            .and_then(|host| host_screen(host, &palette, cx))
+            .or_else(|| connection_screen(workspace, &palette, cx));
+        let body = match screen {
+            Some(screen) => screen,
+            None if !workspace.is_loaded() => div()
                 .size_full()
                 .flex()
                 .items_center()
@@ -55,7 +51,7 @@ impl Render for ContainersView {
                 .text_color(palette.text2)
                 .child("Connecting to the engine...")
                 .into_any_element(),
-            (None, _) => self.list(workspace, &palette).into_any_element(),
+            None => self.list(workspace, &palette).into_any_element(),
         };
 
         div()

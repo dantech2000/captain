@@ -10,8 +10,9 @@ use super::{
     ImagesState, column_header, empty_state, header, image_row, inspector, pull_status,
     started_notice, toolbar,
 };
+use crate::engine_host::connection_screen;
 use crate::theme::Palette;
-use crate::workspace::{Connection, Page, Workspace};
+use crate::workspace::{Page, Workspace};
 
 /// The Images page: the image list with a filter, pull, remove, and prune, and the
 /// inspector for the selected image on the right.
@@ -91,16 +92,14 @@ impl Render for ImagesView {
         let input = self.input(window, cx);
         let state = self.state.read(cx);
 
-        let body = match self.workspace.read(cx).connection() {
-            Connection::Failed(error) => centered(
-                message(&format!("Cannot reach the engine: {error}"), palette.red),
-                &palette,
-            ),
-            _ if !state.is_loaded() => match state.load_error() {
+        let screen = connection_screen(self.workspace.read(cx), &palette, cx);
+        let body = match screen {
+            Some(screen) => screen,
+            None if !state.is_loaded() => match state.load_error() {
                 Some(error) => centered(message(error, palette.red), &palette),
                 None => centered(div().child("Loading images..."), &palette),
             },
-            _ => self.list(state, &palette),
+            None => self.list(state, &palette),
         };
 
         let messages =

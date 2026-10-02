@@ -74,6 +74,9 @@ impl Workspace {
                 }
                 match info {
                     Ok(info) => {
+                        if this.auto.take().is_some() {
+                            tracing::info!("reconnected to the engine");
+                        }
                         this.connection = Connection::Connected(info);
                         this.engine = Some(engine);
                         this.set_project_runner(projects, cx);
@@ -95,9 +98,18 @@ impl Workspace {
     /// with `connect`. The pages see no engine, then the new one.
     pub fn reconnect(&mut self, connect: Connector, cx: &mut Context<Self>) {
         tracing::info!("reconnecting to the engine");
+        self.drop_engine();
+        self.connection = Connection::Connecting;
+        self.auto = None;
+        cx.notify();
+        self.connect(connect, cx);
+    }
+
+    /// Drops the engine, its tasks, the selection, and everything loaded from it.
+    /// The page and the focused project stay.
+    pub(super) fn drop_engine(&mut self) {
         self.engine = None;
         self.generation += 1;
-        self.connection = Connection::Connecting;
         self.loaded = false;
         self.store = ContainerStore::default();
         self.stats = StatsBoard::default();
@@ -112,7 +124,5 @@ impl Workspace {
         self.extensions = None;
         self.project_pending.clear();
         self.page_counts.clear();
-        cx.notify();
-        self.connect(connect, cx);
     }
 }

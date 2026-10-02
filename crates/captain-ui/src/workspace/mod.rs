@@ -3,6 +3,7 @@
 //! Compose project actions, and the sidebar entry the Project page shows.
 
 mod actions;
+mod auto_reconnect;
 mod bulk;
 mod connect;
 mod containers;
@@ -15,6 +16,7 @@ mod terminal;
 mod workspace_event;
 mod workspace_state;
 
+pub use auto_reconnect::expected_running;
 pub use connect::{Connector, active_workspace};
 pub use focus::{InspectorTab, LogFilter};
 pub use page::Page;

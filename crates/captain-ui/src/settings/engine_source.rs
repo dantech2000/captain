@@ -6,7 +6,7 @@ use gpui_kit::*;
 
 use super::store;
 use crate::engine_host;
-use crate::workspace::{Connector, Workspace, active_workspace};
+use crate::workspace::{Connector, Workspace, active_workspace, expected_running};
 
 /// An engine endpoint found on this machine.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -74,6 +74,20 @@ pub fn reconnect_to(workspace: &Entity<Workspace>, captain: Option<String>, cx: 
     let endpoint = captain.or_else(|| store::current(cx).engine_endpoint);
     let connector = source.connector(endpoint.as_deref());
     workspace.update(cx, |workspace, cx| workspace.reconnect(connector, cx));
+}
+
+/// The automatic reconnect after a drop: connects again to the same engine, or
+/// stops trying when that engine should not answer now (Captain Engine stopped).
+/// See feature 0013.
+pub(crate) fn resume(workspace: &Entity<Workspace>, cx: &mut App) {
+    let source = engine_source(cx).filter(|_| expected_running(cx));
+    let Some(source) = source else {
+        workspace.update(cx, |workspace, cx| workspace.stop_reconnecting(cx));
+        return;
+    };
+    let endpoint = engine_host::captain_endpoint(cx).or_else(|| store::current(cx).engine_endpoint);
+    let connector = source.connector(endpoint.as_deref());
+    workspace.update(cx, |workspace, cx| workspace.resume(connector, cx));
 }
 
 /// Saves `endpoint` as the engine to use (`None` means discovery), switches away

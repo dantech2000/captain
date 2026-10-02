@@ -15,7 +15,7 @@ use crate::theme::Palette;
 use crate::widgets::{
     ButtonTone, create_field, inline_error, inline_notice, page_header, selection_bar, text_button,
 };
-use crate::workspace::{Connection, Workspace};
+use crate::workspace::Workspace;
 
 /// The Volumes page: volumes grouped by Compose project, with create, remove, prune,
 /// and a detail panel for the selected volume. It keeps its own list and follows
@@ -100,10 +100,6 @@ impl Render for VolumesView {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let palette = Palette::of(cx);
         let input = self.input(window, cx);
-        let failed = match self.workspace.read(cx).connection() {
-            Connection::Failed(error) => Some(error.to_string()),
-            _ => None,
-        };
         let summary = if self.loaded {
             self.store.summary()
         } else {
@@ -167,8 +163,8 @@ impl Render for VolumesView {
                         create,
                     ))
                     .children(
-                        failed
-                            .or(self.error.clone())
+                        self.error
+                            .clone()
                             .map(|error| inline_error(error, &palette)),
                     )
                     .children(

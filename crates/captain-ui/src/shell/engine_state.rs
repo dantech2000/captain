@@ -19,10 +19,14 @@ pub struct EngineState {
 
 impl EngineState {
     /// With Captain Engine the state comes from the host, except that a running
-    /// engine that does not answer shows red.
+    /// engine that does not answer shows "Reconnecting" in orange while Captain
+    /// reconnects by itself, then red.
     pub fn of(workspace: &Workspace, host: Option<&HostSummary>, palette: &Palette) -> Self {
         let connection = workspace.connection();
+        let retrying = workspace.reconnecting().is_some();
+        let running = host.is_none_or(|host| host.status.is_running());
         let (color, state) = match (host, connection) {
+            (_, Connection::Connecting) if retrying && running => (palette.orange, "Reconnecting"),
             (Some(host), Connection::Failed(_)) if host.status.is_running() => {
                 (palette.red, "Not answering")
             }

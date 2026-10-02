@@ -1,10 +1,10 @@
-use captain_core::HostStatus;
 use captain_core::agent_clients::client_label;
 use captain_core::agent_tools::Activity;
 use captain_core::format::{bytes_label, percent_label};
 use captain_core::kubernetes::KubernetesStatus;
 use gpui_kit::*;
 
+use super::engine_segment::engine;
 use crate::engine_host::HostSummary;
 use crate::theme::Palette;
 use crate::workspace::{Connection, Page, Workspace};
@@ -30,7 +30,7 @@ pub fn segments(
     context: Option<&str>,
     palette: &Palette,
 ) -> Vec<Segment> {
-    let mut segments = vec![engine(workspace.connection(), host, palette)];
+    let mut segments = vec![engine(workspace, host, palette)];
     if let Connection::Connected(info) = workspace.connection() {
         let stats = workspace.stats();
         let cpu = stats.total_cpu() / f64::from(info.cpus.max(1));
@@ -135,75 +135,6 @@ pub fn disk(used: u64, capacity: Option<u64>, freeable: u64, palette: &Palette) 
         dot: None,
         color,
         page: Some(Page::Storage),
-    }
-}
-
-/// The end of the engine segment's sentence: a click opens Diagnostics, whose Engine
-/// card has Start, Stop, and Restart.
-const CONTROLS: &str = "Click to start, stop, or restart it on the Diagnostics page.";
-const DIAGNOSTICS: &str = "Click to open Diagnostics.";
-
-fn engine(connection: &Connection, host: Option<&HostSummary>, palette: &Palette) -> Segment {
-    if let Some(host) = host {
-        let (dot, help) = match &host.status {
-            HostStatus::Running => (
-                palette.green,
-                format!("Captain Engine is running. {CONTROLS}"),
-            ),
-            HostStatus::Starting | HostStatus::Stopping => (
-                palette.orange,
-                format!(
-                    "Captain Engine is {}. {CONTROLS}",
-                    host.status.label().to_lowercase()
-                ),
-            ),
-            HostStatus::NotCreated => (
-                palette.gray,
-                "Captain Engine is not set up. Click to set it up on the Diagnostics page."
-                    .to_string(),
-            ),
-            HostStatus::Failed(why) | HostStatus::NotInstalled(why) => (
-                palette.red,
-                format!("Captain Engine cannot run: {why} {DIAGNOSTICS}"),
-            ),
-            HostStatus::Stopped => (
-                palette.red,
-                format!("Captain Engine is stopped. {CONTROLS}"),
-            ),
-        };
-        return Segment {
-            id: "status-engine",
-            label: "Captain Engine".into(),
-            help: help.into(),
-            dot: Some(dot),
-            color: None,
-            page: Some(Page::Diagnostics),
-        };
-    }
-    let (label, dot, help) = match connection {
-        Connection::Connecting => (
-            "Engine".to_string(),
-            palette.orange,
-            format!("Captain is connecting to the engine. {DIAGNOSTICS}"),
-        ),
-        Connection::Connected(info) => {
-            let name = engine_name(&info.endpoint);
-            let help = format!("Captain uses {name} at {}. {DIAGNOSTICS}", info.endpoint);
-            (name.to_string(), palette.green, help)
-        }
-        Connection::Failed(error) => (
-            "Engine".to_string(),
-            palette.red,
-            format!("Captain cannot reach the engine: {error} {DIAGNOSTICS}"),
-        ),
-    };
-    Segment {
-        id: "status-engine",
-        label: label.into(),
-        help: help.into(),
-        dot: Some(dot),
-        color: None,
-        page: Some(Page::Diagnostics),
     }
 }
 

@@ -6,9 +6,8 @@ use super::group_info::{is_sandbox, service_name};
 use super::service_card::{self, Card};
 use super::view_tabs::{self, ProjectTab};
 use super::{ProjectView, files, header, map, open_row, tasks_card};
-use crate::engine_host::host_screen;
+use crate::engine_host::{connection_screen, host_screen};
 use crate::theme::Palette;
-use crate::workspace::Connection;
 
 /// Lays out the Project page. While Captain Engine is not running, its screens
 /// take the page, as on the Containers page.
@@ -27,15 +26,8 @@ pub fn render(view: &ProjectView, cx: &mut Context<ProjectView>) -> AnyElement {
     let Some(key) = workspace.focus().cloned() else {
         return div().into_any_element();
     };
-    if let Connection::Failed(error) = workspace.connection() {
-        return div()
-            .size_full()
-            .flex()
-            .items_center()
-            .justify_center()
-            .text_color(palette.text2)
-            .child(format!("The engine does not answer: {error}"))
-            .into_any_element();
+    if let Some(screen) = connection_screen(workspace, &palette, cx) {
+        return screen;
     }
     let group = workspace.focused_group();
     let containers: Vec<&Container> = group

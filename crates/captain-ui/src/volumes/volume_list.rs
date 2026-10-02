@@ -5,12 +5,17 @@ use gpui_kit::*;
 
 use super::VolumesView;
 use super::volume_row::{self, CREATED_WIDTH, SIZE_WIDTH, USAGE_WIDTH};
+use crate::engine_host::connection_screen;
 use crate::icons::CaptainIcon;
 use crate::theme::Palette;
 use crate::widgets::{Column, column_header, empty_note, group_card};
 
-/// The column header and the volumes in project cards, or a note when there are none.
+/// The column header and the volumes in project cards, or a note when there are none,
+/// or the engine connection screen while the engine does not answer.
 pub fn render(view: &VolumesView, cx: &mut Context<VolumesView>, palette: &Palette) -> AnyElement {
+    if let Some(screen) = connection_screen(view.workspace.read(cx), palette, cx) {
+        return screen;
+    }
     if !view.loaded {
         return div()
             .size_full()

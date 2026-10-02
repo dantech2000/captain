@@ -105,6 +105,14 @@ To report a problem, attach `captain.log` and describe what you did.
 | A database logs "not properly shut down; automatic recovery in progress" | The engine stopped before the container did, for example after a forced stop or a crash. Captain stops Docker before each stop, so this should not repeat. If a container needs more than 60 seconds to stop, stop it yourself before you stop the engine. |
 | A start that names a `.restore-backup` folder | A snapshot restore did not finish. Captain keeps the old engine files in that folder. Move the folder out of `~/.captain/lima/captain`, then start again. |
 
+## Docker restarted inside the engine
+
+If Docker restarts inside the engine, for example after a `daemon.json` change or a crash, Captain loses its connection. The page shows "Reconnecting to the engine…" and the status bar engine segment turns the warning color. Captain tries again after 1, 2, 4, 8, and 16 seconds, then every 30 seconds. When Docker answers, the page comes back on the same project and container.
+
+If Docker does not answer for 15 seconds, the page shows the failure with **Retry**. Captain still keeps trying in the background. Click **Retry** to try at once. If Captain Engine runs but never answers, click **Restart Captain Engine**.
+
+Captain does not retry while Captain Engine is stopped. Start the engine, and Captain connects when it runs.
+
 ## The engine does not answer after sleep
 
 If containers stop answering after your Mac wakes up, Diagnostics usually shows "Captain Engine runs, but its Docker socket does not answer." Click **Restart Captain Engine**, or run `captain restart`. Your containers start again if their restart policy says so.

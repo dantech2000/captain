@@ -35,6 +35,7 @@ mod terminal_sheet;
 mod terminal_steps;
 mod theme_card;
 
+pub(crate) use engine_source::resume;
 pub use engine_source::{
     ContextJob, DetectedEndpoint, EngineSource, engine_source, init_engine_source, reconnect_to,
     retry,
