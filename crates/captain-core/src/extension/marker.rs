@@ -20,5 +20,11 @@ pub fn backend_extension(label: Option<&str>, project: Option<&str>) -> Option<S
         .map(str::to_string)
 }
 
+/// True for a Compose project that runs an extension's backend, so its volumes and
+/// networks hide with its containers.
+pub fn is_backend_project(project: &str) -> bool {
+    project.starts_with(PROJECT_PREFIX)
+}
+
 #[cfg(test)]
 mod tests;

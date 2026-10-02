@@ -29,7 +29,7 @@ pub use id::{PROJECT_PREFIX, data_store_id, extension_id, image_repository, proj
 pub use installed::{ExtensionCandidate, InstalledExtension, binary_name, engine_key};
 pub use labels::{API_VERSION_LABEL, ExtensionLabels};
 pub use manager::{BridgeStream, ExtensionManager};
-pub use marker::{EXTENSION_LABEL, backend_extension};
+pub use marker::{EXTENSION_LABEL, backend_extension, is_backend_project};
 pub use metadata::{
     Backend, BinaryPath, DashboardTab, Exposes, ExtensionMetadata, HostSection,
     PLUGIN_IMAGE_VARIABLE, PlatformBinaries, UiSection, VmSection, host_platform,

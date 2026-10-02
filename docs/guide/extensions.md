@@ -23,7 +23,7 @@ The extension's files go in `~/.captain/extensions`. A backend runs as a Compose
 
 ## Extension containers
 
-Captain hides the containers that run extension backends, as Docker Desktop does. They do not show in the sidebar, on the Containers page, in the counts, in the menu bar, in ⌘K, or in the AI agent tools.
+Captain hides the containers that run extension backends, as Docker Desktop does. They and their volumes and networks do not show in the sidebar, on the Containers, Volumes, and Networks pages, in the counts, in the menu bar, in ⌘K, or in the AI agent tools.
 
 To show them, check **Show extension containers** on the Extensions page. Each backend then shows as a Compose project named `captain-ext-<id>`. The setting is `show_extension_containers` in the [settings file](settings.md).
 

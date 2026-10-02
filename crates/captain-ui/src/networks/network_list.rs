@@ -29,7 +29,16 @@ pub fn render(
             .child("Loading networks...")
             .into_any_element();
     }
-    let groups = view.store.groups(view.filter);
+    let mut groups = view.store.groups(view.filter);
+    // An extension's backend networks hide with its containers. See feature 0025.
+    if !crate::settings::current(cx).show_extension_containers {
+        groups.retain(|group| {
+            !group
+                .project
+                .as_deref()
+                .is_some_and(captain_core::extension::is_backend_project)
+        });
+    }
     if groups.is_empty() {
         let (title, hint) = if view.filter == UsageFilter::All {
             (
