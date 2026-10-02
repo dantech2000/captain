@@ -21,7 +21,7 @@ mod template;
 
 pub use host::{host, set_host};
 pub use hub::set_docker_hub;
-pub use keys::{NewProject, init};
+pub use keys::{NewProject, OpenProjectFolder, bindings, init};
 pub use known_model::{known_model, known_projects};
-pub use new_sheet::{open, open_run_image};
+pub use new_sheet::{open, open_folder, open_run_image};
 pub use remove_dialog::open as open_remove_dialog;

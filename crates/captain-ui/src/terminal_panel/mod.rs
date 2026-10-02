@@ -8,6 +8,7 @@ mod resize_edge;
 mod tab_strip;
 mod tab_title;
 
-pub use keys::{TOGGLE_KEYS, ToggleTerminal, terminal_bindings};
+pub use keys::{NewTerminalTab, TOGGLE_KEYS, ToggleTerminal, terminal_bindings};
+pub use new_tab::default_dir;
 pub use panel_view::TerminalPanel;
 pub use resize_edge::DEFAULT_HEIGHT;

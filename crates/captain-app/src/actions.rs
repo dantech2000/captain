@@ -9,19 +9,11 @@ gpui_kit::actions!(captain, [Quit]);
 
 pub fn register(cx: &mut App) {
     cx.on_action(|_: &Quit, cx| quit::quit(cx));
-    cx.bind_keys([
-        KeyBinding::new("cmd-q", Quit, None),
-        KeyBinding::new("ctrl-q", Quit, None),
-        KeyBinding::new("cmd-k", ToggleCommandPalette, None),
-        KeyBinding::new("ctrl-k", ToggleCommandPalette, None),
-        KeyBinding::new("cmd-b", ToggleSidebar, None),
-        KeyBinding::new("ctrl-b", ToggleSidebar, None),
-    ]);
-    // ⌘1 to ⌘9 and ⌘, for the rail's pages; Ctrl on Linux and Windows.
-    cx.bind_keys(page_bindings("cmd"));
-    cx.bind_keys(page_bindings("ctrl"));
-    // ⌃` for the terminal panel, and its tab keys.
-    cx.bind_keys(terminal_bindings());
+    cx.bind_keys(app_bindings());
+    // The menus read the key bindings once, so they come after every binding.
+    #[cfg(target_os = "macos")]
+    crate::app_menu::register(cx);
+    #[cfg(not(target_os = "macos"))]
     cx.set_menus([Menu::new("Captain").items([MenuItem::action("Quit Captain", Quit)])]);
 
     // Closing the last window keeps Captain running while its menu bar icon is up;
@@ -34,6 +26,24 @@ pub fn register(cx: &mut App) {
         }
     })
     .detach();
+}
+
+/// Quit, ⌘K, ⌘B, ⌘1 to ⌘9 and ⌘, for the rail's pages (Ctrl on Linux and
+/// Windows), and ⌃` for the terminal panel with its tab keys. The menu bar shows
+/// the first binding of each action, so the ⌘ ones come first.
+pub fn app_bindings() -> Vec<KeyBinding> {
+    let mut bindings = vec![
+        KeyBinding::new("cmd-q", Quit, None),
+        KeyBinding::new("ctrl-q", Quit, None),
+        KeyBinding::new("cmd-k", ToggleCommandPalette, None),
+        KeyBinding::new("ctrl-k", ToggleCommandPalette, None),
+        KeyBinding::new("cmd-b", ToggleSidebar, None),
+        KeyBinding::new("ctrl-b", ToggleSidebar, None),
+    ];
+    bindings.extend(page_bindings("cmd"));
+    bindings.extend(page_bindings("ctrl"));
+    bindings.extend(terminal_bindings());
+    bindings
 }
 
 /// True while the menu bar icon is up.

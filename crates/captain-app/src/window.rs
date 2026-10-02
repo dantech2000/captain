@@ -73,6 +73,13 @@ pub fn show_settings(cx: &mut App) {
     });
 }
 
+/// True while the main window is open and in front.
+#[cfg(target_os = "macos")]
+pub fn main_is_active(cx: &App) -> bool {
+    let handle = cx.global::<MainWindow>().handle;
+    handle.is_some() && cx.active_window() == handle
+}
+
 /// Runs `f` on the main window, when it is open.
 #[cfg(any(target_os = "macos", target_os = "windows"))]
 pub fn update_main(cx: &mut App, f: impl FnOnce(&mut Window, &mut App)) {

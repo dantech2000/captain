@@ -2,6 +2,7 @@ use gpui_kit::component::WindowExt;
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::*;
 
+mod menu_actions;
 mod page_area;
 
 use super::details_rail::Details;
@@ -18,7 +19,7 @@ use crate::inspector::InspectorView;
 use crate::kubernetes::{KubeEvent, kubernetes_model};
 use crate::migration::OpenMigrationAssistant;
 use crate::networks::NetworksView;
-use crate::new_project::{self, NewProject, known_model};
+use crate::new_project::{self, known_model};
 use crate::palette::{CommandPalette, ToggleCommandPalette};
 use crate::port_forwarding::PortForwardingView;
 use crate::project::{ProjectNotice, ProjectView};
@@ -216,7 +217,9 @@ impl Render for AppShell {
             _ => Details::None,
         };
 
-        rail::on_page_actions(div(), &self.workspace, forwarding, self.palette.is_some())
+        let root =
+            rail::on_page_actions(div(), &self.workspace, forwarding, self.palette.is_some());
+        self.on_menu_actions(root, cx)
             .size_full()
             .relative()
             .flex()
@@ -233,9 +236,6 @@ impl Render for AppShell {
             .on_action(cx.listener(|this, _: &ToggleTerminal, _, cx| {
                 this.workspace
                     .update(cx, |workspace, cx| workspace.toggle_terminal(cx));
-            }))
-            .on_action(cx.listener(|this, _: &NewProject, window, cx| {
-                new_project::open(this.workspace.clone(), this.project.clone(), window, cx);
             }))
             .on_action(cx.listener(|this, _: &OpenMigrationAssistant, window, cx| {
                 crate::migration::open(this.workspace.clone(), window, cx);

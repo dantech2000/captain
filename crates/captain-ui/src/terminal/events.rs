@@ -1,6 +1,7 @@
 //! Keyboard, clipboard, mouse, and scroll wheel handling for the grid.
 
 use captain_terminal::{Key, KeyInput, SelectionKind};
+use gpui_kit::component::input::{Copy, Paste};
 use gpui_kit::*;
 
 use super::grid::{LINE_HEIGHT, TerminalGrid};
@@ -39,6 +40,9 @@ impl TerminalView {
                     cx.stop_propagation();
                 }
             }))
+            // Edit > Copy and Paste in the menu bar dispatch the text fields' actions.
+            .on_action(cx.listener(|this, _: &Copy, _, cx| this.copy(cx)))
+            .on_action(cx.listener(|this, _: &Paste, _, cx| this.paste(cx)))
             .on_mouse_down(
                 MouseButton::Left,
                 cx.listener(|this, event: &MouseDownEvent, window, cx| {
@@ -62,17 +66,11 @@ impl TerminalView {
     fn on_key(&mut self, keystroke: &Keystroke, cx: &mut Context<Self>) -> bool {
         match shortcut(keystroke, MACOS) {
             Some(Shortcut::Copy) => {
-                if let Some(text) = self.emulator.selection_text() {
-                    cx.write_to_clipboard(ClipboardItem::new_string(text));
-                }
+                self.copy(cx);
                 return true;
             }
             Some(Shortcut::Paste) => {
-                let text = cx.read_from_clipboard().and_then(|item| item.text());
-                if let Some(text) = text {
-                    let bytes = self.emulator.encode_paste(&text);
-                    self.send(bytes, cx);
-                }
+                self.paste(cx);
                 return true;
             }
             None => {}
@@ -87,6 +85,22 @@ impl TerminalView {
             self.send(bytes, cx);
         }
         true
+    }
+
+    /// Copies the selection, if there is one.
+    fn copy(&mut self, cx: &mut Context<Self>) {
+        if let Some(text) = self.emulator.selection_text() {
+            cx.write_to_clipboard(ClipboardItem::new_string(text));
+        }
+    }
+
+    /// Sends the clipboard's text to the program, bracketed if it asked for that.
+    fn paste(&mut self, cx: &mut Context<Self>) {
+        let text = cx.read_from_clipboard().and_then(|item| item.text());
+        if let Some(text) = text {
+            let bytes = self.emulator.encode_paste(&text);
+            self.send(bytes, cx);
+        }
     }
 
     fn select_start(&mut self, event: &MouseDownEvent, cx: &mut Context<Self>) {

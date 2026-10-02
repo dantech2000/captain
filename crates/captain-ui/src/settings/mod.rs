@@ -1,5 +1,6 @@
 //! The Settings page, and the settings global that the rest of the UI reads.
 
+mod about_dialog;
 mod about_section;
 mod admin_access;
 mod agents_section;
@@ -35,6 +36,7 @@ mod terminal_sheet;
 mod terminal_steps;
 mod theme_card;
 
+pub use about_dialog::open as open_about;
 pub(crate) use engine_source::resume;
 pub use engine_source::{
     ContextJob, DetectedEndpoint, EngineSource, engine_source, init_engine_source, reconnect_to,

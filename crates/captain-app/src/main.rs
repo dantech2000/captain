@@ -1,6 +1,8 @@
 //! Captain: a native desktop client for Docker.
 
 mod actions;
+#[cfg(target_os = "macos")]
+mod app_menu;
 mod cli_tools;
 mod connect;
 mod diagnostics;

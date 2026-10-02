@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use captain_core::HostStatus;
@@ -119,6 +119,11 @@ fn captain_status(cx: &App) -> Option<HostStatus> {
 }
 
 impl DiagnosticsModel {
+    /// The folder with Captain's log files, for Help > Show Logs.
+    pub fn log_dir(&self) -> Option<&Path> {
+        self.setup.log_dir.as_deref()
+    }
+
     pub fn checks(&self) -> &[Check] {
         &self.checks
     }

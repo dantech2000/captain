@@ -67,9 +67,24 @@ From top to bottom:
 - **The page buttons.** Containers, Images, Volumes, Networks, Snapshots, Storage, Extensions, and Port Forwarding (while Kubernetes runs).
 - **Diagnostics and Settings**, at the bottom. Diagnostics shows a red count while a check fails.
 
-Each button has a shortcut. Point at a button to see it in a tooltip and in the status bar. On Linux and Windows, use Ctrl in place of ⌘.
+Each button has a shortcut. Point at a button to see it in a tooltip and in the status bar. The [shortcut table](#keyboard-shortcuts) lists them all.
 
-| Page | Shortcut |
+### The menus
+
+On macOS, the menu bar has the standard menus. Each item shows its shortcut, and an item is dimmed when it cannot run now. For example, the page items are dimmed while a dialog is open.
+
+- **Captain**: About Captain, Settings…, Services, Hide Captain, Hide Others, Show All, and Quit Captain.
+- **File**: New Project…, Open Folder…, New Terminal Tab, and Close Window. Close Window closes the window; Captain keeps running in the menu bar.
+- **Edit**: Undo, Redo, Cut, Copy, Paste, Select All, and Find. They work in text fields, the file editor, and the terminal panel. Find opens the search in the file editor.
+- **View**: Command Palette, Toggle Sidebar, Toggle Terminal, the pages, and Enter Full Screen.
+- **Window**: Minimize, Zoom, Bring All to Front, and the list of Captain's windows.
+- **Help**: Captain Help (this guide), Keyboard Shortcuts, Report an Issue…, and Show Logs.
+
+### Keyboard shortcuts
+
+On Linux and Windows, use Ctrl in place of ⌘ for the pages, the sidebar, the command palette, New Project, and Quit. Text fields there use Ctrl-Z, Ctrl-Y, Ctrl-X, Ctrl-C, Ctrl-V, Ctrl-A, and Ctrl-F. The window and app shortcuts (⌘W, ⌘M, ⌃⌘F, ⌘H) are macOS only.
+
+| Command | Shortcut |
 |---|---|
 | Containers | ⌘1 |
 | Images | ⌘2 |
@@ -83,6 +98,18 @@ Each button has a shortcut. Point at a button to see it in a tooltip and in the 
 | Settings | ⌘, |
 | Hide or show the sidebar | ⌘B |
 | Command palette | ⌘K |
+| Show or hide the terminal panel | ⌃` |
+| New project | ⌘N |
+| New terminal tab | ⌘T (Ctrl-Shift-T in the panel on Linux and Windows) |
+| Close the terminal tab, while the panel has focus | ⌘W (Ctrl-Shift-W on Linux and Windows) |
+| Close the window, elsewhere | ⌘W |
+| Undo, redo | ⌘Z, ⇧⌘Z |
+| Cut, copy, paste, select all | ⌘X, ⌘C, ⌘V, ⌘A |
+| Find in the file editor | ⌘F |
+| Minimize the window | ⌘M |
+| Enter or leave full screen | ⌃⌘F |
+| Hide Captain, hide other apps | ⌘H, ⌥⌘H |
+| Quit | ⌘Q |
 
 ### The sidebar
 

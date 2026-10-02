@@ -58,6 +58,25 @@ pub fn open(
     show(sheet, window, cx);
 }
 
+/// Opens the New sheet and its Open a folder card at once: the system's folder
+/// dialog, then the sheet's check of the Compose files. Does nothing while a sheet
+/// or dialog is open.
+pub fn open_folder(
+    workspace: Entity<Workspace>,
+    project: Entity<ProjectView>,
+    window: &mut Window,
+    cx: &mut App,
+) {
+    if window.has_active_dialog(cx) {
+        return;
+    }
+    let sheet = cx.new(|cx| NewSheet::new(SheetHost { workspace, project }, cx));
+    show(sheet.clone(), window, cx);
+    sheet.update(cx, |sheet, cx| {
+        sheet.choose(NewOption::OpenFolder, window, cx)
+    });
+}
+
 /// Opens the New sheet at Run an image with `image` chosen, for the Images page's
 /// Run. `images` shows the Started notice for a plain container.
 pub fn open_run_image(

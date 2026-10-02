@@ -41,3 +41,9 @@ M10 puts a Captain icon in the macOS menu bar and the Windows notification area 
 - A template image cannot hold a colored dot, and tray-icon marks the whole image as a template or not. On macOS, `status_dot.rs` uses `TrayIcon::ns_status_item` to replace the button's image with an `NSImage` drawing handler that draws the wheel in `labelColor` and the dot in a system color. AppKit runs the handler with the menu bar's appearance, so the wheel still follows light and dark menu bars. Windows paints the dot into the RGBA image.
 - `objc2-app-kit` and `block2` gain the features for this, in the versions tray-icon already uses. All calls are safe Rust; `unsafe_code` stays forbidden. See [feature 0009](../features/0009-menu-bar.md).
 - The floating log window and the Dock badge stay. See [feature 0032](../features/0032-menu-bar-popover.md).
+
+## Update: the app menus
+
+- Captain now has the standard macOS menus: Captain, File, Edit, View, Window, and Help. See [feature 0042](../features/0042-app-menus.md).
+- File > Close Window (⌘W) closes the window in front. Closing the main window this way keeps Captain running while the menu bar icon is up, as the red close button does.
+- ⌘W has two bindings. Close Window has no key context; the terminal panel's Close Tab is bound in the panel's context. GPUI prefers the deeper context, so ⌘W closes a terminal tab while the panel has focus, and the window everywhere else.

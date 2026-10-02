@@ -14,13 +14,19 @@ gpui_kit::actions!(
     ]
 );
 
-gpui_kit::actions!(captain, [NewProject]);
+gpui_kit::actions!(captain, [NewProject, OpenProjectFolder]);
 
-/// Binds ⌘N (Ctrl N elsewhere) for the New sheet, and the sheet's keys: up and
-/// down move the highlight, enter opens it, ⌘1 to ⌘4 open a card, and escape goes
-/// back one step (on the cards, the dialog closes). In a form, Tab and Shift Tab
-/// move between fields and ⌘Return submits.
+/// Binds the keys of [`bindings`].
 pub fn init(cx: &mut App) {
+    cx.bind_keys(bindings());
+}
+
+/// ⌘N (Ctrl N elsewhere) for the New sheet, and the sheet's keys: up and down move
+/// the highlight, enter opens it, ⌘1 to ⌘4 open a card, and escape goes back one
+/// step (on the cards, the dialog closes). In a form, Tab and Shift Tab move
+/// between fields and ⌘Return submits. [`OpenProjectFolder`] has no key; File >
+/// Open Folder… in the menu bar sends it.
+pub fn bindings() -> Vec<KeyBinding> {
     let context = Some(CONTEXT);
     let form = Some(FORM_CONTEXT);
     let mut bindings = vec![
@@ -42,5 +48,5 @@ pub fn init(cx: &mut App) {
             KeyBinding::new(&format!("{modifier}-enter"), Submit, form),
         ]);
     }
-    cx.bind_keys(bindings);
+    bindings
 }

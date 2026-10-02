@@ -20,7 +20,7 @@ Each page says when a feature needs macOS.
 
 ## Pages
 
-1. [Getting started](getting-started.md): install Captain, set up Captain Engine, and learn the main window (the icon rail, the sidebar, and ⌘B) and the menu bar.
+1. [Getting started](getting-started.md): install Captain, set up Captain Engine, and learn the main window (the icon rail, the sidebar, and ⌘B), the menus, the keyboard shortcuts, and the menu bar icon.
 2. [Moving from Docker Desktop or Rancher Desktop](moving-from-docker-desktop-or-rancher.md): copy your data, set up your terminal, and uninstall the old app.
 3. [Projects and tasks](projects-and-tasks.md): the project page, `x-captain.tasks`, the Open row, and the Map tab.
 4. [Making new projects](new-projects.md): the New sheet (⌘N) for running an image, starting from a template, opening a folder, or pasting a `docker run` command, and the projects Captain remembers.

@@ -40,17 +40,24 @@ pub use icons::{CaptainAssets, CaptainIcon, cap_icon};
 pub use kubernetes::{init as kubernetes_init, kubernetes_model};
 pub use menu_bar::{observe_problem_count, open_float_log};
 pub use migration::OpenMigrationAssistant;
-pub use new_project::{NewProject, init as new_project_init, set_docker_hub};
+pub use new_project::{
+    NewProject, OpenProjectFolder, bindings as new_project_bindings, init as new_project_init,
+    set_docker_hub,
+};
 pub use palette::{ToggleCommandPalette, init as palette_init};
 pub use port_forwarding::init as port_forwarding_init;
 pub use settings::{
     ContextJob, DetectedEndpoint, EngineSource, SystemIntegration, current as current_settings,
     init as settings_init, init_engine_source as engine_source_init,
     init_file_watch as settings_watch_init, init_system as system_init,
-    observe as observe_settings, open_settings_file, settings_file_path,
+    observe as observe_settings, open_about, open_settings_file, settings_file_path,
 };
-pub use shell::{AppShell, ToggleSidebar, engine_name, page_bindings};
+pub use shell::{
+    AppShell, ShowContainers, ShowDiagnostics, ShowExtensions, ShowImages, ShowNetworks,
+    ShowPortForwarding, ShowSettings, ShowSnapshots, ShowStorage, ShowVolumes, ToggleSidebar,
+    engine_name, page_bindings,
+};
 pub use storage::init as storage_init;
-pub use terminal_panel::{ToggleTerminal, terminal_bindings};
+pub use terminal_panel::{NewTerminalTab, ToggleTerminal, terminal_bindings};
 pub use widgets::error_notification;
 pub use workspace::{Connection, Connector, EngineHealth, Page, Workspace};
