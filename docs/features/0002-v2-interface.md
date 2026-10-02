@@ -1,7 +1,7 @@
 # Feature 0002: v2 interface
 
 - Milestones: M2 (actions) and M3 (detail), built together as one pass
-- Status: In progress
+- Status: Done. The v3 interface ([0027](0027-v3-interface.md)) later replaced the sidebar: the pages moved to an icon rail, the projects list stayed, and the engine card went away. The engine state shows in the status bar ([0029](0029-status-bar.md)), and Start, Stop, and Restart are on the Diagnostics page ([0016](0016-diagnostics.md)).
 - Design: the "v2" row of the Captain UI canvas
 
 ## Goal

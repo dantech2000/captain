@@ -1,7 +1,7 @@
 # Feature 0003: Images
 
 - Milestone: M4
-- Status: In progress
+- Status: Done (M4). Since M33, **Run** opens the New sheet ([0040](0040-new-projects.md)).
 - Design: the v2 look of the Containers page, applied to images
 
 ## Goal

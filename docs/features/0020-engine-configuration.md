@@ -1,7 +1,7 @@
 # Feature 0020: Engine configuration
 
 - Milestone: M18
-- Status: Implemented; the live test passes on a test VM. The card needs a check by hand in the app.
+- Status: Done (M18); checked by hand on 2026-09-29. Since M30 the options are the `engine_daemon` keys of the settings file, and the card is gone ([0037](0037-settings-page.md)).
 - Design: [ADR 0008](../adr/0008-captain-engine.md), [feature 0013](0013-captain-engine.md)
 
 ## Goal

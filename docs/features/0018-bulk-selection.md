@@ -1,7 +1,7 @@
 # Feature 0018: Bulk selection
 
 - Milestone: M3 (container detail)
-- Status: Done; needs a manual check in the app
+- Status: Done; checked by hand on macOS (M3).
 - Parity: bulk selection on the Containers and Volumes pages of Rancher Desktop ([containers](https://docs.rancherdesktop.io/ui/containers), [volumes](https://docs.rancherdesktop.io/ui/volumes)) and the bulk actions toolbar of Docker Desktop ([docs](https://docs.docker.com/desktop/use-desktop/container/))
 
 ## Goal

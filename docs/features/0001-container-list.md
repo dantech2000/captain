@@ -1,7 +1,7 @@
 # Feature 0001: Live container list
 
 - Milestone: M1
-- Status: In progress
+- Status: Done (M1). The v2 interface ([0002](0002-v2-interface.md)) and the project-first window ([0030](0030-project-window.md)) later replaced this sidebar. The engine state now shows in the status bar ([0029](0029-status-bar.md)).
 
 ## Goal
 

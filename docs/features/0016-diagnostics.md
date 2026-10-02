@@ -1,7 +1,7 @@
 # Feature 0016: Diagnostics and troubleshooting
 
 - Milestone: M15
-- Status: In progress
+- Status: Done (M15); checked by hand on macOS. Since M24 the page is a button in the icon rail, and since M30 an eighth check reads the settings file ([0036](0036-settings-file.md)).
 - Parity: Rancher Desktop's [Diagnostics](https://docs.rancherdesktop.io/ui/diagnostics) and [Troubleshooting](https://docs.rancherdesktop.io/ui/troubleshooting) pages
 
 ## Goal
@@ -11,7 +11,7 @@ A user can see what is wrong with Captain, the engine, or this computer, and fix
 ## In scope
 
 - A **Diagnostics** page. Its sidebar entry sits above Settings, below the resource pages. The entry shows a red count badge while a check fails.
-- An **Engine** card at the top: a state dot and the engine with its state, for example "Captain Engine · Running", "Stopped", "Not set up", or "Starting…". With Captain Engine it has **Start** (stopped or failed), **Set up** (not set up), or **Stop** and **Restart** (running). They call `HostModel::start`, `stop`, and `restart`, as the Settings engine menu does. While the engine starts or stops, a spinner shows and the buttons are off. With another engine, the card shows its name and socket and no engine buttons; **Use Captain Engine** calls `HostModel::use_captain`, as the Settings engine menu does. It shows only where Captain Engine runs: on Windows the host is a placeholder (`EngineHost::supported` is false), so neither the card nor the menu offers it, and `use_captain` does nothing there. The app icon in the rail, the sidebar's engine header, and the status bar's engine segment open this page on a click.
+- An **Engine** card at the top: a state dot and the engine with its state, for example "Captain Engine · Running", "Stopped", "Not set up", or "Starting…". With Captain Engine it has **Start** (stopped or failed), **Set up** (not set up), or **Stop** and **Restart** (running). They call `HostModel::start`, `stop`, and `restart`, as the Settings engine menu does. While the engine starts or stops, a spinner shows and the buttons are off. With another engine, the card shows its name and socket and no engine buttons; **Use Captain Engine** calls `HostModel::use_captain`, as the Settings engine menu does. It shows only where Captain Engine runs: on Windows the host is a placeholder (`EngineHost::supported` is false), so neither the card nor the menu offers it, and `use_captain` does nothing there. The app icon in the rail and the status bar's engine segment open this page on a click. (The sidebar's engine header did too, until it was removed.)
 - A **Checks** card under it. Each check has a state (**Passed**, **Warning**, **Failed**, or **Not applicable**), a one-line detail, and a fix button where one exists:
 
   | Check | Passed | Warning or failed | Fix |

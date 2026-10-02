@@ -1,7 +1,7 @@
 # Feature 0013: Captain Engine
 
 - Milestone: M12
-- Status: In progress
+- Status: Done on macOS (M12). Later changes: Start, Stop, and Restart moved from the sidebar to the Diagnostics page ([0016](0016-diagnostics.md)), and the Settings card became the Engine section of [0037](0037-settings-page.md).
 - Design: [ADR 0008](../adr/0008-captain-engine.md)
 
 ## Goal
@@ -19,7 +19,7 @@ Captain starts, stops, and configures its own Docker engine, so it works without
 - Launch: with Captain Engine, a running engine is connected; a stopped engine starts, with progress; if no engine exists yet, the setup screen replaces the containers.
 - Setup screen: the Captain mark, "Set up Captain Engine", the resources, and "Use an existing engine". If Captain finds other engines, it lists them with a "Bring your data along" checkbox. After setup, that opens the Migration Assistant ([ADR 0009](../adr/0009-migration.md)).
 - Starting screen: a moving bar and the last progress lines. Stopped screen: "Captain Engine is stopped" with Start. Failed screen: the error and "Try again", which reuses what the first start downloaded.
-- Sidebar: the engine card shows the host state with Start or Stop. The brand line follows the host.
+- Sidebar: the engine card shows the host state with Start or Stop. The brand line follows the host. (Replaced: the status bar shows the state, and the Diagnostics Engine card has Start, Stop, and Restart.)
 - Settings: a Captain Engine card with the choice, status with Start, Stop, and Restart, CPUs, memory, and disk (applied on the next start; since 0037 a running engine shows Restart to apply, and the disk asks before it grows), the quit switch, "Bring data from another engine…", and "Reset Captain Engine…" with a confirmation.
 - Menu bar: the status line comes from the host, with "Start Captain Engine" or "Stop Captain Engine".
 - Quit: stops the engine first when the setting is on, waits up to 20 seconds, and keeps the window responsive. A start that runs at Quit is stopped whatever the setting, and also when the user chose another engine while it ran, because Captain cannot finish its later steps after it exits. During a snapshot step, Quit waits until the step ends (feature [0023](0023-snapshots.md)).

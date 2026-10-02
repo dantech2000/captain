@@ -1,7 +1,7 @@
 # Feature 0005: command palette
 
 - Milestone: M2 follow-up, built after the v2 interface (feature 0002)
-- Status: In progress
+- Status: Done. The command grammar ([0033](0033-command-grammar.md)) extends it.
 - Design: the "v2 · Command palette" artboard of the Captain UI canvas
 
 ## Goal

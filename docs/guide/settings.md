@@ -33,6 +33,10 @@ The disk grows as it fills, up to its size. It can grow but not shrink:
 
 **−** does not go below the size of the disk now. A running engine gets the larger disk when it restarts.
 
+Click the engine's name to switch engines. The menu lists Captain Engine, the other engines on this computer, your Docker contexts, and **Add a remote host…** for an `ssh://` host.
+
+With Captain Engine, the **…** menu has **Start**, **Stop**, **Restart**, **Bring data from another engine…**, **Show engine files**, and **Reset engine…**. The Engine card on the [Diagnostics](troubleshooting.md) page also starts, stops, and restarts the engine.
+
 ### Kubernetes
 
 A switch for the k3s cluster in Captain Engine. Off uses no memory. See [Kubernetes](kubernetes.md).

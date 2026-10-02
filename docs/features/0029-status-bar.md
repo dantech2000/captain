@@ -1,7 +1,7 @@
 # Feature 0029: Status bar with hover help
 
 - Milestone: M23
-- Status: Implemented. It needs a check by hand in the app.
+- Status: Done (M23); checked by hand on macOS. Since M24 the status bar is the only place that shows the engine state, CPU, memory, and disk.
 - Design: the `Manifest` screen of the v3 canvas (its `<footer aria-label="Status bar">`). See [0027](0027-v3-interface.md), design rule 5.
 
 ## Goal
@@ -29,7 +29,7 @@ Every control says what it does. A 30 px bar at the bottom of the main window sh
   - Only the status bar observes `HoverHelp`, so a new hint redraws the bar and nothing else.
   - A mouse down anywhere in the window clears the hint, because a click can remove the control under the mouse, and a removed control never reports its hover-out.
   - An element that disappears without a click (a list refresh, a cleanup) never reports its hover-out either. Each hint's hover listener holds a token (`help/liveness.rs`); GPUI drops the listener after the first frame without the element. After each frame with a hint, `hover_batch` drops the hints whose element has no live token.
-- **Help sentences** on: the sidebar pages, projects, search button, and engine header; container row buttons and ports; Compose card buttons; the inspector buttons and tabs; the log, file, and image inspector tools; the toolbars of Images, Volumes, Networks, Snapshots, Extensions, Port Forwarding, and Diagnostics; the engine start and set-up screens.
+- **Help sentences** on: the sidebar pages, projects, search button, and engine header (since removed; the rail buttons have help now); container row buttons and ports; Compose card buttons; the inspector buttons and tabs; the log, file, and image inspector tools; the toolbars of Images, Volumes, Networks, Snapshots, Extensions, Port Forwarding, and Diagnostics; the engine start and set-up screens.
 - `icon_button`, `action_button`, and `primary_button` take a help argument, so each of their buttons has a sentence.
 - **More help sentences** (the polish pass):
   - Each choice of a segmented control: the container, image, volume, and network filters, the scan severities, Appearance, the engine choice, the Run dialog's restart policy, and the Migration Assistant's image choice. `Segment` has a `help` field.

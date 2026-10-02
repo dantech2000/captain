@@ -1,7 +1,7 @@
 # Feature 0023: Snapshots
 
 - Milestone: M16
-- Status: Implemented; checked with the CLI on a test VM. The page needs a check by hand in the app.
+- Status: Done (M16). The CLI was checked on a test VM, and the page by hand in the app on 2026-09-29 ([testing.md](../testing.md) test 2).
 - Parity: Rancher Desktop's [Snapshots](https://docs.rancherdesktop.io/ui/snapshots) page and [`rdctl snapshot`](https://docs.rancherdesktop.io/references/rdctl-command-reference)
 - Decision: [ADR 0012](../adr/0012-snapshots.md)
 

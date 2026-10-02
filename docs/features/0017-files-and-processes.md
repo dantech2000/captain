@@ -1,7 +1,7 @@
 # Feature 0017: Files and processes
 
 - Milestone: M3 (container detail)
-- Status: Done; needs a manual check in the app
+- Status: Done; checked by hand on macOS (M3).
 - Builds on: [0002](0002-v2-interface.md), which added the inspector tabs with a placeholder Files tab
 - Parity: the Files tab of Docker Desktop ([docs](https://docs.docker.com/desktop/use-desktop/container/)) and the process list of `docker top`
 

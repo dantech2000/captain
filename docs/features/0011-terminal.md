@@ -1,7 +1,7 @@
 # Feature 0011: Terminal
 
 - Milestone: M8 (exec terminal)
-- Status: In progress
+- Status: Done (M8). Since M34, the terminal panel ([0041](0041-integrated-terminal.md)) shares this view for local shells.
 - Design: the Terminal tab of the v2 inspector
 
 ## Goal

@@ -1,7 +1,7 @@
 # Feature 0034: Project map and staged changes
 
 - Milestone: M28
-- Status: Implemented. It needs a check by hand in the app.
+- Status: Done (M28); checked by hand on macOS ([testing.md](../testing.md) test 10).
 - Design: the `Chart table` screen of the v3 canvas. See [0027](0027-v3-interface.md).
 
 ## Goal

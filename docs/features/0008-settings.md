@@ -1,7 +1,7 @@
 # Feature 0008: settings
 
 - Milestone: M7 (settings and contexts)
-- Status: In progress
+- Status: Done for this scope; M7 goes on with [0026](0026-contexts-and-remote-hosts.md). Since M30 the one-page Settings ([0037](0037-settings-page.md)) replaced the cards described here, and themes ([0028](0028-themes.md)) replaced the accent color.
 - Builds on: [0002](0002-v2-interface.md), which added the empty Settings page
 - Decision: [ADR 0004](../adr/0004-settings-file.md) (the settings file)
 

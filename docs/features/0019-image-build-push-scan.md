@@ -1,7 +1,7 @@
 # Feature 0019: Image build, push, and scan
 
 - Milestone: M17
-- Status: Done; needs a manual check in the app
+- Status: Done (M17). Build, Tag, a failed Push, and Scan were checked by hand.
 - Parity: the Build and Scan actions of the Rancher Desktop Images page ([docs](https://docs.rancherdesktop.io/ui/images)), plus Tag and Push
 
 ## Goal

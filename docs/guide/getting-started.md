@@ -65,9 +65,9 @@ From top to bottom:
 - **The app icon.** Click it to open Diagnostics, where you start, stop, or restart the engine. The engine's state shows in the status bar at the bottom of the window.
 - **The sidebar button.** It hides the sidebar, or shows it again. The shortcut is ⌘B.
 - **The page buttons.** Containers, Images, Volumes, Networks, Snapshots, Storage, Extensions, and Port Forwarding (while Kubernetes runs).
-- **Diagnostics and Settings**, at the bottom. Diagnostics shows a red count while a check fails.
+- **The terminal button, Diagnostics, and Settings**, at the bottom. The terminal button shows or hides the [terminal panel](#the-terminal-panel). Diagnostics shows a red count while a check fails.
 
-Each button has a shortcut. Point at a button to see it in a tooltip and in the status bar. The [shortcut table](#keyboard-shortcuts) lists them all.
+Each button has a shortcut. Point at a button to see it in a tooltip and in the status bar. The [shortcut table](#keyboard-shortcuts) lists them all. The ⌘K palette has its own keys; see [The command palette](command-palette.md#keys).
 
 ### The menus
 
@@ -106,6 +106,8 @@ On Linux and Windows, use Ctrl in place of ⌘ for the pages, the sidebar, the c
 | Undo, redo | ⌘Z, ⇧⌘Z |
 | Cut, copy, paste, select all | ⌘X, ⌘C, ⌘V, ⌘A |
 | Find in the file editor | ⌘F |
+| In the New sheet: open a card, make the project | ⌘1 to ⌘4, ⌘Return |
+| In a container's Files tab: go to the parent folder | ⌘↑ or ⌫ (Alt-↑ on Linux and Windows) |
 | Minimize the window | ⌘M |
 | Enter or leave full screen | ⌃⌘F |
 | Hide Captain, hide other apps | ⌘H, ⌥⌘H |
@@ -116,7 +118,7 @@ On Linux and Windows, use Ctrl in place of ⌘ for the pages, the sidebar, the c
 From top to bottom:
 
 - **The search button.** It opens the command palette. The shortcut is ⌘K.
-- **Projects.** One entry per Compose project, with "Compose · N services", how many containers run, and the published ports. **All containers**, on the same line, shows every container in one list.
+- **Projects.** One entry per Compose project, with "Compose · N services", how many containers run, and the published ports. A project that Captain made or opened stays as **Stopped** after **Down**. Beside the title, **All containers** shows every container in one list, and **+** opens the [New sheet](new-projects.md) (⌘N).
 - **Kubernetes namespaces.** One entry per namespace, while **Show Kubernetes containers** is on. See [Kubernetes](kubernetes.md).
 - **Loose containers.** The containers that are in no project.
 

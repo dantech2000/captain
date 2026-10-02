@@ -1,7 +1,7 @@
 # Feature 0033: Command grammar in the ⌘K palette
 
 - Milestone: M27
-- Status: Implemented. It needs a check by hand in the app.
+- Status: Implemented (M27). Completions were checked by hand; the other commands need a check by hand.
 - Design: the prompt and suggestion list of the `Bridge` screen, and the `V2Palette` screen. See [0027](0027-v3-interface.md) and [0005](0005-command-palette.md).
 - Why: keyboard-first tools such as k9s and lazydocker are loved for their density ([lazydocker](https://github.com/jesseduffield/lazydocker), [k9s commands](https://k9scli.io/topics/commands/)). Ports and names matter more than IDs ([docker/roadmap#221](https://github.com/docker/roadmap/issues/221)).
 

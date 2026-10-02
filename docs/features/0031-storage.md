@@ -1,7 +1,7 @@
 # Feature 0031: Storage and cleanup
 
 - Milestone: M25
-- Status: Implemented. It needs a check by hand in the app.
+- Status: Implemented (M25). The page was checked by hand; a real cleanup with the snapshot first is left. The sidebar Disk card was removed later; the status bar's Disk segment opens the page.
 - Design: the `Storage` screen of the v3 canvas. See [0027](0027-v3-interface.md).
 - Why: disk use is opaque in Docker Desktop ([docker/for-mac#371](https://github.com/docker/for-mac/issues/371), [docker/roadmap#13](https://github.com/docker/roadmap/issues/13)), and one confirm per delete slows cleanup ([orbstack#1869](https://github.com/orbstack/orbstack/issues/1869)).
 
@@ -11,7 +11,7 @@ A user sees what fills the engine's disk, who uses each large item, and frees sp
 
 ## In scope
 
-- **A Storage page**, with an entry in the sidebar above Diagnostics and a `disk` command in the ⌘K palette.
+- **A Storage page**, with an entry in the sidebar above Diagnostics (now a button in the icon rail) and a `disk` command in the ⌘K palette.
 - **The header.** "Captain Engine disk", the bytes in use, and "of 64 GB", the VM disk size from the settings. Another engine shows the bytes in use only. With Captain Engine, the free space on this computer and a link, "Change the disk size in Settings".
 - **The bar and its legend.** Images, Volumes, Build cache, Snapshots (Captain Engine only), and Containers (writable layers). With Captain Engine each part is a share of the disk size; otherwise a share of the bytes in use.
 - **Largest first.** The 12 largest items with an icon, a name, who uses them, and a size:

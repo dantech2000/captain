@@ -21,6 +21,7 @@ The Migration Assistant copies networks, volumes, images, Compose projects, and 
 2. Open the Migration Assistant in one of two ways:
    - On the first launch, check **Bring your data along** on the setup screen.
    - Press ⌘K and choose **Bring data from another engine…**.
+   - In Settings, open the **…** menu of the Engine section and choose **Bring data from another engine…**.
 
 ### Step 1: Source
 

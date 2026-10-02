@@ -1,7 +1,7 @@
 # Feature 0039: Compose and Dockerfile editor
 
 - Milestone: M32
-- Status: Phases 1–3 implemented 2026-09-30. Phase 4: the guide page [docs/guide/editing-projects.md](../guide/editing-projects.md) is written, and all ten steps of the hand check (docs/testing.md test 14) passed on 2026-09-30.
+- Status: Phases 1–3 implemented 2026-09-30. Phase 4: the guide page [docs/guide/editing-projects.md](../guide/editing-projects.md) is written, and all ten steps of the hand check (docs/testing.md test 14) passed on 2026-09-30. Left: ⌘S to save.
 
 ## Goal
 

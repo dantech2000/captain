@@ -1,7 +1,7 @@
 # Feature 0030: Project-first window
 
 - Milestone: M24
-- Status: Implemented. It needs a check by hand in the app.
+- Status: Done (M24); checked by hand on macOS ([testing.md](../testing.md) test 9). Later additions are in the Icon rail list and the inspector note below.
 - Design: the `Manifest` screen of the v3 canvas. See [0027](0027-v3-interface.md).
 
 ## Goal
@@ -21,7 +21,8 @@ The main window opens on what the user works on: a project. The sidebar lists Co
   - The app icon. Its help names the engine and its state, and a click opens Diagnostics. It has no state dot; the status bar shows the state.
   - A button that hides the sidebar (Lucide `PanelLeftClose`) or shows it again (`PanelLeftOpen`). ⌘B (Ctrl-B on Linux and Windows) and the palette's "Toggle sidebar" row do the same. While the sidebar is hidden, only the rail shows and the page gets the width. `Workspace::sidebar_hidden` keeps the choice while Captain runs, as `details_hidden` does for the details panel; it is not in the settings file. The terminal grid frees Ctrl-B for the shell, as it does Ctrl-K.
   - The page buttons, in the order of the old icon row with Containers first: Containers, Images, Volumes, Networks, Snapshots, Storage, Extensions, and Port Forwarding (while the cluster runs). The selected page has the selection background and the action color.
-  - Diagnostics (with the failure badge) and Settings pinned at the bottom.
+  - The terminal button ([0041](0041-integrated-terminal.md)), Diagnostics (with the failure badge), and Settings pinned at the bottom.
+  - ⌘1 to ⌘9 open the pages in rail order, and ⌘, opens Settings (Ctrl on Linux and Windows). The keys apply only while no dialog, sheet, or palette is open (`shell/rail/page_keys.rs`).
   - Each button has its page's help sentence in the status bar, and a tooltip with its name (and ⌘B on the sidebar button), because the rail has no labels.
 - **Project page** (`Page::Project`, for the sidebar entry in `Workspace::focus`). It works for all three kinds of entries. The header buttons, the Open row, and tasks need a Compose project.
   1. **Header.** The working folder and Compose file in mono, the name in large type, then Open folder, Terminal, Down, and a primary Restart project (Up while nothing runs).
@@ -69,6 +70,7 @@ The main window opens on what the user works on: a project. The sidebar lists Co
 - An `oom` event before a `die` marks the exit as out of memory. Exit 137 alone could be any `SIGKILL`.
 - Down removes the containers, so the project would drop out of the sidebar. The page keeps the last known project, so its header still offers Up.
 - The inspector opens next to the cards only after a click, so the cards keep three columns while it is closed. With it open, they use two.
+- Added later: the inspector is resizable. Drag its left edge; a double-click goes back to the default width. The width stops where the page would get too narrow (`inspector/resize_handle.rs`).
 
 ## Verification
 

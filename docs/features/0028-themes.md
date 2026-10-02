@@ -1,7 +1,7 @@
 # Feature 0028: themes
 
 - Milestone: M22 (themes)
-- Status: Implemented; checked with unit tests
+- Status: Implemented; checked with unit tests, and by hand in Dusk dark. The other five combinations need a check by hand.
 - Builds on: [0027](0027-v3-interface.md), which has the design rules and the token table, and [0008](0008-settings.md), which added the accent color that this replaces
 - Decision: [ADR 0004](../adr/0004-settings-file.md) (the settings file)
 

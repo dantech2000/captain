@@ -1,7 +1,7 @@
 # Feature 0027: The v3 interface
 
 - Milestones: M22–M28, and M11
-- Status: Planned
+- Status: Built in M22–M28. See each feature spec and [ROADMAP.md](../../ROADMAP.md) for the state of each part. Later changes: the menu bar popover became the native menu ([0009](0009-menu-bar.md)), and the sidebar lost its engine header and cards ([0030](0030-project-window.md)).
 
 ## Goal
 

@@ -24,7 +24,7 @@ Captain adds a context named `captain` to `~/.kube/config`, and keeps your other
 kubectl --context captain get nodes
 ```
 
-If no other context is current, `captain` becomes the current context. To switch contexts, right-click the menu bar icon and open **Kubernetes Contexts**, or run `kubectl config use-context captain`.
+If no other context is current, `captain` becomes the current context. To switch contexts, click the menu bar icon and open **Kubernetes Contexts**, or run `kubectl config use-context captain`.
 
 `Captain.app` ships `kubectl` 1.37 and Helm 4.3. To use them in your terminal, set up the command-line tools (Settings > **Terminal** > **Set up…**). Then `~/.captain/bin` holds links to both. `kubectl` works with a cluster one minor version older or newer, so it fits the stable (1.36) and latest (1.37) k3s versions. For an older k3s, install a matching `kubectl` yourself.
 

@@ -23,7 +23,7 @@ The Compose file also has three [tasks](../guide/projects-and-tasks.md#tasks) un
 ## Run it
 
 1. Start Captain and wait until Captain Engine runs.
-2. In a terminal that uses Captain Engine, go to the project folder:
+2. In a terminal that uses Captain Engine, such as Captain's terminal panel (⌃`), go to the project folder:
 
    ```sh
    cd docs/demo/acme-shop

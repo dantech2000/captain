@@ -1,7 +1,7 @@
 # Feature 0014: Migration Assistant
 
 - Milestone: M13
-- Status: In progress
+- Status: Done (M13): copy and switch-over, with roll back, checked in the app from Rancher Desktop to Captain Engine.
 - Decision: [ADR 0009](../adr/0009-migration.md)
 
 ## Goal

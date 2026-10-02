@@ -13,6 +13,8 @@ To install and use Captain, read the [user guide](docs/guide/README.md). The res
 - **Runs Docker for you.** Captain Engine is a small Linux VM with Docker that Captain sets up, starts, and stops. `Captain.app` carries `limactl`, the `docker` CLI, Compose, Buildx, `kubectl`, and `helm`, and can link them into your terminal.
 - **Groups containers by project.** Each Compose project gets a page with its ports, its services, crash reasons, tasks from `x-captain.tasks`, and one log. See [Projects and tasks](docs/guide/projects-and-tasks.md).
 - **Edits Compose files and Dockerfiles.** The Files tab checks the text as you type and shows which services a change recreates before it runs. See [Editing a project's files](docs/guide/editing-projects.md).
+- **Starts new projects.** ⌘N runs an image, starts from a template, opens a folder, or turns a `docker run` command into a Compose file. See [Making new projects](docs/guide/new-projects.md).
+- **Has its own terminal.** ⌃` opens a terminal panel whose `docker` uses the engine Captain shows. See [The terminal panel](docs/guide/getting-started.md#the-terminal-panel).
 - **Runs commands from ⌘K.** Type `restart worker` or `logs db --since 10m`. See [The command palette](docs/guide/command-palette.md).
 - **Frees disk space with a preview.** Storage shows what fills the engine disk and who uses each item, and removes only what you review. See [Storage](docs/guide/storage.md).
 - **Lets AI agents read your projects.** `captain mcp` gives Claude Code, Codex, Cursor, and other agents read access, and only the actions you allow. See [AI agents](docs/guide/agents.md).
@@ -76,7 +78,7 @@ Other engine is the default when Lima is not installed, or when you saved a cust
 | `captain-docker` | The `Engine` implementation for the Docker API, built on `bollard`. |
 | `captain-host` | Captain Engine: the Lima VM on macOS, behind the `EngineHost` trait. |
 | `captain-kube` | Kubernetes Services and port forwards, built on `kube-rs`. |
-| `captain-terminal` | Terminal emulation for the exec terminal, behind an `Emulator` trait. |
+| `captain-terminal` | Terminal emulation behind an `Emulator` trait, and local shells in a PTY, for the container terminal and the terminal panel. |
 | `captain-ui` | GPUI views. |
 | `captain-app` | The binary. Opens the window and wires everything together. |
 | `captain-cli` | The `captain` command: controls Captain Engine from the terminal, and runs `captain mcp`. |

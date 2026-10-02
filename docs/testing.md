@@ -6,7 +6,7 @@ This guide covers what the automated tests cannot: the app on a real Captain Eng
 
 1. Build the app: `scripts/bundle-macos.sh debug`.
 2. Quit any open Captain. Then open `target/debug/Captain.app`.
-3. Make sure Captain Engine shows **Running** in the sidebar.
+3. Make sure the status bar shows **Captain Engine** with a green dot. Hover it: the sentence says it is running.
 4. Open **Diagnostics**. All checks must show **Passed** or **Not applicable**.
 
 Some tests stop or restart the engine. Containers with a restart policy (for example `unless-stopped`) come back by themselves. Do these tests when a short outage is acceptable.
@@ -15,18 +15,15 @@ If a result is different from the expected result, open **Diagnostics > Show log
 
 ## 1. Docker daemon settings (M18)
 
-Restarts Docker in the engine once.
+Restarts the engine twice. Since M30 the Docker daemon options live in the settings file, not on a Settings card.
 
-1. Open **Settings > Docker daemon**.
-2. In **Registry mirrors**, type `https://mirror.gcr.io`. Click **Save**.
-   - Expect: the **Restart to apply** row appears.
-3. Click **Restart**.
-   - Expect: the status shows "Applying the Docker daemon settings", then **Running**.
-4. In a terminal, run `docker info --format '{{.RegistryConfig.Mirrors}}'` with `DOCKER_HOST` set by `captain docker-env`.
+1. Open **Settings > Open settings file**. Add `"engine_daemon": { "registry_mirrors": ["https://mirror.gcr.io"] }` and save.
+   - Expect: the Engine section of Settings shows the **Restart to apply** row.
+2. Click **Restart** in that row.
+   - Expect: the engine restarts, and the row is gone.
+3. In a terminal, run `docker info --format '{{.RegistryConfig.Mirrors}}'` with `DOCKER_HOST` set by `captain docker-env`.
    - Expect: `[https://mirror.gcr.io/]`.
-5. In **Custom daemon.json**, type `{"hosts": ["x"]}`. Click **Save**.
-   - Expect: an error that says Captain manages `hosts`. Nothing changes.
-6. Remove the mirror. Click **Save**, then **Restart**.
+4. Remove the `engine_daemon` lines and save. Click **Restart**.
    - Expect: `docker info` shows no mirrors.
 
 ## 2. Snapshots (M16)
@@ -51,8 +48,8 @@ Stops the engine twice. The restore replaces the engine disk.
 
 Installs k3s in the engine (about 70 MB download) and adds a `captain` context to your kubeconfig. Captain backs up the kubeconfig first.
 
-1. Open **Settings > Kubernetes**. Turn on **Enable**, keep the default version, and click **Apply**.
-   - Expect: progress lines, then the card shows the cluster as running. This can take a few minutes on the first run.
+1. Open **Settings**. In the **Kubernetes** section, turn on the switch, keep the default version, and click **Apply now**.
+   - Expect: a status line, then the cluster shows as running, and the status bar shows "Kubernetes on". This can take a few minutes on the first run.
 2. Run `kubectl --context captain get nodes`.
    - Expect: one node, `Ready`.
 3. Build and run a pod from a local image:
@@ -68,20 +65,20 @@ Installs k3s in the engine (about 70 MB download) and adds a `captain` context t
    - Expect: a card per namespace.
 6. In the menu bar, open **Kubernetes Contexts** and switch to another context and back.
    - Expect: `kubectl config current-context` follows.
-7. Click **Stop** on the engine while k3s starts (turn Kubernetes off and on, then Apply, then Stop at once).
+7. Stop the engine while k3s starts: turn Kubernetes off and on, click **Apply now**, then at once click **Stop** on the Engine card of **Diagnostics**.
    - Expect: the stop finishes within seconds.
-8. Clean up: delete the pod and service, then turn Kubernetes off and Apply.
+8. Clean up: delete the pod and service, then turn Kubernetes off.
 
 ## 4. Administrative access (M14)
 
-Asks for your macOS password.
+Asks for your macOS password. Since M30 this is the optional last step of the terminal setup sheet, not a Settings card.
 
-1. Open **Settings > Administrative access**. Click **Link to Captain Engine…** and enter your password.
-   - Expect: the card says `/var/run/docker.sock` points at Captain Engine.
+1. Open **Settings > Terminal > Set up…**. In the step "Optional: let tools that use /var/run/docker.sock reach Captain Engine", click **Link…** and enter your password.
+   - Expect: the step says `/var/run/docker.sock` points at Captain Engine.
 2. Run `docker -H unix:///var/run/docker.sock ps`.
    - Expect: the same containers as in Captain.
 3. Click **Remove link…** and enter your password.
-   - Expect: the card says the socket does not exist.
+   - Expect: the step says the socket does not exist.
 
 ## 5. Extensions (M21)
 
@@ -93,9 +90,9 @@ Asks for your macOS password.
 
 ## 6. Contexts and remote hosts (M7)
 
-1. Open **Settings > Switch engine**.
-   - Expect: one row per `docker context ls` entry, with the current one marked.
-2. If you have a host with SSH key login and Docker, enter `ssh://user@host` in **Custom endpoint** and click **Use this engine**.
+1. Open **Settings** and click the engine menu in the **Engine** section.
+   - Expect: under **Docker contexts**, one item per `docker context ls` entry.
+2. If you have a host with SSH key login and Docker, choose **Add a remote host…**, enter `ssh://user@host`, and connect.
    - Expect: Captain shows that engine's containers. Quitting Captain leaves no `ssh -nNT` process.
 
 ## 7. Command line (M20)
@@ -111,7 +108,7 @@ Use `target/debug/Captain.app/Contents/Resources/bin/captain`.
 
 ## 8. Quit behavior
 
-1. With **Stop the engine when Captain quits** on, quit Captain.
+1. With `stop_engine_on_quit` at its default (`true`) in the settings file, quit Captain.
    - Expect: the engine stops. The next launch starts it again.
 2. Start a snapshot, then press Cmd-Q.
    - Expect: Captain exits only after the snapshot step ends.
@@ -179,7 +176,7 @@ x-captain:
 
 ## 13. Storage (M25)
 
-1. Open Storage from the sidebar Disk card.
+1. Click the **Disk** segment in the status bar.
    - Expect: the disk bar, the largest items with who uses them, and the five cleanup groups. Unused volumes are unchecked.
 2. Click **Review…**.
    - Expect: a list of every item to remove. Cancel it unless you want the cleanup.
@@ -251,7 +248,7 @@ Clean up: turn off **Let agents use Captain**, and `docker compose down` in the 
 
 Restarts the engine once. The disk steps grow the real disk, so stop at a size you are glad to keep.
 
-1. Open **Settings > Engine**. Click **+** on **Memory** once.
+1. Open **Settings**. In the **Engine** section, click **+** on **Memory** once.
    - Expect: the **Restart to apply** row appears, for example "Captain Engine runs with 6.0 GB memory; the new settings are 7.0 GB memory."
 2. Click **Restart**.
    - Expect: the engine restarts and the row is gone.
@@ -310,6 +307,25 @@ Set `"projects_dir": "~/CaptainTest"` in the settings file first, so the tests s
 
 Clean up: `docker compose down -v` in each folder under `~/CaptainTest`, `rm -rf ~/CaptainTest`, and remove the `projects_dir` line.
 
+## 18. Terminal panel (M34)
+
+Run the twelve steps under "By hand" in the Verification of [0041](features/0041-integrated-terminal.md).
+
+## 19. App menus (M35)
+
+Run the eleven steps under "By hand" in the Verification of [0042](features/0042-app-menus.md).
+
+## 20. Window, reconnect, and menu bar dot
+
+1. Press ⌘1 to ⌘9 and ⌘,. Point at each rail button.
+   - Expect: each key opens its page in rail order. Each button shows its name and key in a tooltip and its sentence in the status bar.
+2. Open the inspector on a container. Drag its left edge, then double-click the edge.
+   - Expect: the width follows the mouse and stops before the page gets too narrow. A double-click goes back to the default width.
+3. With a Project page open, run `limactl shell captain sudo systemctl restart docker` with `LIMA_HOME=~/.captain/lima`. Do this only on a test engine, or when a short outage is fine.
+   - Expect: the page shows "Reconnecting to the engine…", and then the same project again. The menu bar dot turns amber, then green. See step 11 of [0013](features/0013-captain-engine.md) and of [0009](features/0009-menu-bar.md).
+4. Set `"menu_bar_status_dot": false` in the settings file.
+   - Expect: the icon turns into the plain wheel at once, with a dot only when something is wrong.
+
 ## Last run
 
 2026-09-29, commit c656372, macOS, on the real Captain Engine. Tests 1–3 ran first through the `captain` CLI (the same host code as the app), then the UI steps in the app.
@@ -333,13 +349,13 @@ Clean up: `docker compose down -v` in each folder under `~/CaptainTest`, `rm -rf
 | 8.2 Quit during a snapshot | Pass. Captain waited for the snapshot step, then quit. |
 | 9. v3 window (test project) | Pass, 2026-09-30: the red worker card, the task output, the out-of-memory marker, Raise memory (536870912), and the collapsible panel. The status bar first said "then exited" during a crash loop; now "exited again at …, after N restarts". |
 | 10. Map and staged changes | Pass: the talks-to line, Stage, and Apply (1 GB). The failing node's text overlapped; fixed. |
-| 11. Popover and floating log | Pass after a fix: the warning card came and went during the crash loop, and Float logs opened the selected container. A crash tracker on the event stream fixed both. The Dock badge was not checked. |
+| 11. Popover and floating log (the popover is now the native menu) | Pass after a fix: the warning card came and went during the crash loop, and Float logs opened the selected container. A crash tracker on the event stream fixed both. The Dock badge was not checked. |
 | 12. ⌘K commands | Pass for completions. |
-| 13. Storage | Pass for the page and the Disk card. No cleanup was run. |
+| 13. Storage | Pass for the page and the sidebar Disk card (since replaced by the status bar's Disk segment). No cleanup was run. |
 | 14. Files tab | Pass, 2026-09-30, all ten steps, in the demo project `docs/demo/acme-shop` with a release build. The typo `imgae` showed its error on its line, and completion offered keys with hover docs. ⌘F found both `worker` matches, and ⌘Z undid the edits. The preview named web for Recreate; it also listed Start for worker, which was restarting after an out-of-memory kill. Apply recreated web. With unsaved edits, an outside change showed the reload bar and Save refused; without edits, the editor loaded the change by itself. Through a symlink, the link stayed and the target kept mode 640. `RUNN` showed "unknown instruction: RUNN (did you mean RUN?)" on its line, and Rebuild api made a new container. Found: an error message after a failed rebuild stays until closed and covers Save and Rebuild. |
 
-Notes for the UI/UX pass:
+Notes for the UI/UX pass, all fixed since:
 
-- The sidebar's bottom entries and the engine card's Start button move when the engine stops or starts.
-- The Memory tile and the menu bar count include Kubernetes containers while they are hidden.
-- Kubernetes containers show raw `k8s_POD_…` names; the pod and container names would read better.
+- The sidebar's bottom entries and the engine card's Start button moved when the engine stopped or started. The sidebar no longer has an engine card; Start and Stop are on the Diagnostics page.
+- The Memory tile and the menu bar count included Kubernetes containers while they were hidden. They leave them out now (M24).
+- Kubernetes containers showed raw `k8s_POD_…` names. They show as `pod/container` now (M24).

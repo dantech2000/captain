@@ -19,7 +19,12 @@ The key hint on each row shows ↵ when Return runs it, or ⇥ when Tab complete
 
 Type a word that is not a command, such as `redis`. The palette shows matching containers, images, pages, and actions, ranked by how well they match.
 
-Type `sidebar` to find **Toggle sidebar**. It hides the sidebar, or shows it again, as ⌘B does.
+Some rows are actions without a name to complete:
+
+- **New project…** (type `new`) opens the [New sheet](new-projects.md), as ⌘N does.
+- **Toggle sidebar** (type `sidebar`) hides the sidebar, or shows it again, as ⌘B does.
+- **Toggle terminal** (type `terminal`) shows or hides the [terminal panel](getting-started.md#the-terminal-panel), as ⌃` does.
+- **Bring data from another engine…** opens the [Migration Assistant](moving-from-docker-desktop-or-rancher.md).
 
 The empty palette starts with a **Try** row. It shows up to five commands built from your own container and project names. Click one to put it in the field.
 

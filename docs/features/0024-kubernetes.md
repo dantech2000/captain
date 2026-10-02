@@ -1,7 +1,7 @@
 # Feature 0024: Kubernetes
 
 - Milestone: M19
-- Status: Implemented; the live test passes on a test VM. The Settings card, the Port Forwarding page, and the menu bar need a check by hand in the app.
+- Status: Done (M19). The Settings card, the Port Forwarding page, and the menu bar were checked by hand on 2026-09-29 ([testing.md](../testing.md) test 3). Since M30 the Settings card is one switch with Apply now; the port and Traefik are settings file keys ([0037](0037-settings-page.md)).
 - Parity: Rancher Desktop's [Kubernetes preferences](https://docs.rancherdesktop.io/ui/preferences/kubernetes) and [Port Forwarding](https://docs.rancherdesktop.io/ui/port-forwarding) page
 - Decision: [ADR 0010](../adr/0010-kubernetes.md)
 

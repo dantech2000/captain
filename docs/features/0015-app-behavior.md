@@ -1,7 +1,7 @@
 # Feature 0015: App behavior
 
 - Milestone: M14
-- Status: Implemented; needs a manual check in the running app
+- Status: Done on macOS; checked by hand (M14). Since M30, "Start in the background" is the `start_in_background` key of the settings file, and the socket link is a step of the terminal setup sheet ([0037](0037-settings-page.md)).
 
 ## Goal
 
