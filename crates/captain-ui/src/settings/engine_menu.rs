@@ -51,7 +51,7 @@ pub fn engine_button(
         Connection::Connected(info) => Some(info.endpoint.clone()),
         _ => None,
     };
-    let captain = view.host.clone();
+    let captain = view.host.clone().filter(|host| host.read(cx).supported());
     let on_captain = captain
         .as_ref()
         .is_some_and(|host| host.read(cx).choice(cx) == EngineChoice::Captain);

@@ -30,7 +30,7 @@ Settings keys for `set` and `list-settings`. Each check matches the Settings pag
 | `engine` | `captain`, `external` | One of the two. |
 | `cpus` | a whole number | 1 to this computer's CPU count (the stepper's range). |
 | `memory` | GiB, for example `8` or `8GiB` | 2 GiB to three quarters of this computer's memory. |
-| `disk` | GiB | 16 to 1024 GiB, and not smaller than Captain Engine's disk now (from `limactl list`): a disk cannot shrink. |
+| `disk` | GiB | 16 to 1024 GiB, and not smaller than Captain Engine's disk now (from `limactl list`): a disk cannot shrink. Only a status check that finds no instance allows any size; when the status or the disk cannot be read, `set disk` refuses. |
 | `stop-engine-on-quit` | `true`, `false` | |
 | `start-in-background` | `true`, `false` | `true` needs `show-menu-bar-icon`, as the page disables the switch without it. |
 | `show-menu-bar-icon` | `true`, `false` | |

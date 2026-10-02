@@ -53,7 +53,7 @@ impl Workspace {
         let valid = self
             .selected
             .as_deref()
-            .is_some_and(|id| self.store.find(id).is_some());
+            .is_some_and(|id| self.store.find_any(id).is_some());
         if !valid {
             self.selected = self
                 .store

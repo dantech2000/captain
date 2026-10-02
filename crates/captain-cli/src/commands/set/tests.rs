@@ -1,8 +1,8 @@
-use captain_core::GIB;
 use captain_core::process_lock::{ProcessLock, app_lock_path, settings_lock_path};
 use captain_core::settings::Settings;
+use captain_core::{GIB, HostStatus};
 
-use super::run;
+use super::{disk_floor, run};
 use crate::context::Context;
 use crate::settings_keys::{Machine, SettingKey};
 
@@ -64,4 +64,16 @@ fn set_waits_for_another_writer_and_keeps_its_change() {
         Some("unix:///tmp/other.sock")
     );
     std::fs::remove_dir_all(context.settings_path.parent().unwrap()).ok();
+}
+
+#[test]
+fn set_disk_needs_a_readable_disk_unless_no_machine_exists() {
+    assert_eq!(disk_floor(Some(HostStatus::NotCreated), None), Ok(None));
+    assert_eq!(
+        disk_floor(Some(HostStatus::Stopped), Some(GIB)),
+        Ok(Some(GIB))
+    );
+    let failed = Some(HostStatus::Failed("limactl list failed".into()));
+    assert!(disk_floor(failed, None).is_err());
+    assert!(disk_floor(None, None).is_err());
 }

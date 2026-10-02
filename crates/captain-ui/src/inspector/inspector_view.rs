@@ -24,7 +24,7 @@ pub struct InspectorView {
     files: Entity<FilesPane>,
     processes: Entity<ProcessList>,
     detail_task: Option<Task<()>>,
-    /// The panel's width, set by dragging its left edge.
+    /// The width set by dragging the left edge. Each render fits it to the room.
     width: f32,
     _observe: Subscription,
 }
@@ -135,11 +135,13 @@ impl InspectorView {
 }
 
 impl Render for InspectorView {
-    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let palette = Palette::of(cx);
         let Some(container) = self.workspace.read(cx).selected().cloned() else {
             return div();
         };
+        // The window or the sidebar may have changed since the last drag.
+        let width = resize_handle::width_for(self.width, room(&self.workspace, window, cx));
         let entity = cx.entity().downgrade();
         let on_tab = move |tab: Tab, _: &mut Window, cx: &mut App| {
             entity.update(cx, |this, cx| this.set_tab(tab, cx)).ok();
@@ -171,17 +173,13 @@ impl Render for InspectorView {
 
         let reset = cx.entity().downgrade();
         div()
-            .w(px(self.width))
+            .w(px(width))
             .relative()
             .on_drag_move(
                 cx.listener(|this, event: &DragMoveEvent<DraggedEdge>, window, cx| {
-                    let beside = crate::shell::left_width(this.workspace.read(cx).sidebar_hidden());
-                    let room = f32::from(window.viewport_size().width) - beside;
-                    this.width = resize_handle::width_for(
-                        event.bounds.right(),
-                        event.event.position.x,
-                        room,
-                    );
+                    let wants = f32::from(event.bounds.right() - event.event.position.x);
+                    let room = room(&this.workspace, window, cx);
+                    this.width = resize_handle::width_for(wants, room);
                     cx.notify();
                 }),
             )
@@ -218,4 +216,11 @@ impl Render for InspectorView {
             )
             .child(div().flex_1().min_h_0().flex().flex_col().child(body))
     }
+}
+
+/// The width the page and the panel share: the window less the rail and the
+/// projects list.
+fn room(workspace: &Entity<Workspace>, window: &Window, cx: &App) -> f32 {
+    let beside = crate::shell::left_width(workspace.read(cx).sidebar_hidden());
+    f32::from(window.viewport_size().width) - beside
 }

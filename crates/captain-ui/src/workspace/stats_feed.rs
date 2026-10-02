@@ -12,15 +12,18 @@ const FIRST_RETRY: Duration = Duration::from_secs(1);
 const MAX_RETRY: Duration = Duration::from_secs(30);
 
 impl Workspace {
-    /// Follows stats for every running container, and stops following the rest.
+    /// Follows stats for every running container the list shows, and the selected
+    /// one, which may be a hidden extension backend. Stops following the rest.
     pub(super) fn sync_stats(&mut self, cx: &mut Context<Self>) {
         let Some(engine) = self.engine.clone() else {
             return;
         };
+        let hidden = self.selected().filter(|c| self.store.find(&c.id).is_none());
         let running: Vec<String> = self
             .store
             .containers()
             .iter()
+            .chain(hidden)
             .filter(|c| c.state == ContainerState::Running)
             .map(|c| c.id.clone())
             .collect();
@@ -57,7 +60,7 @@ impl Workspace {
                     let running = this.update(cx, |this, _| {
                         let running = this
                             .store
-                            .find(&key)
+                            .find_any(&key)
                             .is_some_and(|c| c.state == ContainerState::Running);
                         if !running {
                             this.finish_stats(&key, generation);

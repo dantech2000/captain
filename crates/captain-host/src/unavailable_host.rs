@@ -28,6 +28,10 @@ impl EngineHost for UnavailableHost {
         false
     }
 
+    fn supported(&self) -> bool {
+        false
+    }
+
     fn status(&self) -> HostFuture<HostStatus> {
         future::ready(Ok(HostStatus::NotInstalled(self.reason.clone()))).boxed()
     }

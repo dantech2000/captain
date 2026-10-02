@@ -229,6 +229,9 @@ impl HostModel {
     /// Switches to Captain Engine: connects if it runs, starts it if it is stopped,
     /// and otherwise leaves the setup screen up.
     pub fn use_captain(&mut self, cx: &mut Context<Self>) {
+        if !self.supported() {
+            return;
+        }
         settings::update(cx, |settings| settings.engine = Some(EngineChoice::Captain));
         if self.checking {
             // The first status check connects or starts it.

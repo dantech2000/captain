@@ -17,6 +17,7 @@ pub fn compose_references(yaml: &str) -> Vec<String> {
     let Ok(file) = serde_saphyr::from_str::<Value>(yaml) else {
         return found;
     };
+    found.extend(compose_files_in(&file));
     let mut add = |value: Option<&Value>| {
         found.extend(value.and_then(Value::as_str).and_then(relative));
     };
@@ -38,13 +39,6 @@ pub fn compose_references(yaml: &str) -> Vec<String> {
                 _ => {}
             }
         }
-        add(service.get("extends").and_then(|e| e.get("file")));
-    }
-    for include in list(file.get("include")) {
-        match include.get("path") {
-            Some(paths) => list(Some(paths)).into_iter().for_each(|p| add(Some(p))),
-            None => add(Some(include)),
-        }
     }
     for section in ["configs", "secrets"] {
         for entry in objects(file.get(section)) {
@@ -53,6 +47,31 @@ pub fn compose_references(yaml: &str) -> Vec<String> {
     }
     found.sort();
     found.dedup();
+    found
+}
+
+/// The Compose files that `yaml` names by a relative path: `include` and
+/// `extends.file`. Compose reads these too, so they can name more files.
+pub(super) fn compose_files(yaml: &str) -> Vec<String> {
+    serde_saphyr::from_str::<Value>(yaml)
+        .map(|file| compose_files_in(&file))
+        .unwrap_or_default()
+}
+
+fn compose_files_in(file: &Value) -> Vec<String> {
+    let mut found = Vec::new();
+    let mut add = |value: Option<&Value>| {
+        found.extend(value.and_then(Value::as_str).and_then(relative));
+    };
+    for service in objects(file.get("services")) {
+        add(service.get("extends").and_then(|e| e.get("file")));
+    }
+    for include in list(file.get("include")) {
+        match include.get("path") {
+            Some(paths) => list(Some(paths)).into_iter().for_each(|p| add(Some(p))),
+            None => add(Some(include)),
+        }
+    }
     found
 }
 

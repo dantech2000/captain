@@ -35,6 +35,12 @@ pub trait EngineHost: Send + Sync + 'static {
     /// the system `dockerd` on Linux.
     fn can_control(&self) -> bool;
 
+    /// False for a placeholder on a platform where Captain Engine does not run yet,
+    /// such as Windows. Captain then offers no way to choose it.
+    fn supported(&self) -> bool {
+        true
+    }
+
     /// The current state. It may run a command, so it can take a moment.
     fn status(&self) -> HostFuture<HostStatus>;
 

@@ -20,3 +20,6 @@ pub fn found<T>(result: Result<T, Error>) -> Result<Option<T>, EngineError> {
         Err(error) => Err(engine_error(error)),
     }
 }
+
+#[cfg(test)]
+mod tests;

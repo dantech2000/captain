@@ -23,12 +23,13 @@ impl Render for DraggedEdge {
     }
 }
 
-/// The width for a mouse at `mouse_x` while the panel's right edge is at `right`.
-/// `room` is the width the page and the panel share, the window less the rail and
-/// the projects list; the page keeps enough of it for its table.
-pub fn width_for(right: Pixels, mouse_x: Pixels, room: f32) -> f32 {
+/// The width the panel gets when it `wants` a width: from a drag of its edge, or
+/// the width it keeps while the window or the sidebar changes. `room` is the width
+/// the page and the panel share, the window less the rail and the projects list;
+/// the page keeps enough of it for its table.
+pub fn width_for(wants: f32, room: f32) -> f32 {
     let max = (room - PAGE_MIN).clamp(MIN_WIDTH, MAX_WIDTH);
-    f32::from(right - mouse_x).clamp(MIN_WIDTH, max)
+    wants.clamp(MIN_WIDTH, max)
 }
 
 /// A strip over the panel's left border. `on_reset` runs on a double-click.

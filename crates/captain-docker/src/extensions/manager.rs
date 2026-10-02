@@ -7,7 +7,7 @@ use captain_core::extension::{
 };
 use captain_core::{EngineError, EngineFuture};
 
-use super::{bridge, install, update};
+use super::{bridge, install, pulled, update};
 use crate::compose::{DockerCli, docker_host};
 use crate::runtime::{self, BackgroundRuntime};
 use crate::{Endpoint, engine};
@@ -111,7 +111,7 @@ impl ExtensionManager for DockerExtensions {
     fn discard(&self, candidate: ExtensionCandidate) -> EngineFuture<()> {
         let context = self.context.clone();
         runtime::spawn(self.runtime.handle(), async move {
-            install::discard(&context, &candidate).await;
+            pulled::discard(&context, &candidate).await;
             Ok(())
         })
     }

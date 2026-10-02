@@ -31,13 +31,15 @@ impl Workspace {
     }
 
     /// Shows container `id` with the inspector at `tab`: on the Project page of its
-    /// sidebar entry, or on the Containers page while the list does not have it yet.
+    /// sidebar entry, or on the Containers page while the list does not have it yet
+    /// or hides it, as it does extension backends. The inspector finds a hidden one.
     fn show_container(&mut self, id: String, tab: InspectorTab, cx: &mut Context<Self>) {
         match self.store.find(&id).map(GroupKey::of) {
             Some(key) => self.open_group(key, cx),
             None => self.page = Page::Containers,
         }
         self.open_card_tab(id, tab, cx);
+        self.sync_stats(cx);
     }
 
     /// Shows the Images or Volumes page, which then selects the item.

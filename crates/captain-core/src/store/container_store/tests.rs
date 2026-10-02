@@ -156,6 +156,9 @@ fn extension_backends_hide_until_shown() {
     assert_eq!((store.active_count(), store.projects().len()), (1, 0));
     assert!(store.is_hidden("portainer-0123456789abcdef", None));
     assert!(store.is_hidden("new", Some("captain-ext-acme-backend-1")));
+    // Explicit navigation still finds a hidden backend for the inspector.
+    let id = "portainer-0123456789abcdef";
+    assert!(store.find(id).is_none() && store.find_any(id).is_some());
     store.set_show_extensions(true);
     assert_eq!(names(&store), ["portainer", "web"]);
     assert!(!store.is_hidden("portainer-0123456789abcdef", None));

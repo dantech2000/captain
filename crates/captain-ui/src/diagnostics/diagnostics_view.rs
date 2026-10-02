@@ -81,7 +81,7 @@ impl Render for DiagnosticsView {
         let engine = engine_card::render(
             self.workspace.read(cx),
             host_summary(cx).as_ref(),
-            host_model(cx),
+            host_model(cx).filter(|model| model.read(cx).supported()),
             &palette,
         );
         let model = handle.read(cx);

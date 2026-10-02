@@ -13,7 +13,7 @@ use captain_core::model::ImageReference;
 
 use super::manager::Context;
 use super::swap::Swap;
-use super::{backend, copy, files, install, tags};
+use super::{backend, copy, files, install, pulled, tags};
 
 /// The tag the Update dialog offers: the newest version tag of the extension's
 /// repository, or `latest`.
@@ -48,7 +48,7 @@ pub async fn check(
         id => Some(id.to_string()),
     };
     let parsed = ImageReference::parse(&reference).ok_or_else(invalid)?;
-    let existed = docker.inspect_image(&reference).await.is_ok();
+    let pulled = pulled::absent(docker, &reference).await?;
     if let Err(error) = install::pull(docker, &parsed).await {
         if docker.inspect_image(&reference).await.is_err() {
             return Err(error);
@@ -56,7 +56,7 @@ pub async fn check(
         tracing::info!(%error, %reference, "cannot pull the update; using the engine's copy");
     }
     let mut candidate = install::prepare(context, &reference).await?;
-    candidate.pulled = !existed;
+    candidate.pulled = pulled;
     if installed_id.as_deref() == Some(candidate.image_id.as_str()) {
         return Ok(UpdateCheck::UpToDate { image: reference });
     }
@@ -96,8 +96,8 @@ pub async fn apply(
     let result = stage_and_switch(context, &extension, &new, &staging, backup).await;
     std::fs::remove_dir_all(staging.dir(&new.id)).ok();
     std::fs::remove_dir(staging.root()).ok();
-    if result.is_err() && pulled && new.image != extension.image {
-        install::remove_image(&context.docker, &new.image).await;
+    if result.is_err() && pulled && new.image_id != extension.image_id {
+        pulled::remove_image(&context.docker, &new.image_id).await;
     }
     result?;
     remove_old_image(context, &extension, &new).await;

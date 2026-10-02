@@ -125,6 +125,11 @@ impl HostModel {
         self.checking
     }
 
+    /// False where Captain Engine does not run, such as Windows.
+    pub fn supported(&self) -> bool {
+        self.host.supported()
+    }
+
     /// False for a host Captain does not control, and while a snapshot step runs.
     pub fn can_control(&self) -> bool {
         self.host.can_control() && !self.snapshotting

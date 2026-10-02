@@ -143,6 +143,14 @@ impl Workspace {
         let show = crate::settings::current(cx).show_extension_containers;
         if show != self.store.shows_extensions() {
             self.store.set_show_extensions(show);
+            // A backend that the lists hide again leaves the inspector.
+            if self
+                .selected
+                .as_deref()
+                .is_some_and(|id| self.store.find(id).is_none())
+            {
+                self.selected = None;
+            }
             self.keep_selection_valid();
             let store = &self.store;
             self.checked.retain(|id| store.find(id).is_some());
@@ -227,8 +235,12 @@ impl Workspace {
         self.crashes.recent(id, Instant::now())
     }
 
+    /// The container the inspector shows. Only an explicit navigation selects an
+    /// extension backend that the lists hide, so the lookup includes those.
     pub fn selected(&self) -> Option<&Container> {
-        self.selected.as_deref().and_then(|id| self.store.find(id))
+        self.selected
+            .as_deref()
+            .and_then(|id| self.store.find_any(id))
     }
 
     pub fn select(&mut self, id: String, cx: &mut Context<Self>) {

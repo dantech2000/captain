@@ -4,6 +4,7 @@ use std::pin::pin;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use bollard::Docker;
+use bollard::models::ImageInspect;
 use bollard::query_parameters::{CreateImageOptionsBuilder, RemoveImageOptions};
 use captain_core::EngineError;
 use captain_core::extension::{
@@ -14,12 +15,13 @@ use captain_core::model::ImageReference;
 use futures::StreamExt;
 
 use super::manager::Context;
-use super::{backend, copy, files, tags};
+use super::{backend, copy, files, pulled, tags};
 use crate::mapping;
 
 /// Pulls the image if needed, then reads its labels and `metadata.json`. A
-/// reference without a tag gets the newest version tag. An image this call pulled
-/// is removed again when it is not an extension.
+/// reference without a tag gets the newest version tag. Captain pulls only when the
+/// engine answers that the image does not exist; any other inspect error fails. An
+/// image this call pulled is removed again, by ID, when it is not an extension.
 pub async fn prepare(
     context: &Context,
     reference: &str,
@@ -33,13 +35,18 @@ pub async fn prepare(
     let parsed = ImageReference::parse(&reference).ok_or_else(invalid)?;
     let image = parsed.to_string();
     let id = extension_id(&image).ok_or_else(invalid)?;
-    let pulled = docker.inspect_image(&image).await.is_err();
+    let pulled = pulled::absent(docker, &image).await?;
     if pulled {
         pull(docker, &parsed).await?;
     }
-    let candidate = read_candidate(docker, image.clone(), id).await;
+    let inspect = docker
+        .inspect_image(&image)
+        .await
+        .map_err(mapping::engine_error)?;
+    let image_id = inspect.id.clone().unwrap_or_default();
+    let candidate = read_candidate(docker, image, id, inspect).await;
     if candidate.is_err() && pulled {
-        remove_image(docker, &image).await;
+        pulled::remove_image(docker, &image_id).await;
     }
     candidate.map(|candidate| ExtensionCandidate {
         pulled,
@@ -51,11 +58,8 @@ async fn read_candidate(
     docker: &Docker,
     image: String,
     id: String,
+    inspect: ImageInspect,
 ) -> Result<ExtensionCandidate, EngineError> {
-    let inspect = docker
-        .inspect_image(&image)
-        .await
-        .map_err(mapping::engine_error)?;
     let image_id = inspect.id.unwrap_or_default();
     let labels = inspect
         .config
@@ -77,24 +81,6 @@ async fn read_candidate(
         metadata,
         pulled: false,
     })
-}
-
-/// Removes an image that an install pulled and no longer needs. A failure only logs.
-pub(super) async fn remove_image(docker: &Docker, image: &str) {
-    let removed = docker
-        .remove_image(image, None::<RemoveImageOptions>, None)
-        .await;
-    match removed {
-        Ok(_) => tracing::info!(%image, "removed the pulled extension image"),
-        Err(error) => tracing::info!(%error, %image, "cannot remove the pulled extension image"),
-    }
-}
-
-/// Removes the image of a candidate the user did not install, if Captain pulled it.
-pub async fn discard(context: &Context, candidate: &ExtensionCandidate) {
-    if candidate.pulled {
-        remove_image(&context.docker, &candidate.image).await;
-    }
 }
 
 pub(super) async fn pull(docker: &Docker, reference: &ImageReference) -> Result<(), EngineError> {
@@ -127,7 +113,7 @@ pub async fn install(
         .and_then(|()| check_repository(&context.paths, &extension.image));
     if let Err(error) = checked {
         if pulled {
-            remove_image(&context.docker, &extension.image).await;
+            pulled::remove_image(&context.docker, &extension.image_id).await;
         }
         return Err(error);
     }
@@ -145,7 +131,7 @@ pub async fn install(
         }
         std::fs::remove_dir_all(&dir).ok();
         if pulled {
-            remove_image(&context.docker, &extension.image).await;
+            pulled::remove_image(&context.docker, &extension.image_id).await;
         }
     }
     result.map(|()| extension)

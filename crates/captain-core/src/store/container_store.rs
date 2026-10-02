@@ -77,6 +77,12 @@ impl ContainerStore {
         self.containers.iter().find(|c| c.id == id)
     }
 
+    /// The container `id`, even an extension backend that the lists hide. The
+    /// inspector uses it, so an extension's navigate call can open a hidden one.
+    pub fn find_any(&self, id: &str) -> Option<&Container> {
+        self.all.iter().find(|c| c.id == id)
+    }
+
     /// Containers that pass `filter`, in cards sorted by [`GroupKey`]. Kubernetes pod
     /// containers are left out unless `kubernetes` is true; then each namespace gets
     /// a card.

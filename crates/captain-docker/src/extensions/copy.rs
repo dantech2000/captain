@@ -6,7 +6,7 @@ use std::path::Path;
 use bollard::Docker;
 use captain_core::EngineError;
 use captain_core::extension::{
-    Backend, ExtensionPaths, InstalledExtension, binary_name, compose_references, host_platform,
+    Backend, ComposeWalk, ExtensionPaths, InstalledExtension, binary_name, host_platform,
 };
 
 use super::files;
@@ -37,7 +37,8 @@ pub async fn copy_files(
 
 /// Copies the Compose file's folder, as Rancher Desktop does. A Compose file at
 /// the image root would copy the whole image, so there Captain copies the file and
-/// the files it names by a relative path.
+/// the files it names by a relative path, and so on through the Compose files it
+/// includes or extends.
 async fn copy_compose(
     docker: &Docker,
     container: &str,
@@ -55,19 +56,19 @@ async fn copy_compose(
         return Ok(());
     }
     let tar = files::archive(docker, container, &file).await?;
-    let written = files::unpack(&tar, dest, false)?;
-    let yaml = written
-        .first()
-        .and_then(|path| std::fs::read_to_string(path).ok())
-        .unwrap_or_default();
-    for reference in compose_references(&yaml) {
-        // A missing file is Compose's to report; `.env` is optional.
-        let Ok(tar) = files::archive(docker, container, &format!("/{reference}")).await else {
-            tracing::debug!(%reference, "the Compose file names a path the image does not have");
-            continue;
-        };
-        let parent = Path::new(&reference).parent().unwrap_or(Path::new(""));
-        files::unpack(&tar, &dest.join(parent), false)?;
+    files::unpack(&tar, dest, false)?;
+    let mut walk = ComposeWalk::new(file.trim_start_matches('/'));
+    while let Some((compose, depth)) = walk.next_file() {
+        let yaml = std::fs::read_to_string(dest.join(&compose)).unwrap_or_default();
+        for reference in walk.read(&compose, depth, &yaml) {
+            // A missing file is Compose's to report; `.env` is optional.
+            let Ok(tar) = files::archive(docker, container, &format!("/{reference}")).await else {
+                tracing::debug!(%reference, "the Compose file names a path the image does not have");
+                continue;
+            };
+            let parent = Path::new(&reference).parent().unwrap_or(Path::new(""));
+            files::unpack(&tar, &dest.join(parent), false)?;
+        }
     }
     Ok(())
 }

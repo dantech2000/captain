@@ -130,7 +130,8 @@ fn other_note(workspace: &Workspace) -> String {
     }
 }
 
-/// "Use Captain Engine", as in the Settings engine menu, when the app has it.
+/// "Use Captain Engine", as in the Settings engine menu, when the app has it and
+/// it runs on this platform.
 fn other_controls(captain: Option<Entity<HostModel>>, palette: &Palette) -> Div {
     div().children(captain.map(|model| {
         text_button(
