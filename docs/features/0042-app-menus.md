@@ -29,7 +29,7 @@ The order follows Apple's guidelines for the menu bar: the app menu, File, Edit,
 | Help | Captain Help, Keyboard Shortcuts · Report an Issue…, Show Logs |
 
 - **About Captain** shows the main window and a dialog with the app mark, the versions that the Settings page's About line shows (Captain, the engine runtime, Docker), the license, and links to the licenses and the repository.
-- **Settings…** opens the Settings page. While the main window is closed or another Captain window is in front, it opens the main window first.
+- **Settings…** opens the Settings page. While the main window is closed or another Captain window is in front, it opens the main window first. While a dialog or sheet has focus, it closes the dialog first, so the item always does what it says.
 - **Open Folder…** opens the New sheet and its Open a folder card at once: the folder dialog, then the sheet's check of the Compose files.
 - **New Terminal Tab** opens a tab in the terminal panel, and shows the panel. On a project page the tab opens in the project folder.
 - **Captain Help** opens `docs/guide/README.md` on GitHub, **Keyboard Shortcuts** the guide's shortcut table, **Report an Issue…** a new GitHub issue, and **Show Logs** the log folder (as the Diagnostics page's Show logs).
@@ -82,7 +82,7 @@ By hand, on macOS:
 
 1. Open each menu. The items, separators, and shortcuts match the table above. View ends with Enter Full Screen; Window ends with the window list.
 2. Captain > About Captain shows the dialog with the versions; Licenses and Source code open.
-3. Close the main window. Captain > Settings… (and ⌘,) opens the window on Settings. About Captain opens the window and the dialog.
+3. Close the main window. Captain > Settings… (and ⌘,) opens the window on Settings. About Captain opens the window and the dialog. Open About Captain, then choose Settings…: the dialog closes and Settings shows.
 4. Click in a text field. Edit > Undo, Cut, Copy, Paste, and Select All are on and work; ⌘C and ⌘V still work. Click on a page outside fields: the Edit items are off.
 5. Open a Compose file on a project's Files tab. Edit > Find opens the editor's search; ⌘F does too.
 6. Select text in the terminal panel. Edit > Copy copies it; Edit > Paste pastes into the shell.

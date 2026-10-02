@@ -2,6 +2,7 @@ use gpui_kit::component::button::{Button, ButtonVariants};
 use gpui_kit::component::dialog::{DialogAction, DialogClose, DialogFooter};
 use gpui_kit::*;
 
+use super::BUTTON_CONTEXT;
 use crate::help::{HelpExt, Hint};
 
 /// The footer of an alert dialog that asks before removing something: Cancel and a
@@ -23,6 +24,8 @@ fn footer(confirm: Button, help: impl Into<Hint>) -> DialogFooter {
         .child(
             div()
                 .id("dialog-cancel")
+                // Enter on a focused Cancel cancels, not confirms.
+                .key_context(BUTTON_CONTEXT)
                 .child(DialogClose::new().trigger(|button| button.label("Cancel")))
                 .help("Close this dialog. Nothing changes."),
         )

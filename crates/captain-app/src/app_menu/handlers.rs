@@ -1,9 +1,10 @@
 //! What the menu items do when no view handles them: the app and window items,
-//! About, Help, and Settings while the main window is closed or not in front.
+//! About, Help, and Settings while the shell does not have focus.
 
 use std::path::Path;
 
 use captain_ui::{ShowSettings, diagnostics_model, open_about};
+use gpui_kit::component::WindowExt;
 use gpui_kit::*;
 
 use super::entries::{
@@ -34,11 +35,14 @@ pub fn register(cx: &mut App) {
             window::update_main(cx, |window, cx| open_about(workspace, window, cx));
         })
     });
-    // The shell handles Settings while the main window is in front.
+    // The shell handles Settings while it has focus. This runs everywhere else:
+    // with the main window closed or behind, or with a dialog in front. It closes
+    // the dialogs, so Settings always opens.
     cx.on_action(|_: &ShowSettings, cx| {
-        if !window::main_is_active(cx) {
-            cx.defer(window::show_settings);
-        }
+        cx.defer(|cx| {
+            window::update_main(cx, |window, cx| window.close_all_dialogs(cx));
+            window::show_settings(cx);
+        })
     });
     cx.on_action(|_: &Hide, cx| cx.hide());
     cx.on_action(|_: &HideOthers, cx| cx.hide_other_apps());

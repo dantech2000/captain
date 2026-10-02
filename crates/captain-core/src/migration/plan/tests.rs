@@ -157,3 +157,26 @@ fn live_volumes_list_running_users_until_a_switch_over() {
     plan.set_switch_over("project:crm", true);
     assert!(plan.live_volumes().is_empty());
 }
+
+#[test]
+fn a_standalone_users_live_volume_warns_and_an_unused_one_does_not() {
+    let plan = MigrationPlan::new(
+        "test",
+        vec![
+            MigrationItem::Volume {
+                name: "pgdata".into(),
+                size: None,
+                used_by_running: vec!["db".into()],
+            },
+            MigrationItem::Volume {
+                name: "cache".into(),
+                size: None,
+                used_by_running: Vec::new(),
+            },
+        ],
+    );
+    let live = plan.live_volumes();
+    assert_eq!(live.len(), 1);
+    assert_eq!(live[0].0, "pgdata");
+    assert_eq!(live[0].1, ["db".to_string()]);
+}

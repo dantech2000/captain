@@ -1,11 +1,13 @@
 //! Captain's buttons sit on gpui-kit's Button, which gives them keyboard focus (Tab,
-//! then Enter or Space), a focus ring, and a button role and name for screen readers.
+//! then Enter or Space, also inside a dialog), a focus ring, and a button role and name for screen readers.
 //! The helpers keep Captain's size, radius, and colors. See
 //! https://gpui-kit.com/component/button.
 
 use gpui_kit::component::Disableable;
 use gpui_kit::component::button::{Button, ButtonCustomVariant, ButtonVariants};
 use gpui_kit::*;
+
+use super::BUTTON_CONTEXT;
 
 /// The colors of an enabled button: its fill, its text, and its fill under the mouse
 /// and while pressed.
@@ -38,7 +40,8 @@ impl RenderOnce for KitButton {
 
 /// A kit button inside a div with the same id. The caller sizes the div, and the
 /// button fills it; the div carries `.help()`, which needs a stateful element, and
-/// keeps its hover when the button is disabled. `name` is what a screen reader says.
+/// keeps its hover when the button is disabled, and its key context lets Enter and
+/// Space reach the button inside a dialog. `name` is what a screen reader says.
 /// `style` sets the button's shape, colors, and content.
 pub fn kit_button(
     id: impl Into<ElementId>,
@@ -53,8 +56,12 @@ pub fn kit_button(
         .accessibility_label(name)
         .disabled(!enabled)
         .on_click(on_click);
-    div().id(id).flex().child(KitButton {
-        button: style(button),
-        look,
-    })
+    div()
+        .id(id)
+        .key_context(BUTTON_CONTEXT)
+        .flex()
+        .child(KitButton {
+            button: style(button),
+            look,
+        })
 }

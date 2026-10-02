@@ -1,6 +1,8 @@
 //! App-wide actions, key bindings, and the menu bar.
 
-use captain_ui::{ToggleCommandPalette, ToggleSidebar, page_bindings, terminal_bindings};
+use captain_ui::{
+    ToggleCommandPalette, ToggleSidebar, button_bindings, page_bindings, terminal_bindings,
+};
 use gpui_kit::*;
 
 use crate::quit;
@@ -29,7 +31,8 @@ pub fn register(cx: &mut App) {
 }
 
 /// Quit, ⌘K, ⌘B, ⌘1 to ⌘9 and ⌘, for the rail's pages (Ctrl on Linux and
-/// Windows), and ⌃` for the terminal panel with its tab keys. The menu bar shows
+/// Windows), ⌃` for the terminal panel with its tab keys, and Enter and Space on a
+/// focused button. The menu bar shows
 /// the first binding of each action, so the ⌘ ones come first.
 pub fn app_bindings() -> Vec<KeyBinding> {
     let mut bindings = vec![
@@ -43,6 +46,7 @@ pub fn app_bindings() -> Vec<KeyBinding> {
     bindings.extend(page_bindings("cmd"));
     bindings.extend(page_bindings("ctrl"));
     bindings.extend(terminal_bindings());
+    bindings.extend(button_bindings());
     bindings
 }
 

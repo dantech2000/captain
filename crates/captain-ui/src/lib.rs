@@ -59,5 +59,5 @@ pub use shell::{
 };
 pub use storage::init as storage_init;
 pub use terminal_panel::{NewTerminalTab, ToggleTerminal, terminal_bindings};
-pub use widgets::error_notification;
+pub use widgets::{button_bindings, error_notification};
 pub use workspace::{Connection, Connector, EngineHealth, Page, Workspace};

@@ -2,6 +2,7 @@
 
 mod action_button;
 mod brand_mark;
+mod button_keys;
 mod column_header;
 mod container_link;
 mod create_field;
@@ -40,6 +41,7 @@ mod titled_section;
 
 pub use action_button::action_button;
 pub use brand_mark::brand_mark;
+pub use button_keys::{BUTTON_CONTEXT, button_bindings};
 pub use column_header::{Column, column_header};
 pub use container_link::container_link;
 pub use create_field::create_field;

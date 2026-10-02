@@ -137,3 +137,6 @@ fn check_action(state: ContainerState, action: ContainerAction) -> Result<(), En
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests;
