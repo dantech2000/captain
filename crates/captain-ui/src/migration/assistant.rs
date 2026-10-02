@@ -104,7 +104,7 @@ impl MigrationAssistant {
     }
 
     pub(super) fn fail(&mut self, error: String, stage: Stage, cx: &mut Context<Self>) {
-        tracing::warn!(%error, "migration assistant");
+        tracing::warn!(%error, "a migration step failed");
         self.error = Some(error);
         self.stage = stage;
         self.task = None;

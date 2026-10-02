@@ -4,4 +4,6 @@
 .idea/
 .vscode/
 .claude/worktrees/
+# Local Cargo settings, such as per-worktree build options.
+/.cargo/config.toml
 assets/icon/Captain.iconset/
