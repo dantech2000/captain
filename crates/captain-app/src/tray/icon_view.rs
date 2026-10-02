@@ -70,16 +70,19 @@ impl Tray {
             _ => None,
         };
         let paint_dot = cfg!(not(target_os = "macos")) || colored.is_none();
-        if let Err(error) = self
+        let set = self
             .icon
-            .set_icon_with_as_template(Some(rgba_icon(look, frame, paint_dot)), true)
-        {
-            tracing::warn!(%error, "cannot update the menu bar icon");
-            return;
-        }
-        #[cfg(target_os = "macos")]
-        if let Some(light) = colored {
-            super::status_dot::paint(&self.icon, light);
+            .set_icon_with_as_template(Some(rgba_icon(look, frame, paint_dot)), true);
+        match set {
+            Err(error) => tracing::warn!(%error, "cannot update the menu bar icon"),
+            #[cfg(target_os = "macos")]
+            Ok(()) => {
+                if let Some(light) = colored {
+                    super::status_dot::paint(&self.icon, light);
+                }
+            }
+            #[cfg(not(target_os = "macos"))]
+            Ok(()) => {}
         }
     }
 
