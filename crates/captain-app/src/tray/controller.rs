@@ -10,39 +10,29 @@ use captain_core::model::ContainerState;
 use captain_ui::Workspace;
 use gpui_kit::*;
 use muda::{MenuId, MenuItem};
-use tray_icon::{Icon, TrayIcon, TrayIconBuilder};
+use tray_icon::{TrayIcon, TrayIconBuilder};
 
 use super::exit_facts::ExitFactsCache;
 use super::gather::snapshot;
+use super::look::IconLook;
 use super::menu::NativeMenu;
 use super::menu_model::{self, TrayCommand};
-use super::snapshot::{EngineStatus, TraySnapshot};
-use super::{events, icon};
+use super::snapshot::TraySnapshot;
+use super::{events, icon_view};
 use crate::window;
 
 /// Changes often come in bursts, for example `docker compose up`. Wait this long
 /// after a change before rebuilding the menu.
 const REBUILD_DEBOUNCE: Duration = Duration::from_millis(200);
 
-/// How long each frame of the turning wheel shows while the engine starts.
-const TURN_FRAME: Duration = Duration::from_millis(120);
-
 /// How often the tray reads the kubeconfig for the Kubernetes Contexts submenu.
 /// kubectl and other tools change it too.
 const CONTEXTS_POLL: Duration = Duration::from_secs(5);
 
-/// Template images on macOS take the menu bar's color, so only the alpha counts.
-/// The Windows taskbar is dark by default, so the icon is white there.
-const COLOR: [u8; 3] = if cfg!(target_os = "macos") {
-    [0, 0, 0]
-} else {
-    [255, 255, 255]
-};
-
 pub(super) struct Tray {
-    icon: TrayIcon,
+    pub(super) icon: TrayIcon,
     /// The snapshot that the current menu shows.
-    shown: Option<TraySnapshot>,
+    pub(super) shown: Option<TraySnapshot>,
     commands: HashMap<MenuId, TrayCommand>,
     /// The engine's status line in the current menu.
     status: Option<MenuItem>,
@@ -50,11 +40,15 @@ pub(super) struct Tray {
     workspace: Entity<Workspace>,
     contexts: KubeContexts,
     pub(super) exits: ExitFactsCache,
+    /// The icon as it shows now.
+    pub(super) look: Option<IconLook>,
+    /// The `menu_bar_status_dot` setting: a stop-light dot on the icon.
+    pub(super) colored: bool,
     _observe: Vec<Subscription>,
     _events: Task<()>,
     _contexts: Option<Task<()>>,
-    /// Turns the wheel while the engine starts.
-    spin: Option<Task<()>>,
+    /// Turns the wheel while the engine starts, stops, or reconnects.
+    pub(super) spin: Option<Task<()>>,
 }
 
 /// Keeps the tray alive for the life of the app.
@@ -70,10 +64,12 @@ pub fn start(cx: &mut App) {
     let contexts = load_contexts(&user_kubeconfig_paths());
     let snapshot = snapshot(&workspace, &contexts, &HashMap::new(), cx);
     let host = captain_ui::host_model(cx);
+    let colored = captain_ui::current_settings(cx).menu_bar_status_dot;
     // tray-icon opens the menu on a left click by default, as macOS menu extras do.
+    // The plain icon comes first; `show` adds the dot.
     let icon = TrayIconBuilder::new()
         .with_tooltip("Captain")
-        .with_icon(status_icon(snapshot.icon(), 0))
+        .with_icon(icon_view::plain_icon(snapshot.look(false)))
         .with_icon_as_template(true)
         .build();
     let icon = match icon {
@@ -111,6 +107,8 @@ pub fn start(cx: &mut App) {
             workspace,
             contexts,
             exits: ExitFactsCache::default(),
+            look: None,
+            colored,
             _observe: observe,
             _events: events,
             _contexts: None,
@@ -235,21 +233,16 @@ impl Tray {
     /// Shows `snapshot`. When only the status line changed, as it does with each
     /// stats sample, the line changes in place; else the menu is built again.
     fn show(&mut self, snapshot: TraySnapshot, cx: &mut Context<Self>) {
-        let shown = self.shown.as_ref();
-        if shown == Some(&snapshot) {
+        if self.shown.as_ref() == Some(&snapshot) {
             return;
         }
-        if let (Some(shown), Some(status)) = (shown, &self.status)
+        self.show_look(snapshot.look(self.colored), cx);
+        if let (Some(shown), Some(status)) = (&self.shown, &self.status)
             && shown.same_menu(&snapshot)
         {
             status.set_text(menu_model::status_text(&snapshot));
             self.shown = Some(snapshot);
             return;
-        }
-        let status = snapshot.icon();
-        if shown.map(TraySnapshot::icon) != Some(status) {
-            self.set_icon(status, 0);
-            self.spin = (status == EngineStatus::Starting).then(|| Self::turn(cx));
         }
         let native = NativeMenu::new(&menu_model::build(&snapshot));
         self.icon.set_menu(Some(Box::new(native.menu)));
@@ -257,37 +250,4 @@ impl Tray {
         self.status = native.status;
         self.shown = Some(snapshot);
     }
-}
-
-impl Tray {
-    fn set_icon(&self, status: EngineStatus, frame: u32) {
-        if let Err(error) = self
-            .icon
-            .set_icon_with_as_template(Some(status_icon(status, frame)), true)
-        {
-            tracing::warn!(%error, "cannot update the menu bar icon");
-        }
-    }
-
-    /// Advances the wheel one frame at a time until the task is dropped.
-    fn turn(cx: &mut Context<Self>) -> Task<()> {
-        cx.spawn(async move |this, cx| {
-            let mut frame = 0;
-            loop {
-                cx.background_executor().timer(TURN_FRAME).await;
-                frame = (frame + 1) % icon::TURN_FRAMES;
-                if this
-                    .update(cx, |tray, _| tray.set_icon(EngineStatus::Starting, frame))
-                    .is_err()
-                {
-                    return;
-                }
-            }
-        })
-    }
-}
-
-fn status_icon(status: EngineStatus, frame: u32) -> Icon {
-    Icon::from_rgba(icon::rgba(status, frame, COLOR), icon::SIZE, icon::SIZE)
-        .expect("the icon buffer matches its size")
 }

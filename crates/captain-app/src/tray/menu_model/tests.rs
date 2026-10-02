@@ -4,13 +4,14 @@ use captain_core::model::{ContainerAction, ContainerState};
 use super::{TrayCommand, TrayItem, build};
 use crate::tray::dot::Light;
 use crate::tray::entries::HostEntry;
-use crate::tray::snapshot::{EngineStatus, TraySnapshot};
+use crate::tray::snapshot::TraySnapshot;
 use crate::tray::test_support::{entry, find, labels, light, snapshot, submenu};
+use captain_ui::EngineHealth;
 
 #[test]
 fn a_stopped_engine_shows_status_open_settings_and_quit() {
     let menu = build(&TraySnapshot {
-        engine: EngineStatus::Stopped,
+        engine: EngineHealth::Stopped,
         status_line: "Captain Engine: Stopped".into(),
         ..snapshot(Vec::new())
     });
@@ -112,7 +113,7 @@ fn each_row_has_its_status_light() {
     );
 }
 
-fn with_host(engine: EngineStatus, status: HostStatus) -> TraySnapshot {
+fn with_host(engine: EngineHealth, status: HostStatus) -> TraySnapshot {
     TraySnapshot {
         engine,
         host: Some(HostEntry {
@@ -125,7 +126,7 @@ fn with_host(engine: EngineStatus, status: HostStatus) -> TraySnapshot {
 
 #[test]
 fn a_stopped_captain_engine_offers_start() {
-    let menu = build(&with_host(EngineStatus::Stopped, HostStatus::Stopped));
+    let menu = build(&with_host(EngineHealth::Stopped, HostStatus::Stopped));
     assert_eq!(labels(&menu)[2], "Start Captain Engine");
     assert!(menu.contains(&TrayItem::command(
         "Start Captain Engine",
@@ -135,13 +136,13 @@ fn a_stopped_captain_engine_offers_start() {
 
 #[test]
 fn a_running_captain_engine_offers_stop() {
-    let menu = build(&with_host(EngineStatus::Running, HostStatus::Running));
+    let menu = build(&with_host(EngineHealth::Running, HostStatus::Running));
     assert_eq!(labels(&menu)[3], "Stop Captain Engine");
 }
 
 #[test]
 fn a_new_captain_engine_opens_setup() {
-    let menu = build(&with_host(EngineStatus::Stopped, HostStatus::NotCreated));
+    let menu = build(&with_host(EngineHealth::Stopped, HostStatus::NotCreated));
     assert!(menu.contains(&TrayItem::command(
         "Set Up Captain Engine\u{2026}",
         TrayCommand::OpenCaptain

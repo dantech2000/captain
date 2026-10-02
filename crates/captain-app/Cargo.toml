@@ -28,8 +28,9 @@ tracing-subscriber.workspace = true
 muda.workspace = true
 tray-icon.workspace = true
 
-# The Dock badge; see feature 0032.
+# The Dock badge (feature 0032) and the menu bar icon's status dot (feature 0009).
 [target.'cfg(target_os = "macos")'.dependencies]
+block2.workspace = true
 objc2.workspace = true
 objc2-app-kit.workspace = true
 objc2-foundation.workspace = true

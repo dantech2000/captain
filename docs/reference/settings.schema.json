@@ -143,6 +143,15 @@
       "default": true,
       "x-captain-group": "Startup"
     },
+    "menu_bar_status_dot": {
+      "description": "Show a colored status dot on the menu bar icon: green while the engine runs, amber while it starts, stops, or reconnects or a container needs a look, and red when the engine does not answer or a container keeps crashing. Off, the icon is plain and gets a dot only when something is wrong. macOS and Windows. Applies at once.",
+      "type": "boolean",
+      "examples": [
+        false
+      ],
+      "default": true,
+      "x-captain-group": "Startup"
+    },
     "debug_logging": {
       "description": "Write debug-level lines to Captain's log file. Applies at once.",
       "type": "boolean",

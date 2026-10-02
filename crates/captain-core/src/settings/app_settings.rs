@@ -88,6 +88,15 @@ pub struct Settings {
     #[serde(deserialize_with = "lenient_true")]
     #[schemars(extend("x-captain-group" = "Startup"), example = false)]
     pub show_menu_bar_icon: bool,
+    /// Show a colored status dot on the menu bar icon: green while the engine runs,
+    /// amber while it starts, stops, or reconnects or a container needs a look, and
+    /// red when the engine does not answer or a container keeps crashing. Off, the
+    /// icon is plain and gets a dot only when something is wrong. macOS and
+    /// Windows. Applies at once.
+    // Feature 0009.
+    #[serde(deserialize_with = "lenient_true")]
+    #[schemars(extend("x-captain-group" = "Startup"), example = false)]
+    pub menu_bar_status_dot: bool,
     /// Write debug-level lines to Captain's log file. Applies at once.
     #[serde(deserialize_with = "lenient")]
     #[schemars(extend("x-captain-group" = "Diagnostics"), example = true)]
@@ -143,6 +152,7 @@ impl Default for Settings {
             kubernetes: KubernetesSettings::default(),
             start_in_background: false,
             show_menu_bar_icon: true,
+            menu_bar_status_dot: true,
             debug_logging: false,
             weekly_build_cache_cleanup: false,
             build_cache_cleaned_at: None,

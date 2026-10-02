@@ -5,6 +5,7 @@
 use captain_core::HostStatus;
 use captain_core::diagnostics::Fix;
 use captain_core::model::ContainerAction;
+use captain_ui::EngineHealth;
 
 use super::containers_menu::{containers, open_ports};
 use super::dot::Light;
@@ -12,7 +13,7 @@ use super::entries::HostEntry;
 use super::kubernetes_menu::kubernetes_items;
 use super::problem_menu::problem_items;
 use super::projects_menu::projects;
-use super::snapshot::{EngineStatus, TraySnapshot};
+use super::snapshot::TraySnapshot;
 
 /// What a menu item does when the user picks it.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -116,7 +117,7 @@ pub fn build(snapshot: &TraySnapshot) -> Vec<TrayItem> {
         label: snapshot.status_line.clone(),
         light: engine_light(snapshot.engine),
     }];
-    let running = snapshot.engine == EngineStatus::Running;
+    let running = snapshot.engine == EngineHealth::Running;
     if running {
         items.push(TrayItem::Label(count_label(snapshot)));
     }
@@ -153,12 +154,14 @@ pub fn build(snapshot: &TraySnapshot) -> Vec<TrayItem> {
     items
 }
 
-fn engine_light(engine: EngineStatus) -> Light {
+fn engine_light(engine: EngineHealth) -> Light {
     match engine {
-        EngineStatus::Running => Light::Green,
-        EngineStatus::Starting => Light::Amber,
-        EngineStatus::Stopped => Light::Gray,
-        EngineStatus::NeedsAttention => Light::Red,
+        EngineHealth::Running => Light::Green,
+        EngineHealth::Connecting | EngineHealth::Starting | EngineHealth::Reconnecting => {
+            Light::Amber
+        }
+        EngineHealth::NotAnswering | EngineHealth::CannotRun => Light::Red,
+        EngineHealth::Stopped | EngineHealth::NotSetUp => Light::Gray,
     }
 }
 

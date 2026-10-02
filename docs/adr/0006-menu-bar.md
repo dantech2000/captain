@@ -34,4 +34,10 @@ M10 puts a Captain icon in the macOS menu bar and the Windows notification area 
 - Rebuilds stay cheap: the snapshot holds only what the menu shows. The engine line's memory changes with each stats sample, so when only that line differs, its text changes in place (`IconMenuItem::set_text`) and the menu is not built again. Other changes still rebuild the menu 200 ms later.
 - Status lights: colored circle characters at the start of the item text, because a status item's menu showed no item images on current macOS (drawn images and the system status dots both failed when tested), and muda has no text color. See feature 0009.
 - The icon is still the ship's wheel, with a notch dot when a container needs attention. See [feature 0012](../features/0012-icon-theme.md).
+
+## Update: the stop-light dot
+
+- The wheel now carries a colored status dot: green, amber, red, or none while stopped. Setting `menu_bar_status_dot` turns it off and brings back the plain template icon.
+- A template image cannot hold a colored dot, and tray-icon marks the whole image as a template or not. On macOS, `status_dot.rs` uses `TrayIcon::ns_status_item` to replace the button's image with an `NSImage` drawing handler that draws the wheel in `labelColor` and the dot in a system color. AppKit runs the handler with the menu bar's appearance, so the wheel still follows light and dark menu bars. Windows paints the dot into the RGBA image.
+- `objc2-app-kit` and `block2` gain the features for this, in the versions tray-icon already uses. All calls are safe Rust; `unsafe_code` stays forbidden. See [feature 0009](../features/0009-menu-bar.md).
 - The floating log window and the Dock badge stay. See [feature 0032](../features/0032-menu-bar-popover.md).

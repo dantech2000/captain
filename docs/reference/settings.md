@@ -161,6 +161,14 @@ Show Captain's icon in the menu bar (macOS) or the notification area (Windows). 
 - Default: `true`
 - Example: `"show_menu_bar_icon": false`
 
+### `menu_bar_status_dot`
+
+Show a colored status dot on the menu bar icon: green while the engine runs, amber while it starts, stops, or reconnects or a container needs a look, and red when the engine does not answer or a container keeps crashing. Off, the icon is plain and gets a dot only when something is wrong. macOS and Windows. Applies at once.
+
+- Type: true or false
+- Default: `true`
+- Example: `"menu_bar_status_dot": false`
+
 ## Terminal
 
 ### `command_line_tools.enabled`

@@ -3,7 +3,7 @@ use gpui_kit::*;
 use crate::engine_host::HostSummary;
 use crate::shell::status_bar::engine_name;
 use crate::theme::Palette;
-use crate::workspace::{Connection, Page, Workspace};
+use crate::workspace::{Connection, EngineHealth, Page, Workspace};
 
 /// Which engine the window talks to and its state, for the Diagnostics Engine card
 /// and the help sentence of the rail's app icon.
@@ -23,17 +23,13 @@ impl EngineState {
     /// reconnects by itself, then red.
     pub fn of(workspace: &Workspace, host: Option<&HostSummary>, palette: &Palette) -> Self {
         let connection = workspace.connection();
-        let retrying = workspace.reconnecting().is_some();
-        let running = host.is_none_or(|host| host.status.is_running());
-        let (color, state) = match (host, connection) {
-            (_, Connection::Connecting) if retrying && running => (palette.orange, "Reconnecting"),
-            (Some(host), Connection::Failed(_)) if host.status.is_running() => {
-                (palette.red, "Not answering")
-            }
-            (Some(host), _) => (palette.host_status(&host.status), host.status.label()),
-            (None, Connection::Connecting) => (palette.orange, "Connecting"),
-            (None, Connection::Connected(_)) => (palette.green, "Running"),
-            (None, Connection::Failed(_)) => (palette.red, "Not answering"),
+        let health = workspace.engine_health(host.map(|host| &host.status));
+        let (color, state) = match (health, host) {
+            (EngineHealth::Reconnecting, _) => (palette.orange, "Reconnecting"),
+            (EngineHealth::NotAnswering, _) => (palette.red, "Not answering"),
+            (_, Some(host)) => (palette.host_status(&host.status), host.status.label()),
+            (EngineHealth::Running, None) => (palette.green, "Running"),
+            (_, None) => (palette.orange, "Connecting"),
         };
         let engine = match (host, connection) {
             (Some(_), _) => "Captain Engine",

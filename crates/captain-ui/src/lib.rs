@@ -53,4 +53,4 @@ pub use shell::{AppShell, ToggleSidebar, engine_name, page_bindings};
 pub use storage::init as storage_init;
 pub use terminal_panel::{ToggleTerminal, terminal_bindings};
 pub use widgets::error_notification;
-pub use workspace::{Connection, Connector, Page, Workspace};
+pub use workspace::{Connection, Connector, EngineHealth, Page, Workspace};

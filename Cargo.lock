@@ -961,6 +961,7 @@ dependencies = [
 name = "captain-app"
 version = "0.1.0"
 dependencies = [
+ "block2 0.6.2",
  "captain-core",
  "captain-docker",
  "captain-host",

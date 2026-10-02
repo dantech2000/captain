@@ -30,6 +30,19 @@ impl Light {
         }
     }
 
+    /// The sRGB color of the icon's dot where the system has no dynamic colors
+    /// (Windows): Apple's dark-mode system green, orange, red, and gray, to match
+    /// the white wheel on the dark taskbar. macOS uses `NSColor`'s system colors.
+    /// See <https://developer.apple.com/design/human-interface-guidelines/color>.
+    pub fn rgb(self) -> [u8; 3] {
+        match self {
+            Self::Green => [48, 209, 88],
+            Self::Amber => [255, 159, 10],
+            Self::Red => [255, 69, 58],
+            Self::Gray => [152, 152, 157],
+        }
+    }
+
     /// `label` with this light in front.
     pub fn label(self, label: &str) -> String {
         format!("{} {label}", self.glyph())

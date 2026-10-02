@@ -5,7 +5,8 @@ use captain_core::model::ContainerState;
 use super::dot::Light;
 use super::entries::ContainerEntry;
 use super::menu_model::TrayItem;
-use super::snapshot::{EngineStatus, TraySnapshot};
+use super::snapshot::TraySnapshot;
+use captain_ui::EngineHealth;
 
 pub fn entry(name: &str, state: ContainerState, project: Option<&str>) -> ContainerEntry {
     ContainerEntry {
@@ -21,7 +22,7 @@ pub fn entry(name: &str, state: ContainerState, project: Option<&str>) -> Contai
 
 pub fn snapshot(containers: Vec<ContainerEntry>) -> TraySnapshot {
     TraySnapshot {
-        engine: EngineStatus::Running,
+        engine: EngineHealth::Running,
         status_line: "Captain Engine: Running".into(),
         containers,
         host: None,

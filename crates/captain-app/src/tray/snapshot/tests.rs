@@ -1,12 +1,10 @@
-use captain_core::EngineError;
-use captain_core::model::{Container, ContainerState, Health, PortLink, PortMapping};
-use captain_core::problems::Problem;
-use captain_ui::Connection;
+use captain_core::model::{Container, ContainerState, PortLink, PortMapping};
+use captain_ui::{Connection, EngineHealth};
 
 use captain_core::HostStatus;
 use captain_core::model::EngineInfo;
 
-use super::{EngineStatus, TraySnapshot, status_line};
+use super::{TraySnapshot, status_line};
 
 fn container(name: &str, state: ContainerState, project: Option<&str>) -> Container {
     Container {
@@ -26,19 +24,9 @@ fn container(name: &str, state: ContainerState, project: Option<&str>) -> Contai
 }
 
 #[test]
-fn engine_status_follows_the_connection() {
-    assert_eq!(
-        EngineStatus::of(&Connection::Connecting),
-        EngineStatus::Starting
-    );
-    let failed = Connection::Failed(EngineError::Unreachable("gone".into()));
-    assert_eq!(EngineStatus::of(&failed), EngineStatus::Stopped);
-}
-
-#[test]
 fn a_stopped_engine_has_no_containers() {
     let containers = [container("web", ContainerState::Running, None)];
-    let snapshot = TraySnapshot::new(EngineStatus::Stopped, &containers);
+    let snapshot = TraySnapshot::new(EngineHealth::Stopped, &containers);
     assert!(snapshot.containers.is_empty());
     assert_eq!(snapshot.active_count(), 0);
 }
@@ -61,7 +49,7 @@ fn a_running_engine_keeps_ids_states_projects_and_ports() {
         },
     ];
     let db = container("db", ContainerState::Exited, None);
-    let snapshot = TraySnapshot::new(EngineStatus::Running, &[web, db]);
+    let snapshot = TraySnapshot::new(EngineHealth::Running, &[web, db]);
 
     assert_eq!(snapshot.containers.len(), 2);
     assert_eq!(snapshot.containers[0].id, "web-id");
@@ -79,8 +67,8 @@ fn snapshots_compare_equal_when_nothing_the_menu_shows_changed() {
     let mut b = a.clone();
     a.status = "Up 3 minutes".into();
     b.status = "Up 4 minutes".into();
-    let first = TraySnapshot::new(EngineStatus::Running, &[a]);
-    let second = TraySnapshot::new(EngineStatus::Running, &[b.clone()]);
+    let first = TraySnapshot::new(EngineHealth::Running, &[a]);
+    let second = TraySnapshot::new(EngineHealth::Running, &[b.clone()]);
     assert_eq!(first, second);
 
     // A new status line alone keeps the menu; its text changes in place.
@@ -89,7 +77,7 @@ fn snapshots_compare_equal_when_nothing_the_menu_shows_changed() {
     assert!(first.same_menu(&busier));
 
     b.state = ContainerState::Exited;
-    let third = TraySnapshot::new(EngineStatus::Running, &[b]);
+    let third = TraySnapshot::new(EngineHealth::Running, &[b]);
     assert_ne!(first, third);
     assert!(!first.same_menu(&third));
 }
@@ -103,57 +91,38 @@ fn the_status_line_names_the_engine_and_its_use() {
     };
     let connected = Connection::Connected(info);
     assert_eq!(
-        status_line(&connected, 182 << 20, Some(&HostStatus::Running)),
+        status_line(
+            EngineHealth::Running,
+            &connected,
+            182 << 20,
+            Some(&HostStatus::Running)
+        ),
         "Captain Engine: Running \u{b7} 5 CPUs \u{b7} 182 MB of 5.8 GB"
     );
     let failed = HostStatus::Failed("no VM".into());
     assert_eq!(
-        status_line(&Connection::Connecting, 0, Some(&failed)),
+        status_line(
+            EngineHealth::CannotRun,
+            &Connection::Connecting,
+            0,
+            Some(&failed)
+        ),
         "Captain Engine: Did not start"
     );
-}
-
-#[test]
-fn captain_engine_status_comes_from_the_host() {
-    let failed = Connection::Failed(EngineError::Unreachable("gone".into()));
+    let line = |engine| {
+        status_line(
+            engine,
+            &Connection::Connecting,
+            0,
+            Some(&HostStatus::Running),
+        )
+    };
     assert_eq!(
-        EngineStatus::of_host(&HostStatus::Starting, &failed),
-        EngineStatus::Starting
+        line(EngineHealth::Reconnecting),
+        "Captain Engine: Reconnecting\u{2026}"
     );
     assert_eq!(
-        EngineStatus::of_host(&HostStatus::Running, &Connection::Connecting),
-        EngineStatus::Starting
-    );
-    assert_eq!(
-        EngineStatus::of_host(&HostStatus::Running, &failed),
-        EngineStatus::Stopped
-    );
-    assert_eq!(
-        EngineStatus::of_host(&HostStatus::NotCreated, &Connection::Connecting),
-        EngineStatus::Stopped
-    );
-    let connected = Connection::Connected(EngineInfo::default());
-    assert_eq!(
-        EngineStatus::of_host(&HostStatus::Running, &connected),
-        EngineStatus::Running
-    );
-}
-
-#[test]
-fn the_icon_needs_attention_for_a_failed_host_or_a_sick_container() {
-    let failed = HostStatus::Failed("no VM".into());
-    let status = EngineStatus::of_host(&failed, &Connection::Connecting);
-    assert_eq!(status, EngineStatus::NeedsAttention);
-
-    let mut web = container("web", ContainerState::Running, None);
-    let healthy = TraySnapshot::new(EngineStatus::Running, std::slice::from_ref(&web));
-    assert_eq!(healthy.icon(), EngineStatus::Running);
-    web.health = Some(Health::Unhealthy);
-    let sick = TraySnapshot::new(EngineStatus::Running, &[web]);
-    assert_eq!(sick.engine, EngineStatus::Running);
-    assert_eq!(sick.icon(), EngineStatus::NeedsAttention);
-    assert_eq!(
-        sick.problem.as_ref().map(Problem::line).as_deref(),
-        Some("web fails its health check. The logs say why; a restart often helps.")
+        line(EngineHealth::NotAnswering),
+        "Captain Engine: Not answering"
     );
 }

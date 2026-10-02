@@ -8,12 +8,18 @@ use captain_core::problems::{ContainerFix, Problem};
 use super::dot::Light;
 use super::menu_model::{TrayCommand, TrayItem};
 
-/// The problem's line, then its fixes.
-pub fn problem_items(problem: &Problem) -> Vec<TrayItem> {
-    let light = match problem {
+/// The stop light for `problem`, for its menu line and the dot on the menu bar
+/// icon: amber for an unhealthy container, red for everything else.
+pub fn problem_light(problem: &Problem) -> Light {
+    match problem {
         Problem::Unhealthy { .. } => Light::Amber,
         _ => Light::Red,
-    };
+    }
+}
+
+/// The problem's line, then its fixes.
+pub fn problem_items(problem: &Problem) -> Vec<TrayItem> {
+    let light = problem_light(problem);
     let mut items = vec![TrayItem::Status {
         label: problem.line(),
         light,

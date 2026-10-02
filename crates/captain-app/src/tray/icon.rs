@@ -1,10 +1,9 @@
 //! The menu bar icon: a ship's wheel, drawn in code so there is no file to ship.
-//! It tells the engine state: full while running, turning while starting, dimmed
-//! while stopped, and with a notch dot when something needs you.
+//! [`IconLook`] says how: full, turning, or dimmed, and with a dot or not.
 
 use std::f32::consts::FRAC_PI_4;
 
-use super::snapshot::EngineStatus;
+use super::look::{Dot, IconLook, Wheel};
 
 /// 18 points at 2x, the height of a macOS menu bar icon.
 pub const SIZE: u32 = 36;
@@ -24,33 +23,53 @@ const SPOKE_LENGTH: f32 = 14.;
 /// The handles outside the rim, from and to this radius.
 const HANDLE: (f32, f32) = (13., 15.4);
 const HANDLE_HALF_WIDTH: f32 = 1.5;
-/// The notch dot for an engine that needs attention, over the upper right handle,
-/// with a clear gap around it so it reads apart from the wheel.
-const NOTCH: (f32, f32) = (29., 7.);
-const NOTCH_RADIUS: f32 = 4.;
-const NOTCH_GAP: f32 = 2.;
+/// The status dot's center and radius, over the upper right handle, with a clear
+/// gap around it so it reads apart from the wheel.
+pub const DOT: (f32, f32, f32) = (29.5, 6.5, 5.);
+const DOT_GAP: f32 = 2.;
 /// How strong a stopped engine's wheel shows, like a macOS menu bar icon that is
 /// off.
 const DIM: f32 = 0.4;
 
-/// The icon for `status` as RGBA rows, `SIZE` by `SIZE`, in `color`. `frame` turns
-/// the wheel by a share of an eighth of a turn; it only matters while starting. On
-/// macOS the color does not matter: the image is a template, and only its alpha
-/// counts.
-pub fn rgba(status: EngineStatus, frame: u32, color: [u8; 3]) -> Vec<u8> {
-    let turn = (frame % TURN_FRAMES) as f32 * FRAC_PI_4 / TURN_FRAMES as f32;
+/// The icon as RGBA rows, `SIZE` by `SIZE`, in `color`. `frame` turns the wheel by
+/// a share of an eighth of a turn; it only matters while it turns. A plain dot has
+/// `color`, a colored dot its light's color. With `paint_dot` false the dot's place
+/// stays clear, for macOS, which draws the colored dot itself. On macOS the color
+/// of a template image does not matter: only its alpha counts.
+pub fn rgba(look: IconLook, frame: u32, color: [u8; 3], paint_dot: bool) -> Vec<u8> {
+    let turn = match look.wheel {
+        Wheel::Turning => (frame % TURN_FRAMES) as f32 * FRAC_PI_4 / TURN_FRAMES as f32,
+        _ => 0.,
+    };
+    let dim = if look.wheel == Wheel::Dim { DIM } else { 1. };
+    let dot_color = match look.dot {
+        Some(Dot::Colored(light)) => light.rgb(),
+        _ => color,
+    };
+    let has_dot = look.dot.is_some();
     let mut pixels = Vec::with_capacity((SIZE * SIZE * 4) as usize);
     for y in 0..SIZE {
         for x in 0..SIZE {
-            let mut alpha = coverage(x, y, |px, py| inside(status, turn, px, py));
-            if status == EngineStatus::Stopped {
-                alpha *= DIM;
-            }
-            pixels.extend_from_slice(&color);
+            // The gap keeps the wheel and the dot apart, so a pixel shows one of them.
+            let wheel = coverage(x, y, |px, py| {
+                in_wheel(px, py, turn) && !(has_dot && dot_distance(px, py) <= DOT.2 + DOT_GAP)
+            });
+            let dot = coverage(x, y, |px, py| has_dot && dot_distance(px, py) <= DOT.2);
+            let (rgb, alpha) = if paint_dot && dot > 0. {
+                (dot_color, dot)
+            } else {
+                (color, wheel * dim)
+            };
+            pixels.extend_from_slice(&rgb);
             pixels.push((alpha * 255.).round() as u8);
         }
     }
     pixels
+}
+
+/// The distance from the dot's center.
+fn dot_distance(x: f32, y: f32) -> f32 {
+    (x - DOT.0).hypot(y - DOT.1)
 }
 
 /// The share of a grid of points inside pixel `(x, y)` for which `shape` is true.
@@ -65,22 +84,6 @@ pub fn coverage(x: u32, y: u32, shape: impl Fn(f32, f32) -> bool) -> f32 {
         }
     }
     total as f32 / (SAMPLES * SAMPLES) as f32
-}
-
-/// Whether the point is part of the icon for `status`.
-fn inside(status: EngineStatus, turn: f32, x: f32, y: f32) -> bool {
-    if status == EngineStatus::NeedsAttention {
-        let notch = (x - NOTCH.0).hypot(y - NOTCH.1);
-        if notch <= NOTCH_RADIUS + NOTCH_GAP {
-            return notch <= NOTCH_RADIUS;
-        }
-    }
-    let turn = if status == EngineStatus::Starting {
-        turn
-    } else {
-        0.
-    };
-    in_wheel(x, y, turn)
 }
 
 /// The rim, hub, spokes, and handles, turned by `turn`.

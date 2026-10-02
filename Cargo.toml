@@ -43,10 +43,12 @@ k8s-openapi = { version = "0.28", features = ["latest"] }
 lsp-types = "0.97"
 kube = { version = "4.2", default-features = false, features = ["client", "rustls-tls", "ring", "ws"] }
 muda = { version = "0.20", default-features = false }
-# The Dock badge, macOS only. tray-icon already pulls these versions in.
+# The Dock badge and the menu bar icon's status dot, macOS only. tray-icon already
+# pulls these versions in.
+block2 = "0.6"
 objc2 = "0.6"
-objc2-app-kit = { version = "0.3.2", default-features = false, features = ["std", "NSApplication", "NSDockTile", "NSResponder"] }
-objc2-foundation = { version = "0.3.2", default-features = false, features = ["std", "NSString"] }
+objc2-app-kit = { version = "0.3.2", default-features = false, features = ["std", "block2", "objc2-core-foundation", "NSApplication", "NSBezierPath", "NSButton", "NSColor", "NSControl", "NSDockTile", "NSGraphics", "NSImage", "NSResponder", "NSStatusBarButton", "NSStatusItem", "NSView"] }
+objc2-foundation = { version = "0.3.2", default-features = false, features = ["std", "NSGeometry", "NSString"] }
 # The PTY of the terminal panel: ConPTY on Windows, openpty elsewhere. See
 # docs/features/0041-integrated-terminal.md.
 portable-pty = "0.9"

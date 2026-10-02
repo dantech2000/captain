@@ -4,8 +4,9 @@ use captain_core::problems::Problem;
 
 use crate::tray::dot::Light;
 use crate::tray::menu_model::{TrayCommand, TrayItem, build};
-use crate::tray::snapshot::{EngineStatus, TraySnapshot};
+use crate::tray::snapshot::TraySnapshot;
 use crate::tray::test_support::{entry, light, snapshot};
+use captain_ui::EngineHealth;
 
 #[test]
 fn a_problem_shows_its_line_and_its_fixes() {
@@ -57,7 +58,7 @@ fn a_problem_shows_its_line_and_its_fixes() {
         fix: Fix::RestartEngine,
     };
     let menu = build(&TraySnapshot {
-        engine: EngineStatus::NeedsAttention,
+        engine: EngineHealth::CannotRun,
         problem: Some(failed),
         ..snapshot(Vec::new())
     });

@@ -37,6 +37,7 @@ Every glyph in the app was a stock Lucide icon. Lucide has no good glyph for Cap
    - Starting: the wheel turns, one frame every 120 ms.
    - Running: the full wheel.
    - Needs attention: the full wheel with a notch dot at the top right, over the upper right handle. Captain shows it when Captain Engine failed to start, or when a container is restarting or unhealthy.
+   - Since the stop-light change, the dot is colored by default (green, amber, or red) and the wheel follows the menu bar's text color. The looks above remain when `menu_bar_status_dot` is off. See [0009](0009-menu-bar.md).
 
 ## Out of scope
 

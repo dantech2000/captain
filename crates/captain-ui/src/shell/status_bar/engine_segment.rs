@@ -3,7 +3,7 @@ use captain_core::HostStatus;
 use super::segments::{Segment, engine_name};
 use crate::engine_host::HostSummary;
 use crate::theme::Palette;
-use crate::workspace::{Connection, Page, Workspace};
+use crate::workspace::{Connection, EngineHealth, Page, Workspace};
 
 /// The end of the engine segment's sentence: a click opens Diagnostics, whose Engine
 /// card has Start, Stop, and Restart.
@@ -17,15 +17,19 @@ const RETRYING: &str = "Captain keeps trying to reconnect.";
 /// warning color, and then the failure in red.
 pub fn engine(workspace: &Workspace, host: Option<&HostSummary>, palette: &Palette) -> Segment {
     let connection = workspace.connection();
-    let retrying = workspace.reconnecting().is_some();
-    let retry = if retrying {
+    let health = workspace.engine_health(host.map(|host| &host.status));
+    let retry = if workspace.reconnecting().is_some() {
         format!(" {RETRYING}")
     } else {
         String::new()
     };
+    let error = match connection {
+        Connection::Failed(error) => error.to_string(),
+        _ => String::new(),
+    };
     if let Some(host) = host {
-        let (dot, color, help) = match (&host.status, connection) {
-            (HostStatus::Running, Connection::Connecting) if retrying => (
+        let (dot, color, help) = match health {
+            EngineHealth::Reconnecting => (
                 palette.orange,
                 Some(palette.warn_text),
                 format!(
@@ -33,19 +37,19 @@ pub fn engine(workspace: &Workspace, host: Option<&HostSummary>, palette: &Palet
                      restart. Captain is reconnecting. {CONTROLS}"
                 ),
             ),
-            (HostStatus::Running, Connection::Failed(error)) => (
+            EngineHealth::NotAnswering => (
                 palette.red,
                 Some(palette.red),
                 format!(
                     "Captain Engine runs, but Docker does not answer: {error}.{retry} {CONTROLS}"
                 ),
             ),
-            (HostStatus::Running, _) => (
+            EngineHealth::Running | EngineHealth::Connecting => (
                 palette.green,
                 None,
                 format!("Captain Engine is running. {CONTROLS}"),
             ),
-            (HostStatus::Starting | HostStatus::Stopping, _) => (
+            EngineHealth::Starting => (
                 palette.orange,
                 None,
                 format!(
@@ -53,18 +57,24 @@ pub fn engine(workspace: &Workspace, host: Option<&HostSummary>, palette: &Palet
                     host.status.label().to_lowercase()
                 ),
             ),
-            (HostStatus::NotCreated, _) => (
+            EngineHealth::NotSetUp => (
                 palette.gray,
                 None,
                 "Captain Engine is not set up. Click to set it up on the Diagnostics page."
                     .to_string(),
             ),
-            (HostStatus::Failed(why) | HostStatus::NotInstalled(why), _) => (
-                palette.red,
-                None,
-                format!("Captain Engine cannot run: {why} {DIAGNOSTICS}"),
-            ),
-            (HostStatus::Stopped, _) => (
+            EngineHealth::CannotRun => {
+                let why = match &host.status {
+                    HostStatus::Failed(why) | HostStatus::NotInstalled(why) => why.as_str(),
+                    _ => "",
+                };
+                (
+                    palette.red,
+                    None,
+                    format!("Captain Engine cannot run: {why} {DIAGNOSTICS}"),
+                )
+            }
+            EngineHealth::Stopped => (
                 palette.red,
                 None,
                 format!("Captain Engine is stopped. {CONTROLS}"),
@@ -79,29 +89,29 @@ pub fn engine(workspace: &Workspace, host: Option<&HostSummary>, palette: &Palet
             page: Some(Page::Diagnostics),
         };
     }
-    let (label, dot, color, help) = match connection {
-        Connection::Connecting if retrying => (
+    let (label, dot, color, help) = match (health, connection) {
+        (_, Connection::Connected(info)) => {
+            let name = engine_name(&info.endpoint);
+            let help = format!("Captain uses {name} at {}. {DIAGNOSTICS}", info.endpoint);
+            (name.to_string(), palette.green, None, help)
+        }
+        (EngineHealth::Reconnecting, _) => (
             "Engine reconnecting".to_string(),
             palette.orange,
             Some(palette.warn_text),
             format!("The engine stopped answering. Captain is reconnecting. {DIAGNOSTICS}"),
         ),
-        Connection::Connecting => (
-            "Engine".to_string(),
-            palette.orange,
-            None,
-            format!("Captain is connecting to the engine. {DIAGNOSTICS}"),
-        ),
-        Connection::Connected(info) => {
-            let name = engine_name(&info.endpoint);
-            let help = format!("Captain uses {name} at {}. {DIAGNOSTICS}", info.endpoint);
-            (name.to_string(), palette.green, None, help)
-        }
-        Connection::Failed(error) => (
+        (EngineHealth::NotAnswering, _) => (
             "Engine".to_string(),
             palette.red,
             Some(palette.red),
             format!("Captain cannot reach the engine: {error}.{retry} {DIAGNOSTICS}"),
+        ),
+        _ => (
+            "Engine".to_string(),
+            palette.orange,
+            None,
+            format!("Captain is connecting to the engine. {DIAGNOSTICS}"),
         ),
     };
     Segment {
