@@ -43,12 +43,13 @@ None of them keeps a project that is down, or turns a `docker run` into a file.
 - The picker's first row offers the typed text as an image name, for images the search does not find, such as a private registry.
 - The form replaces the old Run dialog (its code moved from `images/run_dialog` to `new_project/run_image`), and the Images page's **Run** opens the New sheet at this form with the image chosen. Ports, environment, and volumes are rows with add and remove; the restart policy is a segmented control.
 - When the engine has the image, Captain inspects it and adds a port row for each `ExposedPorts` entry, with a free host port (`suggest_port`: the first port from the preferred one that no container publishes and that binds on this computer; ports below 1024 start at 8000 plus the port). When it does not, **Pull** pulls it and fills the rows. The image's environment stays in the image; the form does not copy it.
-- A volume source is a volume name or a folder. A relative folder is inside the project folder (`site` becomes `./site`).
-- **Save as a project** (a Switch) is on by default. On: Captain writes `~/Captain/<name>/compose.yaml` with one service named after the image's repository, records the project, and opens the editor. Off: a plain `docker run -d`, pulling first if the engine lacks the image; folder volumes are refused there, since a plain container has no project folder.
+- A volume source is a volume name or a folder. A plain word such as `site` is a named volume, as in Compose. A folder starts with `./`, `/`, or `~`, or has a `/` in it (`data/db` becomes `./data/db`); a relative folder is inside the project folder, so write `./site` for the project's site folder. A Windows folder with a drive, such as `C:\work\site` or `C:/work/site`, is a folder too.
+- Choosing `repo@sha256:...` keeps the digest, so the project runs that exact image. Changing the tag drops the digest.
+- **Save as a project** (a Switch) is on by default. On: Captain writes `~/Captain/<name>/compose.yaml` with one service named after the image's repository, records the project, and opens the editor. See [Secret values](#secret-values) for environment values such as passwords. Off: a plain `docker run -d`, pulling first if the engine lacks the image; folder volumes are refused there, since a plain container has no project folder.
 
 ### Start from a template
 
-Templates are Compose files built into Captain with pinned tags. Each asks only for a project name and, where the image needs one, a password, which goes in `.env` (mode 0600), not in `compose.yaml`. Data lives in a named volume. Tags were read from the official-images library files on 2026-10-01 ([docker-library/official-images](https://github.com/docker-library/official-images/tree/master/library)).
+Templates are Compose files built into Captain with pinned tags. Each asks only for a project name and, where the image needs one, a password, which goes in `.env` (mode 0600 on macOS and Linux), not in `compose.yaml`. Every template publishes its ports on `127.0.0.1` only, so other computers on the network cannot reach the service. Redis has no password, and the official image turns off protected mode ([Dockerfile template](https://github.com/redis/docker-library-redis/blob/master/Dockerfile.template)), so this matters most there. Change the port line in `compose.yaml` to share a service on purpose. Data lives in a named volume. Tags were read from the official-images library files on 2026-10-01 ([docker-library/official-images](https://github.com/docker-library/official-images/tree/master/library)).
 
 | Template | Image | Needs | Data |
 |---|---|---|---|
@@ -61,8 +62,8 @@ Templates are Compose files built into Captain with pinned tags. Each asks only 
 
 - No MinIO template: MinIO stopped publishing community images in October 2025, the `minio/minio` repository answers 404 on the Hub API, and the GitHub repository says it is no longer maintained ([minio/minio](https://github.com/minio/minio)).
 - Mongo 9 exists; 8 stays the default until it has more use. The tags live in one table in `captain_core::new_project::TEMPLATES`, with a unit test that each template is YAML without its password, and an ignored test that each passes `docker compose config`.
-- The form asks for the project name, a host port for each port (suggested free, 8080 for nginx's 80), a user name for MongoDB and RabbitMQ, and a password (24 random letters and digits from the system's random source; editable, masked). `compose.yaml` reads them with `${NAME:?...}`; `.env` holds them with mode 0600, and a `.gitignore` lists `.env`.
-- Tasks in `x-captain.tasks`: `databases` and `db-size` (PostgreSQL), `databases` (MySQL, MongoDB), `keys` and `memory` (Redis), `queues` (RabbitMQ). They run with `exec -T`, so they are one-shot commands, not shells. `$$` in them keeps `$` for the container's shell. The web server writes `site/index.html`.
+- The form asks for the project name, a host port for each port (suggested free, 8080 for nginx's 80), a user name for MongoDB and RabbitMQ, and a password (24 random letters and digits from the system's random source; editable, masked). `compose.yaml` reads them with `${NAME:?...}`; `.env` holds them with mode 0600 (see [Windows](#secret-values) for the limit there), and a `.gitignore` lists `.env`.
+- Tasks in `x-captain.tasks`: `databases` and `db-size` (PostgreSQL), `databases` (MySQL, MongoDB), `keys` and `memory` (Redis), `queues` (RabbitMQ). They run with `exec -T`, so they are one-shot commands, not shells. `$$` in them keeps `$` for the container's shell: `docker compose config` interpolates `${NAME}` but prints `$$` as it is, so Captain turns each `$$` into `$` once when it reads a task. `$$MYSQL_ROOT_PASSWORD` then reaches `sh -c` as `$MYSQL_ROOT_PASSWORD`. The web server writes `site/index.html`.
 
 ### Open a folder
 
@@ -97,7 +98,17 @@ Templates are Compose files built into Captain with pinned tags. Each asks only 
 | `--rm` | nothing: Compose has no such key; Captain warns that the container stays after it stops |
 
 - Values are written literally: Captain quotes what YAML would read as a number or a bool and doubles `$`, so Compose does not interpolate it.
+- A variable or label given twice keeps its last value, as `docker run` does; YAML refuses a key twice.
+- Secret values go in `.env`, as for Run an image (see [Secret values](#secret-values)).
+- A relative bind source (`-v ./site:/srv`) or `--env-file ./app.env` meant the folder where the command ran. In the project it means the project folder, so Captain keeps the path and adds a warning: copy the files there, or write the full path in `compose.yaml`.
 - Every other flag (for example `--mount`, `--cap-add`, `--privileged`, `--device`, `--gpus`, `--health-*`, `--ulimit`, `--log-opt`, `--add-host`, `--dns`) is kept out of the file and listed as a warning: "Captain did not convert `--privileged`. Add it to compose.yaml by hand." Phase 3 can map more of them; the table above is what phase 3 starts with.
+- Captain knows whether each flag of the `docker run` reference takes a value, so `--cpu-quota 50000 alpine` keeps `alpine` as the image. A flag that is not in the reference is refused, because Captain cannot tell whether the next word is its value; `--flag=value` works.
+
+### Secret values
+
+- Run an image and Paste put an environment value in `.env` when its name looks secret: it has `SECRET`, `PASSWORD`, `PASSWD`, `TOKEN`, `API_KEY`, or `PRIVATE` in it (`captain_core::model::is_secret_key`, the same test that masks values for agents). `compose.yaml` reads it with `${NAME:?set NAME in .env}`, so the preview shows no secret, and a `.gitignore` lists `.env`. Other values stay in `compose.yaml`. An empty value stays too, because `:?` refuses an empty value.
+- `.env` values are written in single quotes, which Compose reads literally, without interpolation ([.env syntax](https://docs.docker.com/compose/how-tos/environment-variables/variable-interpolation/#env-file-syntax)). A value with `'`, `\`, or a line break is refused with a sentence that says to set it in `.env` by hand.
+- On macOS and Linux, `.env` is created with mode 0600. **Windows:** Captain does not set an access list. The file inherits the folder's permissions. The default `~/Captain` is in the user's profile folder, which only the user, administrators, and SYSTEM can read; a `projects_dir` in a shared folder makes `.env` readable to whoever can read that folder.
 
 ### Known projects and the sidebar
 
@@ -109,7 +120,7 @@ Templates are Compose files built into Captain with pinned tags. Each asks only 
 
 ## Storage on disk
 
-- **New projects:** `<projects_dir>/<project>/compose.yaml`, and `.env` when a template or form has secrets. These are normal files for the user to read, edit, and commit. `projects_dir` defaults to `~/Captain`; Captain creates it on first use. A `~/` at its start means the home folder.
+- **New projects:** `<projects_dir>/<project>/compose.yaml`, and `.env` when a template or form has secrets. These are normal files for the user to read, edit, and commit. `projects_dir` defaults to `~/Captain`; Captain creates it on first use. A `~/` at its start means the home folder, and a relative path is inside the home folder, so project paths are always absolute.
 - **`projects_dir` setting:** in the settings file ([ADR 0013](../adr/0013-settings-file-and-docs.md)), group "Projects", in the schema and the generated reference ([settings.md](../reference/settings.md)). Changing it moves nothing; known projects keep their paths.
 - **Known projects:** `~/.captain/projects.json`. It is app state, not a setting, so it is not in the settings file:
 
@@ -158,9 +169,9 @@ Checked live with curl on 2026-10-01; no request needed a login.
 
 - Nothing starts before the preview: each path opens the editor, and Save and apply runs `up --dry-run` first.
 - Remove from Captain only edits `projects.json`. It never deletes files, containers, or volumes.
-- New projects never overwrite: a folder that exists and is not empty is refused, and Captain asks for another name.
-- Secrets from templates go in `.env` with mode 0600, never in `compose.yaml`.
-- `projects.json` is replaced atomically, and a broken file is never overwritten.
+- New projects never overwrite: a folder that exists and is not empty is refused, and Captain asks for another name. Captain writes the files into a new hidden folder next to the project folder, each with `create_new`, then renames that folder into place. The rename fails when the project folder has files, a link at the project folder is refused, and a failure leaves no half-made project.
+- Secrets from templates, Run an image, and Paste go in `.env` with mode 0600 (not on Windows; see [Secret values](#secret-values)), never in `compose.yaml`.
+- `projects.json` is replaced atomically, and a broken file is never overwritten. Captain reads it again before each change, so an edit made outside Captain is kept and a file fixed since start-up works again. A new project checks the file before it writes anything; if recording still fails, the error names the folder and says to add it with Open a folder.
 - Docker Hub gets only the search text; no account, token, or local data.
 
 ## Out of scope
@@ -172,7 +183,7 @@ Checked live with curl on 2026-10-01; no request needed a login.
 
 ## Verification
 
-- Unit tests (phases 2 and 3): the Compose writer (quoting, `$$`, top-level volumes and external networks); project names (rules, from an image, unique); writing a project with a private `.env` and refusing a folder with files; random passwords; the free-port suggestion; each template is YAML with its values and no password; Docker Hub URLs, official first, 429 with `Retry-After`, short counts; the Run form's ports, volumes, and service; `up` naming a stopped known project; the `docker run` parser on the postgres, redis, and nginx README examples and a long multi-line command, with its warnings and errors; splitting image references.
+- Unit tests (phases 2 and 3): the Compose writer (quoting, `$$`, top-level volumes and external networks, a key given twice); secret values in a private `.env`; task commands decode `$$`; a link at the project folder is refused; the free-name search stops; a relative `projects_dir`; a huge `Retry-After`; Windows folders in the Run form; unknown and value flags in Paste, and relative path warnings; project names (rules, from an image, unique); writing a project with a private `.env` and refusing a folder with files; random passwords; the free-port suggestion; each template is YAML with its values and no password; Docker Hub URLs, official first, 429 with `Retry-After`, short counts; the Run form's ports, volumes, and service; `up` naming a stopped known project; the `docker run` parser on the postgres, redis, and nginx README examples and a long multi-line command, with its warnings and errors; splitting image references.
 - Ignored tests: every template passes `docker compose config` (docker CLI); Docker Hub search and tags (network).
 
 - Unit tests (phase 1): `projects.json` round trip and a missing file; a broken file is not overwritten; add replaces the same project and remove forgets it; merge hides a known project that runs, keeps one that runs under the same name elsewhere out of the list, and shows the rest as stopped; the Compose file search follows Compose's order and adds the override; `projects_dir` expands `~/`; the project name is read from `config --format json`.

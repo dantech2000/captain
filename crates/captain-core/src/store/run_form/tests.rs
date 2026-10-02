@@ -175,3 +175,15 @@ fn errors_read_as_sentences() {
         "Name: Use at least 2 characters"
     );
 }
+
+#[test]
+fn windows_folders_keep_their_drive() {
+    let mut form = RunForm::from_image("nginx:1.27", &nginx());
+    form.volumes = vec![volume("C:\\work\\site", "/srv"), volume("D:/data", "/data")];
+
+    assert_eq!(
+        form.to_service().unwrap().volumes,
+        ["C:\\work\\site:/srv", "D:/data:/data"]
+    );
+    assert!(form.to_spec().is_ok());
+}

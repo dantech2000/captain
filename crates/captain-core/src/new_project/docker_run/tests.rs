@@ -121,6 +121,8 @@ fn commands_that_are_not_docker_run_are_refused() {
     assert!(convert_docker_run("docker ps -a").is_err());
     assert!(convert_docker_run("docker run -d -p 80:80").is_err());
     assert!(convert_docker_run("docker run -p").is_err());
+    // Captain cannot tell whether 50000 is the value of an unknown flag.
+    assert!(convert_docker_run("docker run --cpu-quotas 50000 alpine").is_err());
 }
 
 #[test]
@@ -137,4 +139,24 @@ fn the_conversion_is_a_valid_compose_file() {
     assert!(parsed["volumes"]["app-data"].is_object(), "{text}");
     assert_eq!(parsed["networks"]["mynet"]["external"], true, "{text}");
     assert_eq!(parsed["services"]["api"]["cpus"], "1.5");
+}
+
+#[test]
+fn a_flag_that_takes_a_value_keeps_it_from_the_image() {
+    let run = convert_docker_run("docker run --cpu-quota 50000 alpine").unwrap();
+
+    assert_eq!(run.service.image, "alpine");
+    assert!(run.warnings[0].contains("--cpu-quota"));
+}
+
+#[test]
+fn relative_folders_get_a_warning() {
+    let run = convert_docker_run(
+        "docker run --env-file ./app.env -v ./site:/srv -v data:/data -v /abs:/abs nginx",
+    )
+    .unwrap();
+
+    assert_eq!(run.warnings.len(), 2, "{:?}", run.warnings);
+    assert!(run.warnings[0].starts_with("./app.env in --env-file"));
+    assert!(run.warnings[1].starts_with("./site in -v"));
 }

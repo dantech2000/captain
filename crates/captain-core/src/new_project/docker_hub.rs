@@ -14,6 +14,9 @@ const SEARCH: &str = "https://hub.docker.com/v2/search/repositories/";
 const TAGS: &str = "https://hub.docker.com/v2/namespaces";
 /// How long to wait after a 429 without a `Retry-After`.
 const DEFAULT_WAIT: Duration = Duration::from_secs(60);
+/// The longest wait Captain accepts from `Retry-After`, so a huge value cannot
+/// overflow a time or stop search for the session.
+const MAX_WAIT: Duration = Duration::from_secs(3600);
 
 /// One repository in the search results.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -129,12 +132,14 @@ fn unreadable(error: serde_json::Error) -> HubError {
     HubError::Unavailable(format!("an answer Captain cannot read: {error}"))
 }
 
-/// The error for an answer with `status`: a 429 waits for `retry_after` seconds.
+/// The error for an answer with `status`: a 429 waits for `retry_after` seconds,
+/// at most an hour.
 pub fn status_error(status: u16, retry_after: Option<&str>) -> HubError {
     if status == 429 {
         let wait = retry_after
             .and_then(|value| value.trim().parse::<u64>().ok())
-            .map_or(DEFAULT_WAIT, Duration::from_secs);
+            .map_or(DEFAULT_WAIT, Duration::from_secs)
+            .min(MAX_WAIT);
         return HubError::RateLimited(wait);
     }
     HubError::Unavailable(format!("Docker Hub answered {status}"))

@@ -35,6 +35,10 @@ fn a_429_waits_for_retry_after() {
         HubError::RateLimited(Duration::from_secs(12))
     );
     assert_eq!(status_error(429, None), HubError::RateLimited(DEFAULT_WAIT));
+    assert_eq!(
+        status_error(429, Some("18446744073709551615")),
+        HubError::RateLimited(MAX_WAIT)
+    );
     assert!(matches!(status_error(503, None), HubError::Unavailable(_)));
 }
 

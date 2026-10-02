@@ -10,7 +10,7 @@ services:
     environment:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
     ports:
-      - "{port0}:5432"
+      - "127.0.0.1:{port0}:5432"
     volumes:
       # From 18 on, the image keeps its data in /var/lib/postgresql/18/docker.
       - data:/var/lib/postgresql
@@ -40,7 +40,7 @@ services:
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?set MYSQL_ROOT_PASSWORD in .env}
     ports:
-      - "{port0}:3306"
+      - "127.0.0.1:{port0}:3306"
     volumes:
       - data:/var/lib/mysql
 volumes:
@@ -52,7 +52,7 @@ x-captain:
       command: mysql -uroot -p"$$MYSQL_ROOT_PASSWORD" -e "show databases"
 "#;
 
-pub const REDIS: &str = r#"# Redis from Captain's template. It has no password, so keep the port local.
+pub const REDIS: &str = r#"# Redis from Captain's template. It has no password; the port is open on this computer only.
 name: {name}
 services:
   redis:
@@ -60,7 +60,7 @@ services:
     restart: unless-stopped
     command: ["redis-server", "--appendonly", "yes"]
     ports:
-      - "{port0}:6379"
+      - "127.0.0.1:{port0}:6379"
     volumes:
       - data:/data
 volumes:
@@ -85,7 +85,7 @@ services:
       MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME:?set MONGO_INITDB_ROOT_USERNAME in .env}
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD:?set MONGO_INITDB_ROOT_PASSWORD in .env}
     ports:
-      - "{port0}:27017"
+      - "127.0.0.1:{port0}:27017"
     volumes:
       - data:/data/db
 volumes:
@@ -109,9 +109,9 @@ services:
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER:?set RABBITMQ_DEFAULT_USER in .env}
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS:?set RABBITMQ_DEFAULT_PASS in .env}
     ports:
-      - "{port0}:5672"
+      - "127.0.0.1:{port0}:5672"
       # The management web page.
-      - "{port1}:15672"
+      - "127.0.0.1:{port1}:15672"
     volumes:
       - data:/var/lib/rabbitmq
 volumes:
@@ -130,7 +130,7 @@ services:
     image: nginx:stable-alpine
     restart: unless-stopped
     ports:
-      - "{port0}:80"
+      - "127.0.0.1:{port0}:80"
     volumes:
       - ./site:/usr/share/nginx/html:ro
 "#;

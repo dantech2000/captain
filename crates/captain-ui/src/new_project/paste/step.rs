@@ -1,4 +1,6 @@
-use captain_core::new_project::{ComposeDoc, NewFile, RunConversion, convert_docker_run};
+use captain_core::new_project::{
+    ComposeDoc, NewFile, RunConversion, convert_docker_run, project_files,
+};
 use gpui_kit::component::input::{InputEvent, InputState, TextareaState};
 use gpui_kit::*;
 
@@ -86,8 +88,9 @@ impl PasteStep {
         cx.notify();
     }
 
-    /// The Compose file and the project name, or the first problem.
-    pub(super) fn compose(&self, cx: &App) -> Result<(String, String), String> {
+    /// The project name and its files, `compose.yaml` first, or the first
+    /// problem. Secret values go in `.env`.
+    pub(super) fn compose(&self, cx: &App) -> Result<(String, Vec<NewFile>), String> {
         let conversion = match &self.conversion {
             None => return Err("Paste a docker run command.".into()),
             Some(Err(error)) => return Err(error.clone()),
@@ -101,7 +104,7 @@ impl PasteStep {
             name: Some(name.clone()),
             services: vec![(conversion.service_name.clone(), conversion.service.clone())],
         };
-        Ok((name, doc.to_yaml()))
+        Ok((name, project_files(doc)?))
     }
 
     pub(crate) fn back(&mut self, window: &mut Window, cx: &mut Context<Self>) {
@@ -111,10 +114,9 @@ impl PasteStep {
     }
 
     pub(super) fn create(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        let result = self.compose(cx).and_then(|(name, text)| {
-            let files = [NewFile::new("compose.yaml", text)];
-            create_project(&self.host, &name, &files, window, cx)
-        });
+        let result = self
+            .compose(cx)
+            .and_then(|(name, files)| create_project(&self.host, &name, &files, window, cx));
         self.error = result.err();
         cx.notify();
     }

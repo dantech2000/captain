@@ -28,7 +28,25 @@ pub(super) enum Flag {
     OtherValue,
     /// Not converted, and takes none.
     OtherBool,
+    /// Not in the `docker run` reference, so Captain cannot tell if the next
+    /// word is its value.
+    Unknown,
 }
+
+/// Flags Captain does not convert that take no value.
+const BOOL_FLAGS: &[&str] = &[
+    "privileged",
+    "init",
+    "read-only",
+    "publish-all",
+    "no-healthcheck",
+    "oom-kill-disable",
+    "sig-proxy",
+    "disable-content-trust",
+    "quiet",
+    "help",
+    "use-api-socket",
+];
 
 /// Flags Captain does not convert that take a value, so the next word is theirs.
 const VALUE_FLAGS: &[&str] = &[
@@ -88,6 +106,27 @@ const VALUE_FLAGS: &[&str] = &[
     "pids-limit",
     "storage-opt",
     "init-path",
+    "blkio-weight-device",
+    "cpu-count",
+    "cpu-percent",
+    "cpu-period",
+    "cpu-quota",
+    "cpu-rt-period",
+    "cpu-rt-runtime",
+    "credentialspec",
+    "detach-keys",
+    "device-read-bps",
+    "device-read-iops",
+    "device-write-bps",
+    "device-write-iops",
+    "dns-opt",
+    "io-maxbandwidth",
+    "io-maxiops",
+    "link-local-ip",
+    "memory-swappiness",
+    "net-alias",
+    "oom-score-adj",
+    "volume-driver",
 ];
 
 impl Flag {
@@ -115,7 +154,8 @@ impl Flag {
             "detach" => Flag::Detach,
             "rm" => Flag::Rm,
             other if VALUE_FLAGS.contains(&other) => Flag::OtherValue,
-            _ => Flag::OtherBool,
+            other if BOOL_FLAGS.contains(&other) => Flag::OtherBool,
+            _ => Flag::Unknown,
         }
     }
 
@@ -134,7 +174,8 @@ impl Flag {
             't' => Flag::Tty,
             'd' => Flag::Detach,
             'a' | 'c' => Flag::OtherValue,
-            _ => Flag::OtherBool,
+            'P' | 'q' => Flag::OtherBool,
+            _ => Flag::Unknown,
         }
     }
 

@@ -47,15 +47,18 @@ pub fn image_project_name(image: &str) -> String {
     to_project_name(repo)
 }
 
+/// How many names [`unique_project_name`] tries before it gives up.
+const MAX_TRIES: usize = 1000;
+
 /// `base`, or `base-2`, `base-3`, and so on: the first that `taken` refuses.
+/// After [`MAX_TRIES`] names it returns `base`, and the form's name check says
+/// why `base` cannot be used.
 pub fn unique_project_name(base: &str, taken: impl Fn(&str) -> bool) -> String {
-    if !taken(base) {
-        return base.to_string();
-    }
-    (2..)
-        .map(|n| format!("{base}-{n}"))
+    std::iter::once(base.to_string())
+        .chain((2..).map(|n| format!("{base}-{n}")))
+        .take(MAX_TRIES)
         .find(|name| !taken(name))
-        .expect("some number is free")
+        .unwrap_or_else(|| base.to_string())
 }
 
 #[cfg(test)]

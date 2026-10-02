@@ -54,8 +54,28 @@ impl KnownModel {
         &self.list.projects
     }
 
+    /// Reads the file again, so a change made outside Captain is kept, and a
+    /// file broken or fixed since the last read is noticed. Returns why Captain
+    /// cannot save the file now, if it cannot.
+    pub fn reload(&mut self, cx: &mut Context<Self>) -> Result<(), String> {
+        let fresh = Self::read(self.path.clone());
+        if fresh.list != self.list || fresh.broken != self.broken {
+            self.list = fresh.list;
+            self.broken = fresh.broken;
+            cx.notify();
+        }
+        if let Some(broken) = &self.broken {
+            return Err(format!("{broken}. Fix or remove the file first."));
+        }
+        if self.path.is_none() {
+            return Err("Captain cannot find your home folder.".into());
+        }
+        Ok(())
+    }
+
     /// Records `project` and saves the file.
     pub fn add(&mut self, project: KnownProject, cx: &mut Context<Self>) -> Result<(), String> {
+        self.reload(cx)?;
         let mut list = self.list.clone();
         list.add(project).map_err(|error| error.to_string())?;
         self.save(list, cx)
@@ -63,6 +83,7 @@ impl KnownModel {
 
     /// Forgets the project `name` and saves the file. Files stay on disk.
     pub fn remove(&mut self, name: &str, cx: &mut Context<Self>) -> Result<(), String> {
+        self.reload(cx)?;
         let mut list = self.list.clone();
         if !list.remove(name) {
             return Ok(());
@@ -71,9 +92,6 @@ impl KnownModel {
     }
 
     fn save(&mut self, list: KnownProjects, cx: &mut Context<Self>) -> Result<(), String> {
-        if let Some(broken) = &self.broken {
-            return Err(format!("{broken}. Fix or remove the file first."));
-        }
         let Some(path) = &self.path else {
             return Err("Captain cannot find your home folder.".into());
         };

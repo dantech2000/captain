@@ -1,7 +1,8 @@
 //! The built-in templates: Compose files with pinned tags, read from the
 //! official-images library files on 2026-10-01
 //! (<https://github.com/docker-library/official-images/tree/master/library>).
-//! Passwords go in `.env`, never in `compose.yaml`.
+//! Passwords go in `.env`, never in `compose.yaml`. Ports are published on
+//! 127.0.0.1 only, so other computers cannot reach the services.
 
 mod texts;
 

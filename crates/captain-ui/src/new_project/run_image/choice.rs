@@ -8,16 +8,19 @@ use super::picker::Choice;
 use crate::new_project::hub;
 use crate::new_project::name_check::{published_ports, unique_name};
 
-/// `reference` split into the repository and the tag. A registry port such as
-/// `localhost:5000/api` is not a tag; an ID has no tag.
-pub fn split_reference(reference: &str) -> (String, String) {
+/// `reference` split into the repository, the tag, and the digest after `@`. A
+/// registry port such as `localhost:5000/api` is not a tag; an ID has no tag.
+pub fn split_reference(reference: &str) -> (String, String, Option<String>) {
     if reference.starts_with("sha256:") {
-        return (reference.into(), String::new());
+        return (reference.into(), String::new(), None);
     }
-    let reference = reference.split('@').next().unwrap_or(reference);
-    match reference.rsplit_once(':') {
-        Some((repository, tag)) if !tag.contains('/') => (repository.into(), tag.into()),
-        _ => (reference.into(), String::new()),
+    let (name, digest) = match reference.split_once('@') {
+        Some((name, digest)) => (name, Some(digest.to_string())),
+        None => (reference, None),
+    };
+    match name.rsplit_once(':') {
+        Some((repository, tag)) if !tag.contains('/') => (repository.into(), tag.into(), digest),
+        _ => (name.into(), String::new(), digest),
     }
 }
 
@@ -75,17 +78,18 @@ impl RunImage {
     }
 
     fn start_form(&mut self, reference: &str, window: &mut Window, cx: &mut Context<Self>) {
-        let (repository, tag) = split_reference(reference);
+        let (repository, tag, digest) = split_reference(reference);
         let name = unique_name(&image_project_name(&repository), &self.host, cx);
         self.tags = self
             .local
             .iter()
             .filter_map(|local| {
-                let (repo, tag) = split_reference(local);
+                let (repo, tag, _) = split_reference(local);
                 (repo == repository && !tag.is_empty()).then_some(tag)
             })
             .collect();
         self.repository = repository;
+        self.digest = digest.map(|digest| (tag.clone(), digest));
         self.tag
             .update(cx, |input, cx| input.set_value(tag, window, cx));
         self.name
@@ -109,6 +113,7 @@ impl RunImage {
         let reference = self.reference(cx);
         let here = self.local.contains(&reference) || reference.starts_with("sha256:");
         if !here {
+            self.inspect_task = None;
             self.detail = Detail::Missing;
             cx.notify();
             return;
@@ -118,7 +123,7 @@ impl RunImage {
         };
         self.detail = Detail::Loading;
         let inspect = engine.inspect_image(&reference);
-        self.task = Some(cx.spawn_in(window, async move |this, cx| {
+        self.inspect_task = Some(cx.spawn_in(window, async move |this, cx| {
             let result = inspect.await;
             this.update_in(cx, |this, window, cx| match result {
                 Ok(detail) => this.prefill(&detail, window, cx),
@@ -156,6 +161,9 @@ impl RunImage {
 
     /// Pulls the image, then reads its ports.
     pub(super) fn pull(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        if self.busy.is_some() {
+            return;
+        }
         let Some(engine) = self.host.workspace.read(cx).engine() else {
             return;
         };

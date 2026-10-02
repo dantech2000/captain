@@ -1,5 +1,5 @@
 use captain_core::model::RunSpec;
-use captain_core::new_project::{ComposeDoc, NewFile, image_project_name};
+use captain_core::new_project::{ComposeDoc, NewFile, image_project_name, project_files};
 use futures::StreamExt;
 use gpui_kit::component::WindowExt;
 use gpui_kit::component::notification::Notification;
@@ -12,8 +12,9 @@ use crate::new_project::finish::create_project;
 use crate::new_project::name_check::name_problem;
 
 impl RunImage {
-    /// The project name and the Compose file, or the first problem.
-    pub(super) fn compose(&self, cx: &App) -> Result<(String, String), String> {
+    /// The project name and its files, `compose.yaml` first, or the first
+    /// problem. Secret values go in `.env`.
+    pub(super) fn compose(&self, cx: &App) -> Result<(String, Vec<NewFile>), String> {
         let form = self.form(cx);
         let name = form.name.clone();
         if let Some(problem) = name_problem(&name, &self.host, cx) {
@@ -24,7 +25,7 @@ impl RunImage {
             name: Some(name.clone()),
             services: vec![(image_project_name(&self.repository), service)],
         };
-        Ok((name, doc.to_yaml()))
+        Ok((name, project_files(doc)?))
     }
 
     /// What the main button does now, or why it cannot.
@@ -44,10 +45,9 @@ impl RunImage {
             return;
         }
         if self.save_as_project {
-            let result = self.compose(cx).and_then(|(name, text)| {
-                let files = [NewFile::new("compose.yaml", text)];
-                create_project(&self.host, &name, &files, window, cx)
-            });
+            let result = self
+                .compose(cx)
+                .and_then(|(name, files)| create_project(&self.host, &name, &files, window, cx));
             self.error = result.err();
             cx.notify();
             return;

@@ -21,7 +21,11 @@ pub fn create_project(
     cx: &mut App,
 ) -> Result<(), String> {
     let dir = projects_dir(cx).join(name);
+    // A broken projects.json would refuse the project after its files exist,
+    // so check it first.
+    known_model(cx).update(cx, |model, cx| model.reload(cx))?;
     write_project(&dir, files).map_err(|error| error.to_string())?;
+    let dir_shown = dir.display().to_string();
     let project = KnownProject {
         name: name.to_string(),
         dir,
@@ -30,7 +34,15 @@ pub fn create_project(
             .duration_since(UNIX_EPOCH)
             .map_or(0, |since| since.as_secs() as i64),
     };
-    known_model(cx).update(cx, |model, cx| model.add(project, cx))?;
+    known_model(cx)
+        .update(cx, |model, cx| model.add(project, cx))
+        .map_err(|error| {
+            format!(
+                "Captain wrote {dir_shown} but could not record it: {}. \
+                 Add it later with Open a folder.",
+                error.trim_end_matches('.')
+            )
+        })?;
     window.close_dialog(cx);
     open_project(host, name.to_string(), cx);
     Ok(())

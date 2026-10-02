@@ -121,8 +121,8 @@ pub struct Settings {
     #[schemars(extend("x-captain-group" = "Extensions"), example = true)]
     pub show_extension_containers: bool,
     /// The folder for the projects Captain creates, one folder per project. `~/`
-    /// means your home folder. Captain creates it on first use. Changing it moves
-    /// nothing. Applies at once.
+    /// means your home folder, and a relative path is inside your home folder.
+    /// Captain creates it on first use. Changing it moves nothing. Applies at once.
     // Feature 0040.
     #[serde(deserialize_with = "lenient_projects_dir")]
     #[schemars(extend("x-captain-group" = "Projects"), example = "~/code/captain")]
@@ -175,6 +175,8 @@ const DEFAULT_PROJECTS_DIR: &str = "~/Captain";
 
 impl Settings {
     /// `projects_dir` with a leading `~` made `home`. An empty value is the default.
+    /// A relative path is inside `home`, so the result is absolute and project
+    /// paths never depend on Captain's working folder.
     pub fn projects_dir_in(&self, home: &Path) -> PathBuf {
         let dir = match self.projects_dir.trim() {
             "" => DEFAULT_PROJECTS_DIR,
@@ -183,7 +185,7 @@ impl Settings {
         match dir.strip_prefix('~') {
             Some("") => home.to_path_buf(),
             Some(rest) if rest.starts_with(['/', '\\']) => home.join(&rest[1..]),
-            _ => PathBuf::from(dir),
+            _ => home.join(dir),
         }
     }
 }

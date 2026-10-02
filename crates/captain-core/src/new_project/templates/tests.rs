@@ -24,6 +24,16 @@ fn templates_are_yaml_with_the_values_and_no_password() {
             .unwrap_or_else(|error| panic!("{}: {error}", template.title));
         assert_eq!(parsed["name"], values.name.as_str(), "{}", template.title);
         assert!(!compose.contains("{port"), "{}", template.title);
+        let ports = parsed["services"][template.service]["ports"]
+            .as_array()
+            .unwrap();
+        assert!(
+            ports
+                .iter()
+                .all(|p| p.as_str().unwrap().starts_with("127.0.0.1:")),
+            "{}",
+            template.title
+        );
         assert!(!compose.contains(&values.password), "{}", template.title);
         let env = files.iter().find(|file| file.path == ".env");
         assert_eq!(

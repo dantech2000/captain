@@ -211,7 +211,7 @@ Show the containers that run extension backends in the container lists, the side
 
 ### `projects_dir`
 
-The folder for the projects Captain creates, one folder per project. `~/` means your home folder. Captain creates it on first use. Changing it moves nothing. Applies at once.
+The folder for the projects Captain creates, one folder per project. `~/` means your home folder, and a relative path is inside your home folder. Captain creates it on first use. Changing it moves nothing. Applies at once.
 
 - Type: a string
 - Default: `"~/Captain"`

@@ -19,7 +19,7 @@ impl Render for PasteStep {
         let body = if self.show_compose {
             let text = checked
                 .as_ref()
-                .map(|(_, text)| text.clone())
+                .map(|(_, files)| files[0].text.clone())
                 .map_err(Clone::clone);
             scroll_body("new-paste-body").child(compose_preview(text, &palette))
         } else {

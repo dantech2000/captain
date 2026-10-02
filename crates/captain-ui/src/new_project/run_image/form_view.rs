@@ -44,7 +44,7 @@ impl Render for RunImage {
         let reference = self.reference(cx);
         let checked = self.check(cx);
         let body = if self.show_compose {
-            let text = self.compose(cx).map(|(_, text)| text);
+            let text = self.compose(cx).map(|(_, files)| files[0].text.clone());
             scroll_body("new-run-body").child(compose_preview(text, &palette))
         } else {
             scroll_body("new-run-body")
@@ -201,7 +201,13 @@ impl RunImage {
                         "run-tag-field",
                         &self.tag,
                         "The image's tag, such as 18 or latest. Empty means latest.",
-                    ))),
+                    )))
+                    .children(self.pinned_digest(cx).map(|digest| {
+                        let short: String = digest.chars().take(19).collect();
+                        div()
+                            .text_color(palette.text2)
+                            .child(format!("@{short}\u{2026}"))
+                    })),
             )
             .child(div().flex().flex_wrap().gap(px(4.)).children(chips))
             .children(status);

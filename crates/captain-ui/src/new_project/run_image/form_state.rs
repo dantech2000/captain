@@ -37,6 +37,9 @@ pub struct RunImage {
     /// The chosen repository without its tag, such as `postgres`, or an ID.
     pub(super) repository: String,
     pub(super) tag: Entity<InputState>,
+    /// The digest of a chosen `repo@sha256:...` reference, with the tag it came
+    /// with. It applies while the tag field still holds that tag.
+    pub(super) digest: Option<(String, String)>,
     /// Tags to pick from, from Docker Hub or the engine.
     pub(super) tags: Vec<String>,
     pub(super) detail: Detail,
@@ -55,7 +58,11 @@ pub struct RunImage {
     pub(super) error: Option<String>,
     /// What runs now, such as a pull. The buttons wait for it.
     pub(super) busy: Option<String>,
+    /// A pull or a run. Only its own end clears `busy`, so nothing else may
+    /// replace it.
     pub(super) task: Option<Task<()>>,
+    /// Reading the image's ports. A new tag replaces it.
+    pub(super) inspect_task: Option<Task<()>>,
     pub(super) side_task: Option<Task<()>>,
     _subscriptions: Vec<Subscription>,
 }
@@ -101,6 +108,7 @@ impl RunImage {
             local: Vec::new(),
             repository: String::new(),
             tag,
+            digest: None,
             tags: Vec::new(),
             detail: Detail::Missing,
             name: new_input("Project name", "", window, cx),
@@ -114,6 +122,7 @@ impl RunImage {
             error: None,
             busy: None,
             task: None,
+            inspect_task: None,
             side_task: None,
             _subscriptions: subscriptions,
         };
@@ -121,12 +130,24 @@ impl RunImage {
         this
     }
 
-    /// The image reference the form runs: `repository:tag`, or the ID.
+    /// The image reference the form runs: `repository:tag`, with `@digest` when
+    /// the chosen image had one and the tag did not change, or the ID.
     pub(super) fn reference(&self, cx: &App) -> String {
-        match value(&self.tag, cx) {
-            tag if tag.is_empty() => self.repository.clone(),
+        let tag = value(&self.tag, cx);
+        let mut reference = match tag.as_str() {
+            "" => self.repository.clone(),
             tag => format!("{}:{tag}", self.repository),
+        };
+        if let Some(digest) = self.pinned_digest(cx) {
+            reference = format!("{reference}@{digest}");
         }
+        reference
+    }
+
+    /// The digest the form keeps, while the tag field holds the tag it came with.
+    pub(super) fn pinned_digest(&self, cx: &App) -> Option<&str> {
+        let (tag, digest) = self.digest.as_ref()?;
+        (value(&self.tag, cx) == *tag).then_some(digest.as_str())
     }
 
     /// The form as the fields hold it now.

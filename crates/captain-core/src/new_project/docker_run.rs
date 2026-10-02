@@ -8,8 +8,8 @@ mod words;
 use flags::Flag;
 use words::split_words;
 
-use super::ServiceSpec;
 use super::project_name::{image_project_name, to_project_name};
+use super::{ServiceSpec, is_windows_absolute, named_volume};
 
 /// A `docker run` command as one Compose service.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -111,6 +111,9 @@ impl Builder {
         };
         let flag = Flag::long(name);
         let shown = format!("--{name}");
+        if flag == Flag::Unknown && attached.is_none() {
+            return Err(unknown_flag(&shown));
+        }
         if !flag.takes_value() {
             // `--rm=false` and the like turn the flag off.
             if attached.as_deref() != Some("false") {
@@ -136,6 +139,9 @@ impl Builder {
         for (at, letter) in letters.char_indices() {
             let flag = Flag::short(letter);
             let shown = format!("-{letter}");
+            if flag == Flag::Unknown {
+                return Err(unknown_flag(&shown));
+            }
             if !flag.takes_value() {
                 self.apply(flag, &shown, None);
                 continue;
@@ -179,8 +185,19 @@ impl Builder {
                     self.service.environment.push((value, None));
                 }
             },
-            Flag::EnvFile => s.env_file.push(value),
-            Flag::Volume => s.volumes.push(value),
+            Flag::EnvFile => {
+                if is_relative(&value) {
+                    self.warn_relative(&value, "--env-file");
+                }
+                self.service.env_file.push(value);
+            }
+            Flag::Volume => {
+                let source = value.split_once(':').map(|(source, _)| source);
+                if named_volume(&value).is_none() && source.is_some_and(is_relative) {
+                    self.warn_relative(source.unwrap_or_default(), "-v");
+                }
+                self.service.volumes.push(value);
+            }
             Flag::Name => s.container_name = Some(value),
             Flag::Restart => s.restart = (value != "no").then_some(value),
             Flag::Network => match value.as_str() {
@@ -206,6 +223,16 @@ impl Builder {
         }
     }
 
+    /// A relative path meant the folder where the command ran; in the project
+    /// it means the project folder.
+    fn warn_relative(&mut self, path: &str, flag: &str) {
+        self.warnings.push(format!(
+            "{path} in {flag} was relative to the folder where you ran docker run. \
+             In the project it is inside the project folder. Copy the files there, \
+             or write the full path in compose.yaml."
+        ));
+    }
+
     fn unconverted(&mut self, flag: &str) {
         self.warn_once(
             flag,
@@ -219,6 +246,20 @@ impl Builder {
             self.warnings.push(warning.to_string());
         }
     }
+}
+
+/// The error for a flag the `docker run` reference does not have.
+fn unknown_flag(flag: &str) -> String {
+    format!(
+        "Captain does not know {flag}, so it cannot tell if the next word is its value. \
+         Write it as {flag}=value, or remove it."
+    )
+}
+
+/// True for a path that is not absolute: not `/`, `~`, `$`, `C:\`, or
+/// `\\server`.
+fn is_relative(path: &str) -> bool {
+    !(path.starts_with(['/', '~', '$']) || is_windows_absolute(path))
 }
 
 /// The word after `flag`, which takes a value.

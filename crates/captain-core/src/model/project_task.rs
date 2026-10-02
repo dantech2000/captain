@@ -86,11 +86,11 @@ fn task(name: &str, entry: &Value) -> Result<ProjectTask, String> {
         .filter(|service| !service.is_empty())
         .ok_or_else(|| format!("The task {name} needs a service."))?;
     let command = match entry.get("command") {
-        Some(Value::String(line)) if !line.trim().is_empty() => TaskCommand::Shell(line.clone()),
+        Some(Value::String(line)) if !line.trim().is_empty() => TaskCommand::Shell(unescape(line)),
         Some(Value::Array(items)) if !items.is_empty() => TaskCommand::Args(
             items
                 .iter()
-                .map(|item| item.as_str().map(String::from))
+                .map(|item| item.as_str().map(unescape))
                 .collect::<Option<Vec<_>>>()
                 .ok_or_else(|| format!("The command of the task {name} must list strings."))?,
         ),
@@ -101,6 +101,13 @@ fn task(name: &str, entry: &Value) -> Result<ProjectTask, String> {
         service: service.to_string(),
         command,
     })
+}
+
+/// `text` with Compose's `$$` turned back into `$`. `config` interpolates
+/// `${NAME}` but keeps `$$`, which in an extension field is meant for the shell
+/// in the container.
+fn unescape(text: &str) -> String {
+    text.replace("$$", "$")
 }
 
 #[cfg(test)]

@@ -37,6 +37,13 @@ pub struct FilesState {
 }
 
 impl FilesState {
+    /// Forgets the Dockerfile list and the file shown for the project `name`,
+    /// for example when the same name now means another folder.
+    pub fn forget_project(&mut self, name: &str) {
+        self.forget_list();
+        self.shown.remove(name);
+    }
+
     /// Forgets the Dockerfile list, so the next render reads it again, for
     /// example after a saved Compose file changed a build context.
     pub fn forget_list(&mut self) {

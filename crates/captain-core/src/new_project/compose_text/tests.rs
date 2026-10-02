@@ -82,3 +82,22 @@ fn only_names_are_named_volumes() {
     assert_eq!(named_volume("C:\\data:/data"), None);
     assert_eq!(named_volume("/data"), None);
 }
+
+#[test]
+fn a_name_given_twice_keeps_its_last_value() {
+    let text = doc(ServiceSpec {
+        image: "alpine".into(),
+        environment: vec![
+            ("A".into(), Some("one".into())),
+            ("B".into(), Some("b".into())),
+            ("A".into(), Some("two".into())),
+        ],
+        ..ServiceSpec::default()
+    })
+    .to_yaml();
+
+    assert!(
+        text.contains("    environment:\n      A: two\n      B: b\n"),
+        "{text}"
+    );
+}

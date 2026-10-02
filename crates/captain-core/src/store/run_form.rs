@@ -2,7 +2,7 @@ use thiserror::Error;
 
 use super::{NameError, validate_name};
 use crate::model::{EnvVar, ExposedPort, ImageDetail, PublishPort, RestartPolicy, RunSpec};
-use crate::new_project::{ServiceSpec, named_volume};
+use crate::new_project::{ServiceSpec, is_windows_absolute, named_volume};
 
 /// The Run an image form, as the user typed it. [`RunForm::to_spec`] checks it for
 /// a plain container, and [`RunForm::to_service`] for a Compose service.
@@ -89,10 +89,9 @@ impl RunForm {
             return Err(RunFormError::AutoRemoveWithRestart);
         }
         let volumes = self.mounts()?;
-        if let Some(folder) = volumes
-            .iter()
-            .find(|mount| named_volume(mount).is_none() && !mount.starts_with('/'))
-        {
+        if let Some(folder) = volumes.iter().find(|mount| {
+            named_volume(mount).is_none() && !mount.starts_with('/') && !is_windows_absolute(mount)
+        }) {
             return Err(RunFormError::FolderNeedsProject(folder.clone()));
         }
         Ok(RunSpec {
@@ -137,7 +136,8 @@ impl RunForm {
             .collect()
     }
 
-    /// The volume rows as `source:target`. A folder like `data/db` gets `./`.
+    /// The volume rows as `source:target`. A folder like `data/db` gets `./`. A
+    /// Windows folder such as `C:\work` keeps its drive.
     fn mounts(&self) -> Result<Vec<String>, RunFormError> {
         let mut mounts = Vec::new();
         for row in &self.volumes {
@@ -146,11 +146,13 @@ impl RunForm {
                 continue;
             }
             let shown = format!("{source}:{target}");
-            if source.is_empty() || !target.starts_with('/') || source.contains(':') {
+            let windows = is_windows_absolute(source);
+            let colon = source[if windows { 2 } else { 0 }..].contains(':');
+            if source.is_empty() || !target.starts_with('/') || colon {
                 return Err(RunFormError::Volume(shown));
             }
             let plain_name = named_volume(&shown).is_some();
-            let relative = !plain_name && !source.starts_with(['/', '.', '~']);
+            let relative = !plain_name && !windows && !source.starts_with(['/', '.', '~']);
             mounts.push(match relative {
                 true => format!("./{shown}"),
                 false => shown,

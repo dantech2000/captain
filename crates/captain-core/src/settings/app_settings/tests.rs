@@ -132,4 +132,6 @@ fn projects_dir_expands_the_home_folder() {
         settings.projects_dir_in(home),
         std::path::PathBuf::from("/srv/projects")
     );
+    let settings = Settings::from_json(r#"{"projects_dir": "projects"}"#).unwrap();
+    assert_eq!(settings.projects_dir_in(home), home.join("projects"));
 }

@@ -2,6 +2,7 @@
 //! made from an image or a `docker run` command, Docker Hub search, and the
 //! checks of the New sheet's forms. See docs/features/0040-new-projects.md.
 
+mod compose_files;
 mod compose_text;
 mod docker_hub;
 mod docker_run;
@@ -12,7 +13,8 @@ mod project_name;
 mod secret;
 mod templates;
 
-pub use compose_text::{ComposeDoc, ServiceSpec, named_volume};
+pub use compose_files::project_files;
+pub use compose_text::{ComposeDoc, ServiceSpec, is_windows_absolute, named_volume};
 pub use docker_hub::{
     DockerHub, HubError, HubRepo, count_label, parse_search, parse_tags, search_url, status_error,
     tags_url,

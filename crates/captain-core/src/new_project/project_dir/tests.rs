@@ -45,3 +45,20 @@ fn a_folder_with_files_is_never_written() {
     );
     fs::remove_dir_all(&dir).ok();
 }
+
+#[cfg(unix)]
+#[test]
+fn a_link_in_place_of_the_project_folder_is_refused() {
+    let dir = temp("link");
+    let elsewhere = temp("link-target");
+    fs::create_dir_all(&elsewhere).unwrap();
+    fs::create_dir_all(dir.parent().unwrap()).unwrap();
+    std::os::unix::fs::symlink(&elsewhere, &dir).unwrap();
+
+    let result = write_project(&dir, &[NewFile::new("compose.yaml", "new\n")]);
+
+    assert!(matches!(result, Err(NewProjectError::NotEmpty(_))));
+    assert!(fs::read_dir(&elsewhere).unwrap().next().is_none());
+    fs::remove_file(&dir).ok();
+    fs::remove_dir_all(&elsewhere).ok();
+}

@@ -30,3 +30,8 @@ fn a_taken_name_gets_the_next_free_number() {
         "redis"
     );
 }
+
+#[test]
+fn the_search_for_a_free_name_stops() {
+    assert_eq!(unique_project_name("app", |_| true), "app");
+}

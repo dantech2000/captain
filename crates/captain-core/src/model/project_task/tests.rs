@@ -23,3 +23,16 @@ fn reads_string_and_list_commands_and_reports_entries_without_a_service() {
     );
     assert_eq!(tasks.problems, ["The task psql needs a service."]);
 }
+
+#[test]
+fn compose_dollar_escapes_are_decoded_once() {
+    // As `docker compose config --format json` prints a MySQL template task.
+    let config = r#"{"x-captain": {"tasks": {
+        "databases": {"service": "mysql", "command": "mysql -p\"$$MYSQL_ROOT_PASSWORD\" -e 'select \"$$$$\"'"}
+    }}}"#;
+    let tasks = ProjectTasks::parse(config).unwrap();
+    assert_eq!(
+        tasks.tasks[0].command.display(),
+        "mysql -p\"$MYSQL_ROOT_PASSWORD\" -e 'select \"$$\"'"
+    );
+}

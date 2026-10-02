@@ -18,8 +18,12 @@ pub struct ServiceSpec {
     pub command: Vec<String>,
     pub user: Option<String>,
     pub working_dir: Option<String>,
-    /// A `None` value passes the variable from the shell that runs Compose.
+    /// A `None` value passes the variable from the shell that runs Compose. A
+    /// name given twice keeps its last value, as `docker run` does.
     pub environment: Vec<(String, Option<String>)>,
+    /// Names in `environment` whose values are in `.env`. They are written as
+    /// `${NAME:?set NAME in .env}`, so Compose reads them from there.
+    pub dotenv: Vec<String>,
     pub env_file: Vec<String>,
     /// Short syntax, for example `8080:80` or `127.0.0.1:53:53/udp`.
     pub ports: Vec<String>,
@@ -28,6 +32,7 @@ pub struct ServiceSpec {
     /// Networks that exist already; they are declared `external: true`.
     pub networks: Vec<String>,
     pub network_mode: Option<String>,
+    /// A name given twice keeps its last value.
     pub labels: Vec<(String, String)>,
     pub stdin_open: bool,
     pub tty: bool,
@@ -115,6 +120,17 @@ pub fn named_volume(mount: &str) -> Option<&str> {
     named.then_some(source)
 }
 
+/// True for a Windows folder with a drive or a server: `C:\work`, `C:/work`, or
+/// `\\server\share`.
+pub fn is_windows_absolute(path: &str) -> bool {
+    let bytes = path.as_bytes();
+    let drive = bytes.len() >= 3
+        && bytes[0].is_ascii_alphabetic()
+        && bytes[1] == b':'
+        && matches!(bytes[2], b'/' | b'\\');
+    drive || path.starts_with("\\\\")
+}
+
 fn write_service(out: &mut String, s: &ServiceSpec) {
     let single = |out: &mut String, name: &str, value: &Option<String>| {
         if let Some(value) = value {
@@ -133,8 +149,13 @@ fn write_service(out: &mut String, s: &ServiceSpec) {
     single(out, "working_dir", &s.working_dir);
     if !s.environment.is_empty() {
         line(out, 2, "environment:");
-        for (name, value) in &s.environment {
+        for (name, value) in last_wins(&s.environment) {
             match value {
+                _ if s.dotenv.contains(name) => line(
+                    out,
+                    3,
+                    &format!("{}: \"${{{name}:?set {name} in .env}}\"", key(name)),
+                ),
                 Some(value) => line(out, 3, &format!("{}: {}", key(name), scalar(value))),
                 None => line(out, 3, &format!("{}:", key(name))),
             }
@@ -147,7 +168,7 @@ fn write_service(out: &mut String, s: &ServiceSpec) {
     single(out, "network_mode", &s.network_mode);
     if !s.labels.is_empty() {
         line(out, 2, "labels:");
-        for (name, value) in &s.labels {
+        for (name, value) in last_wins(&s.labels) {
             line(out, 3, &format!("{}: {}", key(name), scalar(value)));
         }
     }
@@ -159,6 +180,19 @@ fn write_service(out: &mut String, s: &ServiceSpec) {
     }
     single(out, "mem_limit", &s.mem_limit);
     single(out, "cpus", &s.cpus);
+}
+
+/// Each name once, where it first shows, with its last value. YAML refuses a
+/// mapping with a key twice.
+fn last_wins<V>(entries: &[(String, V)]) -> Vec<(&String, &V)> {
+    let mut out: Vec<(&String, &V)> = Vec::new();
+    for (name, value) in entries {
+        match out.iter_mut().find(|(known, _)| *known == name) {
+            Some(entry) => entry.1 = value,
+            None => out.push((name, value)),
+        }
+    }
+    out
 }
 
 fn line(out: &mut String, depth: usize, text: &str) {

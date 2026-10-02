@@ -72,6 +72,6 @@ pub fn keep_tags(repository: String, tags: Vec<String>, cx: &mut App) {
 pub fn wait(wait: std::time::Duration, cx: &mut App) {
     if cx.has_global::<Hub>() {
         let hub = cx.global_mut::<Hub>();
-        hub.wait_until = Some(Instant::now() + wait);
+        hub.wait_until = Instant::now().checked_add(wait);
     }
 }

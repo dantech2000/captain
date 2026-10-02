@@ -154,16 +154,24 @@ impl ProjectView {
         }
         let known = known_model(cx).read(cx).projects().to_vec();
         let workspace = self.workspace.read(cx);
+        // A running project first, then the known record, then the last one
+        // shown, so the page follows the folder the sidebar shows.
         if let Some(GroupKey::Project(name)) = &focus
             && let Some(project) = compose_project(workspace.store().containers(), name)
-                .or_else(|| self.project.clone())
                 .or_else(|| {
                     known
                         .iter()
                         .find(|k| &k.name == name)
                         .map(KnownProject::compose_project)
                 })
+                .or_else(|| self.project.clone())
         {
+            if self.project.as_ref().is_some_and(|old| {
+                old.working_dir != project.working_dir || old.config_files != project.config_files
+            }) {
+                self.tasks.forget_list();
+                self.files.forget_project(&project.name);
+            }
             let stale = self.tasks.stale(&project);
             let compose = workspace.has_project_runner();
             self.project = Some(project.clone());

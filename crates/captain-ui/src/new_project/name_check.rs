@@ -36,21 +36,31 @@ pub fn name_problem(name: &str, host: &SheetHost, cx: &App) -> Option<String> {
         return Some(format!("Captain already has a project named {name}."));
     }
     let dir = projects_dir(cx).join(name);
-    if !folder_is_free(&dir) {
-        return Some(format!(
+    match folder_is_free(&dir) {
+        Ok(true) => None,
+        Ok(false) => Some(format!(
             "{} has files already. Pick another name.",
             dir.display()
-        ));
+        )),
+        Err(error) => Some(format!(
+            "Captain cannot use {}: {error}. Check projects_dir in the settings file.",
+            dir.display()
+        )),
     }
-    None
 }
 
 /// A free project name from `base`, such as `postgres` or `postgres-2`.
 pub fn unique_name(base: &str, host: &SheetHost, cx: &App) -> String {
     let taken = taken_names(host, cx);
     let dir = projects_dir(cx);
-    unique_project_name(&to_project_name(base), |name| {
-        taken.iter().any(|t| t == name) || !folder_is_free(&dir.join(name))
+    let base = to_project_name(base);
+    // When the folder cannot be read, every name fails the same way; the name
+    // check then says why.
+    if folder_is_free(&dir.join(&base)).is_err() {
+        return base;
+    }
+    unique_project_name(&base, |name| {
+        taken.iter().any(|t| t == name) || !folder_is_free(&dir.join(name)).unwrap_or(false)
     })
 }
 
