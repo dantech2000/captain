@@ -2,8 +2,7 @@ use std::path::{Path, PathBuf};
 
 use captain_core::model::{ComposeProject, ProjectAction};
 
-use super::{compose_command, docker_host};
-use crate::Endpoint;
+use super::compose_command;
 
 fn project(files: &[&str]) -> ComposeProject {
     ComposeProject {
@@ -71,12 +70,4 @@ fn down_uses_only_the_name_when_files_are_gone() {
         ["compose", "--ansi", "never", "-p", "shop", "down"]
     );
     assert_eq!(command.dir, PathBuf::from(TMP));
-}
-
-#[test]
-fn docker_host_turns_http_into_tcp() {
-    let http = Endpoint::Tcp("http://10.0.0.5:2375".into());
-    assert_eq!(docker_host(&http), "tcp://10.0.0.5:2375");
-    let unix = Endpoint::Unix("/var/run/docker.sock".into());
-    assert_eq!(docker_host(&unix), "unix:///var/run/docker.sock");
 }

@@ -1069,6 +1069,7 @@ name = "captain-terminal"
 version = "0.1.0"
 dependencies = [
  "alacritty_terminal",
+ "filedescriptor",
  "portable-pty",
  "rustix",
 ]

@@ -25,6 +25,9 @@ chrono = { version = "0.4", default-features = false, features = ["clock"] }
 clap = { version = "4.6", features = ["derive", "env"] }
 clap_complete = "4.6"
 dirs = "6"
+# Non-blocking reads and writes on the terminal panel's PTY, with `select` on macOS,
+# where `poll` does not work on terminals. portable-pty already builds this version.
+filedescriptor = "0.8"
 futures = "0.3"
 # Passwords for new projects from templates; see docs/features/0040-new-projects.md.
 # ring and others already build this version.

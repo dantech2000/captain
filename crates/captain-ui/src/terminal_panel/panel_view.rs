@@ -1,5 +1,6 @@
 use std::path::PathBuf;
 use std::rc::Rc;
+use std::time::{Duration, Instant};
 
 use gpui_kit::*;
 
@@ -8,9 +9,13 @@ use super::new_tab::{default_dir, local_source};
 use super::resize_edge::{self, DEFAULT_HEIGHT, DraggedPanelEdge};
 use super::tab_strip;
 use crate::project::ProjectView;
-use crate::terminal::{CloseRequested, EndedBar, TerminalView};
+use crate::terminal::{CloseRequested, Closing, EndedBar, TerminalView};
 use crate::theme::Palette;
 use crate::workspace::Workspace;
+
+/// How long Quit waits for the shells to end. Each gets a hangup, a second, a kill,
+/// and half a second to go, all at the same time.
+const QUIT_WAIT: Duration = Duration::from_secs(2);
 
 /// One tab: a shell and the folder it started in.
 pub(super) struct TerminalTab {
@@ -53,10 +58,17 @@ impl TerminalPanel {
             }
             this.was_open = open;
         });
-        // Quit hangs up every shell, so none outlives Captain.
+        // Quit ends every shell and waits here, so none outlives Captain. GPUI
+        // gives the returned future only 200 ms, too short for the kill.
         let quit = cx.on_app_quit(|this, cx| {
-            for tab in &this.tabs {
-                tab.view.update(cx, |view, _| view.end());
+            let closings: Vec<Closing> = this
+                .tabs
+                .iter()
+                .filter_map(|tab| tab.view.update(cx, |view, _| view.end()))
+                .collect();
+            let deadline = Instant::now() + QUIT_WAIT;
+            for closing in &closings {
+                closing.wait_until(deadline);
             }
             async {}
         });

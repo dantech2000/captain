@@ -3,6 +3,7 @@
 
 use std::path::{Path, PathBuf};
 
+use captain_core::docker_host::cli_host;
 use captain_core::host_shell::{local_env, shell_program};
 use captain_core::store::GroupKey;
 use captain_terminal::ShellCommand;
@@ -42,7 +43,7 @@ fn banner(endpoint: Option<&str>, cx: &App) -> String {
     } else {
         engine_name(endpoint)
     };
-    format!("docker → {name} ({endpoint})")
+    format!("docker → {name} ({})", cli_host(endpoint))
 }
 
 /// Where the + button opens a tab: the folder of the project the Project page

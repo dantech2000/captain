@@ -6,7 +6,7 @@ use std::time::Duration;
 use captain_core::EngineError;
 use captain_core::model::ExecSession;
 use captain_terminal::default_emulator;
-use futures::StreamExt;
+use futures::{FutureExt, Stream, StreamExt};
 use gpui_kit::*;
 
 use super::metrics::GridMetrics;
@@ -15,8 +15,11 @@ use super::terminal_view::{DEFAULT_SIZE, Live, Phase, TerminalView};
 /// How long the grid size must hold still before the session hears about it. Dragging
 /// a window edge would otherwise send a resize for every frame.
 const RESIZE_DEBOUNCE: Duration = Duration::from_millis(150);
-/// Output chunks fed to the emulator before one repaint.
-const CHUNKS_PER_FRAME: usize = 64;
+/// Output bytes fed to the emulator before one repaint. Past this the pump rests for
+/// [`FRAME`], so a program that writes fast, such as `yes`, leaves the window time
+/// to draw and to take input.
+const BYTES_PER_FRAME: usize = 256 * 1024;
+const FRAME: Duration = Duration::from_millis(8);
 
 impl TerminalView {
     /// Starts a session from the source, if there is one.
@@ -62,10 +65,14 @@ impl TerminalView {
         self.schedule_resize(cols, rows, Duration::ZERO, cx);
 
         let pump = cx.spawn(async move |this, cx| {
-            let mut output = output.ready_chunks(CHUNKS_PER_FRAME);
-            while let Some(chunks) = output.next().await {
+            let mut output = output.fuse();
+            while let Some(first) = output.next().await {
+                let (chunks, full) = batch(first, &mut output);
                 if this.update(cx, |this, cx| this.feed(chunks, cx)).is_err() {
                     break;
+                }
+                if full {
+                    cx.background_executor().timer(FRAME).await;
                 }
             }
         });
@@ -78,8 +85,8 @@ impl TerminalView {
         cx.notify();
     }
 
-    fn feed(&mut self, chunks: Vec<Result<Vec<u8>, EngineError>>, cx: &mut Context<Self>) {
-        for bytes in chunks.into_iter().flatten() {
+    fn feed(&mut self, chunks: Vec<Vec<u8>>, cx: &mut Context<Self>) {
+        for bytes in chunks {
             self.emulator.feed(&bytes);
         }
         let replies = self.emulator.take_replies();
@@ -136,4 +143,25 @@ impl TerminalView {
             }
         }));
     }
+}
+
+/// `first` and the output ready right after it, up to [`BYTES_PER_FRAME`]. True when
+/// the batch is full, so more output may wait.
+fn batch(
+    first: Result<Vec<u8>, EngineError>,
+    output: &mut (impl Stream<Item = Result<Vec<u8>, EngineError>> + Unpin),
+) -> (Vec<Vec<u8>>, bool) {
+    let mut chunks: Vec<Vec<u8>> = first.into_iter().collect();
+    let mut bytes: usize = chunks.iter().map(Vec::len).sum();
+    while bytes < BYTES_PER_FRAME {
+        match output.next().now_or_never() {
+            Some(Some(Ok(chunk))) => {
+                bytes += chunk.len();
+                chunks.push(chunk);
+            }
+            Some(Some(Err(_))) => {}
+            _ => break,
+        }
+    }
+    (chunks, bytes >= BYTES_PER_FRAME)
 }

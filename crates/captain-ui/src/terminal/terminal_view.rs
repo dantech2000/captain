@@ -7,7 +7,7 @@ use gpui_kit::*;
 use super::colors::TerminalColors;
 use super::grid::TerminalGrid;
 use super::metrics::GridMetrics;
-use super::{TerminalSource, keys};
+use super::{Closing, TerminalSource, keys};
 use crate::theme::Palette;
 
 /// The grid size before the first layout.
@@ -107,19 +107,21 @@ impl TerminalView {
         self.start(cx);
     }
 
-    /// Drops the session. A local shell gets a hangup at once; an exec's
-    /// connection closes, which ends the shell's input.
-    pub fn end(&mut self) {
-        if self.live.is_some()
-            && let Some(source) = &self.source
-        {
-            source.close();
-        }
+    /// Drops the session. A local shell gets a hangup at once, and a kill later
+    /// on a thread of its own; Quit waits for that through the returned end. An
+    /// exec's connection closes, which ends the shell's input.
+    pub fn end(&mut self) -> Option<Closing> {
+        let closing = self
+            .live
+            .as_ref()
+            .and(self.source.as_ref())
+            .and_then(|source| source.close());
         self.tasks.clear();
         self.resize_task = None;
         self.live = None;
         self.command = None;
         self.phase = Phase::Idle;
+        closing
     }
 
     /// Moves focus to the grid on the next render.
@@ -148,6 +150,13 @@ impl TerminalView {
 
     pub(super) fn snapshot(&self) -> Screen {
         self.emulator.snapshot()
+    }
+}
+
+impl Drop for TerminalView {
+    /// A view dropped without [`TerminalView::end`] still ends its shell.
+    fn drop(&mut self) {
+        self.end();
     }
 }
 

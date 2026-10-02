@@ -7,6 +7,7 @@ pub mod cli_tools;
 pub mod daemon;
 pub mod diagnostics;
 pub mod docker_context;
+pub mod docker_host;
 mod engine;
 mod error;
 pub mod extension;

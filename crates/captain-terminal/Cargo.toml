@@ -19,6 +19,7 @@ alacritty_terminal = { workspace = true, optional = true }
 portable-pty.workspace = true
 
 [target.'cfg(unix)'.dependencies]
+filedescriptor.workspace = true
 rustix.workspace = true
 
 [lints]

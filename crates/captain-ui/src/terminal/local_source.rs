@@ -6,15 +6,15 @@ use captain_terminal::{PtyControl, ShellCommand, spawn_pty};
 use futures::FutureExt;
 use futures::future::ready;
 
-use super::TerminalSource;
-use super::pty_session::pty_session;
+use super::pty_session::{closing, pty_session};
+use super::{Closing, TerminalSource};
 
 /// A shell on this computer in a PTY, for the terminal panel. Each session starts
 /// with `banner`, a dim line that says which engine `docker` uses.
 pub struct LocalSource {
     command: ShellCommand,
     banner: String,
-    /// The running shell, to hang up on close.
+    /// The running shell, to end on close.
     control: RefCell<Option<PtyControl>>,
 }
 
@@ -44,9 +44,7 @@ impl TerminalSource for LocalSource {
         ready(Ok(pty_session(pty, banner, command))).boxed()
     }
 
-    fn close(&self) {
-        if let Some(control) = self.control.take() {
-            control.hangup();
-        }
+    fn close(&self) -> Option<Closing> {
+        self.control.take().map(closing)
     }
 }

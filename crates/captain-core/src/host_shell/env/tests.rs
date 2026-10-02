@@ -19,7 +19,15 @@ fn points_docker_at_the_engine_and_puts_the_tools_first() {
             "unix:///home/me/.captain/lima/captain/sock/docker.sock"
         ))
     );
-    assert_eq!(env.remove, ["DOCKER_CONTEXT"]);
+    assert_eq!(
+        env.remove,
+        [
+            "DOCKER_CONTEXT",
+            "DOCKER_TLS",
+            "DOCKER_TLS_VERIFY",
+            "DOCKER_CERT_PATH"
+        ]
+    );
     let dirs: Vec<PathBuf> = std::env::split_paths(env.get("PATH").unwrap()).collect();
     assert_eq!(dirs, [bin, Path::new("/usr/bin"), Path::new("/bin")]);
     assert_eq!(env.get("TERM"), Some(OsStr::new("xterm-256color")));
@@ -33,4 +41,16 @@ fn points_docker_at_the_engine_and_puts_the_tools_first() {
     let unknown = shell_env(&ShellEnvInput::default());
     assert_eq!(unknown.get("DOCKER_HOST"), None);
     assert!(unknown.remove.is_empty());
+}
+
+#[test]
+fn gives_the_cli_tcp_for_an_http_engine() {
+    let env = shell_env(&ShellEnvInput {
+        docker_host: Some("http://10.0.0.5:2375"),
+        ..ShellEnvInput::default()
+    });
+    assert_eq!(
+        env.get("DOCKER_HOST"),
+        Some(OsStr::new("tcp://10.0.0.5:2375"))
+    );
 }

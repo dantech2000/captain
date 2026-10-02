@@ -108,11 +108,7 @@ pub fn compose_subcommand(
 /// The `DOCKER_HOST` value that points the CLI at `endpoint`. The CLI knows `tcp://`
 /// but not `http://`.
 pub fn docker_host(endpoint: &Endpoint) -> String {
-    let host = endpoint.to_string();
-    match host.strip_prefix("http://") {
-        Some(address) => format!("tcp://{address}"),
-        None => host,
-    }
+    captain_core::docker_host::cli_host(&endpoint.to_string())
 }
 
 #[cfg(test)]
